@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    // --- Alvo e biblioteca ---------------------------------------------
+    // Node 20+ suporta ES2022 nativamente. bigint literal (123n) exige >= ES2020.
+    "target": "ES2022",
+    "lib": ["ES2023"],
+
+    // --- Sistema de modulos ---------------------------------------------
+    // "nodenext" faz o TypeScript resolver modulos exatamente como o Node.
+    // Consequencia: import relativo precisa de extensao .js, mesmo apontando
+    // para um arquivo .ts.  Ex: import { x } from "../tipos/efeitos.js"
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+
+    // --- Rigor ----------------------------------------------------------
+    "strict": true,
+    // array[0] tem tipo T | undefined. Essencial ao ler bytes de conta SPL
+    // em offsets fixos: impede que um acesso fora do buffer passe calado.
+    "noUncheckedIndexedAccess": true,
+    // { delegate?: string } deixa de aceitar { delegate: undefined }.
+    // No EffectSet, "campo ausente" e "campo nulo" sao coisas diferentes.
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    // Protege o switch sobre os 8 EffectType.
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // --- Interop / emissao ----------------------------------------------
+    // Obriga "import type" para o que so existe em tempo de compilacao.
+    "verbatimModuleSyntax": true,
+    // Garante que cada arquivo e transpilavel isoladamente (e o que tsx e
+    // vitest fazem de fato, via esbuild).
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+
+    // Nao emitimos JavaScript ainda. O typecheck e um portao, nao um build.
+    // Quando existir build, trocar por outDir/rootDir em tsconfig.build.json.
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "*.config.ts"],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

@@ -1,0 +1,21 @@
+# dependencias
+node_modules/
+
+# segredo -- a URL do Helius carrega a API key na query string
+.env
+.env.local
+.env.*.local
+
+# build
+dist/
+*.tsbuildinfo
+
+# teste
+coverage/
+
+# sistema operacional / editor
+.DS_Store
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
