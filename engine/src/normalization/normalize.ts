@@ -23,6 +23,13 @@ import {
 import { diffAccounts } from "./diff.js";
 import type { AccountState, InnerInstructionRef, RpcClient } from "./rpc.js";
 
+/**
+ * How many times to try landing the read and the simulation on the same slot.
+ * Slots are roughly 400ms and a round trip is shorter than that, so a couple
+ * of attempts is usually enough.
+ */
+const ALIGNMENT_ATTEMPTS = 3;
+
 export interface NormalizeOptions {
   /** Network fee in lamports, when the caller already knows it. */
   readonly fee?: bigint | null;
@@ -85,27 +92,41 @@ export async function normalize(
   // address, so it can never be observed. Named here, not swallowed.
   const blind = unresolvedTables.map((u) => `${u.table}: ${u.reason}`);
 
-  // 2. What do they look like now?
-  const before = await rpc.readAccounts(toObserve);
-  if (!before.ok) {
-    return unavailable(
-      `could not read account state: ${before.failure.message}`,
-      {
-        referenced,
-        observed: [],
-        unobserved: [...referenced, ...blind],
-      },
-    );
+  // 2 and 3. The two sides of the diff, taken as close together as possible.
+  //
+  // They are fired in parallel and their slots compared. State cannot be read
+  // and simulated atomically over public RPC, so alignment is checked rather
+  // than assumed: when the two land on different slots, anything that touched
+  // an observed account in between would be attributed to this transaction.
+  // A few attempts usually land on the same slot; when they do not, the gap is
+  // reported instead of hidden.
+  let before: Awaited<ReturnType<RpcClient["readAccounts"]>> | null = null;
+  let simulated: Awaited<ReturnType<RpcClient["simulate"]>> | null = null;
+
+  for (let attempt = 0; attempt < ALIGNMENT_ATTEMPTS; attempt++) {
+    const [read, run] = await Promise.all([
+      rpc.readAccounts(toObserve),
+      rpc.simulate(tx, { accounts: toObserve, innerInstructions: true }),
+    ]);
+    before = read;
+    simulated = run;
+    if (!read.ok || !run.ok) break;
+    if (read.value.slot === run.value.slot) break;
   }
 
-  // 3. What would they look like if this ran?
-  const simulated = await rpc.simulate(tx, {
-    accounts: toObserve,
-    minContextSlot: before.value.slot,
-    innerInstructions: true,
-  });
-  if (!simulated.ok) {
-    return unavailable(`could not simulate: ${simulated.failure.message}`, {
+  if (before === null || !before.ok) {
+    const reason =
+      before === null ? "no attempt was made" : before.failure.message;
+    return unavailable(`could not read account state: ${reason}`, {
+      referenced,
+      observed: [],
+      unobserved: [...referenced, ...blind],
+    });
+  }
+  if (simulated === null || !simulated.ok) {
+    const reason =
+      simulated === null ? "no attempt was made" : simulated.failure.message;
+    return unavailable(`could not simulate: ${reason}`, {
       referenced,
       observed: [],
       unobserved: [...referenced, ...blind],
