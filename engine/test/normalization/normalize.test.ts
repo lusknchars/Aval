@@ -162,3 +162,29 @@ describe("degradation", () => {
     expect(set.coverage.unobserved).toEqual(set.coverage.referenced);
   });
 });
+
+describe("the baseline and the simulation come from different moments", () => {
+  it("records both slots so the gap is visible, not hidden", async () => {
+    const fixture = open("transfer-sol");
+    const rpc = new FixtureRpcClient(fixture);
+    const set = await normalize(rpc.transaction(), rpc);
+
+    // In a fixture both sides were recorded seconds apart, so the gap is real
+    // and reported. Against live RPC it is usually one slot, and anything that
+    // touched these accounts in between lands in this diff.
+    expect(set.baselineSlot).toBe(fixture.before.slot);
+    expect(set.slot).toBe(fixture.simulation.slot);
+    expect(set.baselineSlot).not.toBeNull();
+  });
+
+  it("leaves both slots null when nothing could be read", async () => {
+    const base = new FixtureRpcClient(open("transfer-sol"));
+    const set = await normalize(
+      base.transaction(),
+      failingAt("read", base),
+      {},
+    );
+    expect(set.slot).toBeNull();
+    expect(set.baselineSlot).toBeNull();
+  });
+});

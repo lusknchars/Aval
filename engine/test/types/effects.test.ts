@@ -100,6 +100,7 @@ describe("EffectSet", () => {
       },
     ],
     slot: 502538365,
+    baselineSlot: 502538365,
     fee: 5000n,
     simulation: { status: "executed", unitsConsumed: 13476 },
     coverage: {

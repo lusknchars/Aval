@@ -125,6 +125,16 @@ export interface EffectSet {
   readonly effects: readonly Effect[];
   /** Slot the simulation was evaluated against. null when unavailable. */
   readonly slot: number | null;
+  /**
+   * Slot the BEFORE state was read at. null when it could not be read.
+   *
+   * When this differs from `slot`, the two sides of the diff come from
+   * different moments, and anything that changed the account in between is
+   * attributed to this transaction. There is no way to read state and simulate
+   * atomically over public RPC, so the gap is declared instead of hidden. An
+   * account with heavy concurrent traffic makes it visible immediately.
+   */
+  readonly baselineSlot: number | null;
   readonly simulation: SimulationOutcome;
   readonly coverage: AccountCoverage;
   /**

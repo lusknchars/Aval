@@ -32,6 +32,7 @@ function unavailable(reason: string, coverage: AccountCoverage): EffectSet {
   return {
     effects: [],
     slot: null,
+    baselineSlot: null,
     fee: null,
     simulation: { status: "unavailable", reason },
     coverage,
@@ -146,6 +147,7 @@ export async function normalize(
     return {
       effects: [],
       slot: simulated.value.slot,
+      baselineSlot: before.value.slot,
       fee,
       simulation: outcome,
       coverage: {
@@ -172,6 +174,7 @@ export async function normalize(
   return {
     effects,
     slot: simulated.value.slot,
+    baselineSlot: before.value.slot,
     fee,
     simulation: {
       status: "executed",

@@ -89,6 +89,7 @@ function toJson(set: EffectSet): string {
   return JSON.stringify(
     {
       slot: set.slot,
+      baselineSlot: set.baselineSlot,
       fee: set.fee === null ? null : set.fee.toString(),
       simulation: set.simulation,
       coverage: set.coverage,
@@ -152,6 +153,21 @@ function print(set: EffectSet): void {
   if (set.simulation.status === "unavailable")
     console.log(`reason:   ${set.simulation.reason}`);
   console.log(`slot:     ${set.slot ?? "unavailable"}`);
+  const gap =
+    set.slot !== null && set.baselineSlot !== null
+      ? set.slot - set.baselineSlot
+      : null;
+  console.log(
+    `baseline: ${set.baselineSlot ?? "unavailable"}${gap === null ? "" : gap === 0 ? "  (same slot)" : `  (${gap} slot(s) earlier)`}`,
+  );
+  if (gap !== null && gap !== 0) {
+    console.log(
+      "warning:  the two sides of the diff come from different slots. Anything that",
+    );
+    console.log(
+      "          changed these accounts in between is attributed to this transaction.",
+    );
+  }
   console.log(
     `fee:      ${set.fee === null ? "not estimated" : `${set.fee} lamports`}`,
   );
