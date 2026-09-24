@@ -15,7 +15,6 @@
 import {
   Connection,
   PublicKey,
-  type SimulateTransactionConfig,
   type VersionedTransaction,
 } from "@solana/web3.js";
 import { z } from "zod";
@@ -119,6 +118,15 @@ export interface SimulationOptions {
   readonly minContextSlot?: number;
   /** Ask for the CPIs. Needed for PROGRAM_INVOKE beyond the outer instructions. */
   readonly innerInstructions?: boolean;
+  /**
+   * The transaction's original wire bytes, base64.
+   *
+   * Required for a version 1 transaction: the installed SDK can read a v1
+   * message but refuses to serialize one, so re-encoding it is impossible.
+   * When the caller already holds the bytes -- which an agent handing over an
+   * unsigned transaction always does -- they are passed straight through.
+   */
+  readonly rawTransactionBase64?: string;
 }
 
 /**
@@ -338,6 +346,51 @@ export function normaliseInnerInstructions(
   return refs;
 }
 
+/**
+ * The RPC's simulateTransaction response, validated at the boundary.
+ *
+ * Parsed here rather than through the SDK for two reasons. The SDK cannot
+ * serialize a v1 transaction, which rules out a fifth of real mainnet traffic;
+ * and its validation only accepts inner instructions in parsed form, rejecting
+ * the compiled shape the RPC emits for programs it cannot decode. Talking
+ * JSON-RPC directly removes both limits.
+ */
+const simulateResponseSchema = z.object({
+  context: z.object({ slot: z.number() }),
+  value: z.object({
+    err: z.unknown().nullable(),
+    logs: z.array(z.string()).nullable().optional(),
+    accounts: z
+      .array(
+        z
+          .object({
+            lamports: z.number(),
+            owner: z.string(),
+            executable: z.boolean(),
+            data: z.array(z.string()),
+          })
+          .nullable(),
+      )
+      .nullable()
+      .optional(),
+    unitsConsumed: z.number().optional(),
+    innerInstructions: z
+      .array(
+        z.object({
+          index: z.number(),
+          instructions: z.array(z.record(z.string(), z.unknown())),
+        }),
+      )
+      .nullable()
+      .optional(),
+  }),
+});
+
+const jsonRpcSchema = z.object({
+  result: z.unknown().optional(),
+  error: z.object({ code: z.number(), message: z.string() }).optional(),
+});
+
 /** Implementation over @solana/web3.js. The only place that talks to the network. */
 export class Web3RpcClient implements RpcClient {
   readonly #connection: Connection;
@@ -403,56 +456,128 @@ export class Web3RpcClient implements RpcClient {
     options: SimulationOptions,
   ): Promise<RpcResult<SimulationResponse>> {
     const requested = [...options.accounts];
-    try {
-      const config: SimulateTransactionConfig = {
-        sigVerify: false, // the tx is not signed yet: that is the whole point
-        replaceRecentBlockhash: true,
-        commitment: this.#commitment,
-        accounts: { encoding: "base64", addresses: requested },
-      };
-      if (options.minContextSlot !== undefined)
-        config.minContextSlot = options.minContextSlot;
-      if (options.innerInstructions === true) config.innerInstructions = true;
-      const response = await this.#connection.simulateTransaction(tx, config);
 
-      const raw = response.value.accounts;
-      const accounts: (AccountState | null)[] = [];
-      if (raw !== undefined && raw !== null) {
-        if (raw.length !== requested.length) {
-          return {
-            ok: false,
-            failure: {
-              step: "simulate",
-              message: `post-state with ${raw.length} accounts for ${requested.length} requested`,
-            },
-          };
-        }
-        for (let i = 0; i < requested.length; i++) {
-          const converted = simulatedState(requested[i] ?? "", raw[i] ?? null);
-          if (!converted.ok) return converted;
-          accounts.push(converted.value);
-        }
+    // A v1 transaction cannot be re-serialized by this SDK, so the caller's
+    // original bytes are used when available and serialization is only
+    // attempted as a fallback.
+    let encoded = options.rawTransactionBase64 ?? null;
+    if (encoded === null) {
+      try {
+        encoded = Buffer.from(tx.serialize()).toString("base64");
+      } catch (error) {
+        const raw = error instanceof Error ? error.message : String(error);
+        return {
+          ok: false,
+          failure: {
+            step: "simulate",
+            message: `could not encode the transaction (${raw}). Pass rawTransactionBase64 for a version 1 transaction.`,
+          },
+        };
       }
-      return {
-        ok: true,
-        value: {
-          slot: response.context.slot,
-          error:
-            response.value.err === null
-              ? null
-              : JSON.stringify(response.value.err),
-          unitsConsumed: response.value.unitsConsumed ?? null,
-          logs: response.value.logs,
-          requestedAccounts: requested,
-          accounts,
-          innerInstructions: normaliseInnerInstructions(
-            response.value.innerInstructions,
-          ),
-        },
-      };
+    }
+
+    const config: Record<string, unknown> = {
+      sigVerify: false, // the tx is not signed yet: that is the whole point
+      replaceRecentBlockhash: true,
+      commitment: this.#commitment,
+      encoding: "base64",
+      accounts: { encoding: "base64", addresses: requested },
+    };
+    if (options.minContextSlot !== undefined)
+      config["minContextSlot"] = options.minContextSlot;
+    if (options.innerInstructions === true) config["innerInstructions"] = true;
+
+    let payload: unknown;
+    try {
+      const response = await fetch(this.#url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "simulateTransaction",
+          params: [encoded, config],
+        }),
+      });
+      if (!response.ok) {
+        return {
+          ok: false,
+          failure: {
+            step: "simulate",
+            message: `${response.status} ${response.statusText}`,
+          },
+        };
+      }
+      payload = await response.json();
     } catch (error) {
       return this.#fail("simulate", error);
     }
+
+    const envelope = jsonRpcSchema.safeParse(payload);
+    if (!envelope.success) {
+      return {
+        ok: false,
+        failure: { step: "simulate", message: "RPC reply is not JSON-RPC" },
+      };
+    }
+    if (envelope.data.error !== undefined) {
+      return {
+        ok: false,
+        failure: {
+          step: "simulate",
+          message: redact(envelope.data.error.message, this.#url),
+        },
+      };
+    }
+    const parsed = simulateResponseSchema.safeParse(envelope.data.result);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        failure: {
+          step: "simulate",
+          message: `unexpected simulateTransaction shape: ${parsed.error.issues[0]?.message ?? "invalid"}`,
+        },
+      };
+    }
+
+    const value = parsed.data.value;
+    const accounts: (AccountState | null)[] = [];
+    const rawAccounts = value.accounts;
+    if (rawAccounts !== undefined && rawAccounts !== null) {
+      if (rawAccounts.length !== requested.length) {
+        return {
+          ok: false,
+          failure: {
+            step: "simulate",
+            message: `post-state with ${rawAccounts.length} accounts for ${requested.length} requested`,
+          },
+        };
+      }
+      for (let i = 0; i < requested.length; i++) {
+        const converted = simulatedState(
+          requested[i] ?? "",
+          rawAccounts[i] ?? null,
+        );
+        if (!converted.ok) return converted;
+        accounts.push(converted.value);
+      }
+    }
+
+    return {
+      ok: true,
+      value: {
+        slot: parsed.data.context.slot,
+        error:
+          value.err === null || value.err === undefined
+            ? null
+            : JSON.stringify(value.err),
+        unitsConsumed: value.unitsConsumed ?? null,
+        logs: value.logs ?? null,
+        requestedAccounts: requested,
+        accounts,
+        innerInstructions: normaliseInnerInstructions(value.innerInstructions),
+      },
+    };
   }
 
   /**

@@ -43,6 +43,11 @@ export interface NormalizeOptions {
    * calls; 1 disables retrying.
    */
   readonly alignmentAttempts?: number;
+  /**
+   * The transaction's original wire bytes, base64. Required for a version 1
+   * transaction, which the SDK can read but cannot re-serialize.
+   */
+  readonly rawTransactionBase64?: string;
 }
 
 function unavailable(reason: string, coverage: AccountCoverage): EffectSet {
@@ -120,7 +125,13 @@ export async function normalize(
   for (let attempt = 0; attempt < attempts; attempt++) {
     const [read, run] = await Promise.all([
       rpc.readAccounts(toObserve),
-      rpc.simulate(tx, { accounts: toObserve, innerInstructions: true }),
+      rpc.simulate(tx, {
+        accounts: toObserve,
+        innerInstructions: true,
+        ...(options.rawTransactionBase64 === undefined
+          ? {}
+          : { rawTransactionBase64: options.rawTransactionBase64 }),
+      }),
     ]);
     before = read;
     simulated = run;

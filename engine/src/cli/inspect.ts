@@ -254,7 +254,13 @@ async function main(): Promise<number> {
     }
   }
 
-  const set = await normalize(tx, rpc);
+  // When the caller handed over bytes, they are passed through: a version 1
+  // transaction cannot be re-serialized by this SDK.
+  const set = await normalize(
+    tx,
+    rpc,
+    txBase64 === null ? {} : { rawTransactionBase64: txBase64 },
+  );
   if (json) console.log(toJson(set));
   else print(set);
 

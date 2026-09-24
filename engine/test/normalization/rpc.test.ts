@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PublicKey } from "@solana/web3.js";
 import {
   GENESIS_BY_NETWORK,
+  normaliseInnerInstructions,
   onChainState,
   readRpcConfig,
   redact,
@@ -138,5 +139,59 @@ describe("state conversion", () => {
       data: ["!!!not-base64!!!", "base64"],
     });
     expect(notBase64.ok).toBe(false);
+  });
+});
+
+describe("inner instructions arrive in two different shapes", () => {
+  it("reads the parsed shape, where the program id comes directly", () => {
+    const refs = normaliseInnerInstructions([
+      {
+        index: 0,
+        instructions: [
+          {
+            program: "spl-token",
+            programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            parsed: {},
+            stackHeight: 2,
+          },
+        ],
+      },
+    ]);
+    expect(refs).toHaveLength(1);
+    expect(refs?.[0]?.program).toBe(
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    );
+    expect(refs?.[0]?.programIndex).toBeNull();
+    expect(refs?.[0]?.stackHeight).toBe(2);
+  });
+
+  it("reads the compiled shape, where the program is an account index", () => {
+    // The RPC emits this when it cannot parse the program -- which is exactly
+    // the case for a program VETO has never seen. The installed SDK rejects
+    // this shape, which is why the response is parsed here instead.
+    const refs = normaliseInnerInstructions([
+      {
+        index: 1,
+        instructions: [{ programIdIndex: 7, accounts: [1, 2], data: "3Bxs4" }],
+      },
+    ]);
+    expect(refs).toHaveLength(1);
+    expect(refs?.[0]?.program).toBeNull();
+    expect(refs?.[0]?.programIndex).toBe(7);
+    expect(refs?.[0]?.outerIndex).toBe(1);
+    expect(refs?.[0]?.stackHeight).toBeNull();
+  });
+
+  it("skips a shape it does not recognise instead of guessing", () => {
+    const refs = normaliseInnerInstructions([
+      { index: 0, instructions: [{ something: "else" }] },
+    ]);
+    expect(refs).toEqual([]);
+  });
+
+  it("tells not requested apart from none happened", () => {
+    expect(normaliseInnerInstructions(null)).toBeNull();
+    expect(normaliseInnerInstructions(undefined)).toBeNull();
+    expect(normaliseInnerInstructions([])).toEqual([]);
   });
 });
