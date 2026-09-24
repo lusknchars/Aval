@@ -19,3 +19,6 @@ coverage/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# local working notes, not part of the project
+CLAUDE.md
