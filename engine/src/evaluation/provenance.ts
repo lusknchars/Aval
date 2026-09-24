@@ -1,0 +1,210 @@
+/**
+ * Where did this address come from?
+ *
+ * The question nothing else asks, and the only one that catches the most
+ * common attack. Consider an agent that reads a poisoned page and emits
+ * `transfer({ to: "7xKX…", amount: 500 })`. The manifest check passes
+ * perfectly: the transaction does exactly what the tool call said. The
+ * corruption is not in the execution, it is in the ORIGIN of the argument.
+ *
+ * The implementation is a string search. The value is not in the algorithm,
+ * it is in having the labels at all -- which is why capture stamps every
+ * chunk at the door, and the agent never gets to say where something came
+ * from.
+ */
+import { counterparties, type EffectSet } from "../types/effects.js";
+import {
+  chunkIsTrusted,
+  type ActionContext,
+  type ContextChunk,
+  type SourceTrust,
+} from "../types/context.js";
+import type { Finding, Severity } from "../types/verdict.js";
+
+/**
+ * How an address came to be in this transaction, worst case first.
+ *
+ * `unexplained` is worse than it sounds: an address that appears in no chunk
+ * at all was produced somewhere VETO does not observe. Absence is a signal,
+ * not silence.
+ */
+export type Origin =
+  | "user_goal" // the human named it
+  | "allowlist" // the customer approved it in advance
+  | "trusted_source" // came from a source the customer marked trusted
+  | "known_counterparty" // this agent has dealt with it before
+  | "untrusted_source" // appears only in retrieved, memory or untrusted tool output
+  | "unexplained"; // appears nowhere
+
+const SEVERITY_BY_ORIGIN: Readonly<Record<Origin, Severity | null>> = {
+  user_goal: null,
+  allowlist: null,
+  trusted_source: "low",
+  known_counterparty: "medium",
+  untrusted_source: "critical",
+  unexplained: "critical",
+};
+
+export interface ProvenanceConfig {
+  readonly trustedSources: readonly SourceTrust[];
+  /** Addresses the customer approved in advance. */
+  readonly allowlist: readonly string[];
+  /** Addresses this agent has transacted with before. Empty until history exists. */
+  readonly knownCounterparties: readonly string[];
+}
+
+export const EMPTY_PROVENANCE_CONFIG: ProvenanceConfig = {
+  trustedSources: [],
+  allowlist: [],
+  knownCounterparties: [],
+};
+
+function escapeForRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Whether an address appears in a piece of text.
+ *
+ * Exact match first, then truncated forms: interfaces and logs routinely show
+ * `7xKX…9fPq` rather than the full 44 characters, and a check that only looked
+ * for the full string would miss the address precisely where a human would
+ * have seen it. The ellipsis is required, so a four-character coincidence does
+ * not count as a match.
+ *
+ * KNOWN LIMITATION: an address assembled by concatenation, or encoded, is not
+ * found. There is no complete answer to that; the content classifier covers
+ * part of it, because the surrounding text usually still reads as an
+ * instruction.
+ */
+export function addressAppearsIn(text: string, address: string): boolean {
+  if (text.includes(address)) return true;
+  if (address.length < 12) return false;
+  const prefix = escapeForRegex(address.slice(0, 4));
+  const suffix = escapeForRegex(address.slice(-4));
+  return new RegExp(`${prefix}(?:\\.{2,3}|…|\\*{2,})${suffix}`).test(text);
+}
+
+/** Every chunk the address shows up in, by index, so the finding can name them. */
+function chunksMentioning(
+  address: string,
+  chunks: readonly ContextChunk[],
+): number[] {
+  const found: number[] = [];
+  chunks.forEach((chunk, index) => {
+    if (addressAppearsIn(chunk.text, address)) found.push(index);
+  });
+  return found;
+}
+
+export interface ProvenanceVerdict {
+  readonly address: string;
+  readonly origin: Origin;
+  /** Indexes into contextChunks, so an alert can quote the actual source. */
+  readonly foundInChunks: readonly number[];
+  readonly sources: readonly string[];
+}
+
+/**
+ * Classifies one address against the captured context.
+ *
+ * Order matters and is deliberate: an address the human named is legitimate
+ * even if it also appears in a web page, and an allowlisted address is
+ * legitimate even if it appears nowhere at all.
+ */
+export function classifyAddress(
+  address: string,
+  context: ActionContext,
+  config: ProvenanceConfig,
+): ProvenanceVerdict {
+  const chunkIndexes = chunksMentioning(address, context.contextChunks);
+  const sources = chunkIndexes
+    .map((i) => context.contextChunks[i]?.source)
+    .filter((source): source is string => source !== undefined);
+
+  if (addressAppearsIn(context.userGoal, address)) {
+    return {
+      address,
+      origin: "user_goal",
+      foundInChunks: chunkIndexes,
+      sources,
+    };
+  }
+  if (config.allowlist.includes(address)) {
+    return {
+      address,
+      origin: "allowlist",
+      foundInChunks: chunkIndexes,
+      sources,
+    };
+  }
+
+  const trustedChunk = chunkIndexes.some((i) => {
+    const chunk = context.contextChunks[i];
+    return chunk !== undefined && chunkIsTrusted(chunk, config.trustedSources);
+  });
+  if (trustedChunk) {
+    return {
+      address,
+      origin: "trusted_source",
+      foundInChunks: chunkIndexes,
+      sources,
+    };
+  }
+
+  if (config.knownCounterparties.includes(address)) {
+    return {
+      address,
+      origin: "known_counterparty",
+      foundInChunks: chunkIndexes,
+      sources,
+    };
+  }
+
+  // Appearing only in untrusted context is the fingerprint of indirect prompt
+  // injection. Appearing nowhere is worse: it was produced somewhere VETO
+  // does not observe at all.
+  return {
+    address,
+    origin: chunkIndexes.length > 0 ? "untrusted_source" : "unexplained",
+    foundInChunks: chunkIndexes,
+    sources,
+  };
+}
+
+/**
+ * Checks every address that receives value or authority.
+ *
+ * Only counterparties, on purpose. An address the transaction merely reads
+ * from is not where the money goes.
+ */
+export function provenanceFindings(
+  set: EffectSet,
+  context: ActionContext,
+  config: ProvenanceConfig = EMPTY_PROVENANCE_CONFIG,
+): readonly Finding[] {
+  const findings: Finding[] = [];
+
+  for (const address of counterparties(set)) {
+    const verdict = classifyAddress(address, context, config);
+    const severity = SEVERITY_BY_ORIGIN[verdict.origin];
+    if (severity === null) continue;
+
+    findings.push({
+      check: "provenance",
+      severity,
+      rule: `provenance.${verdict.origin}`,
+      detail: {
+        counterparty: address,
+        origin: verdict.origin,
+        foundInChunks: verdict.foundInChunks,
+        sources: verdict.sources,
+        provenances: verdict.foundInChunks.map(
+          (i) => context.contextChunks[i]?.provenance ?? "unknown",
+        ),
+      },
+    });
+  }
+
+  return findings;
+}
