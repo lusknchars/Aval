@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  TOLERANCIA_MAXIMA,
   ehArgRef,
   esquemaManifesto,
   validarReferencias,
@@ -118,5 +119,24 @@ describe("o caso que nenhuma politica estatica expressa", () => {
     expect(validarReferencias(approve)).toEqual([]);
     expect(transfer.mustNot).toContain("DELEGATE_GRANT");
     expect(approve.must[0]?.type).toBe("DELEGATE_GRANT");
+  });
+});
+
+describe("teto de tolerancia", () => {
+  it("aceita folga plausivel de slippage", () => {
+    const comFolga = { ...transfer, may: [{ type: "BALANCE_DECREASE", tolerance: 0.03 }] };
+    expect(esquemaManifesto.safeParse(comFolga).success).toBe(true);
+    expect(esquemaManifesto.safeParse({ ...transfer, may: [{ type: "BALANCE_DECREASE", tolerance: TOLERANCIA_MAXIMA }] }).success).toBe(true);
+  });
+
+  it("recusa 0.3 digitado no lugar de 0.03", () => {
+    // Folga de 30% deixa o desvio caber dentro da tolerancia: a verificacao
+    // de magnitude nunca dispararia, e so o agregado veria a soma.
+    const folgaDemais = { ...transfer, may: [{ type: "BALANCE_DECREASE", tolerance: 0.3 }] };
+    expect(esquemaManifesto.safeParse(folgaDemais).success).toBe(false);
+  });
+
+  it("recusa tolerancia negativa", () => {
+    expect(esquemaManifesto.safeParse({ ...transfer, may: [{ type: "BALANCE_DECREASE", tolerance: -0.01 }] }).success).toBe(false);
   });
 });

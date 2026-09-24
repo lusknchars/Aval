@@ -53,6 +53,12 @@ export type UnidadeDeQuantidade = z.infer<typeof esquemaUnidade>;
 /** Decimals por mint, fornecido pelo normalizador. Sem isso, `decimal` nao compara. */
 export type TabelaDeDecimais = ReadonlyMap<string, number>;
 
+/**
+ * Teto de folga aceito num manifesto. Acima disso deixa de ser slippage.
+ * Se uma ferramenta real precisar de mais, a excecao tem que ser explicita.
+ */
+export const TOLERANCIA_MAXIMA = 0.1;
+
 /** Um padrao de efeito esperado. Campos ausentes significam "nao restringe". */
 export const esquemaPadraoDeEfeito = z.object({
   type: esquemaTipoDeEfeito,
@@ -61,8 +67,15 @@ export const esquemaPadraoDeEfeito = z.object({
   counterparty: z.union([esquemaArgRef, z.string()]).optional(),
   maxAmount: z.union([esquemaArgRef, z.bigint()]).optional(),
   minAmount: z.union([esquemaArgRef, z.bigint()]).optional(),
-  /** Fracao aceita de folga, para slippage e taxa. 0.03 = 3%. */
-  tolerance: z.number().min(0).max(1).optional(),
+  /**
+   * Fracao aceita de folga, para slippage e taxa. 0.03 = 3%.
+   *
+   * Teto em TOLERANCIA_MAXIMA para pegar `0.3` digitado no lugar de `0.03`.
+   * Folga alta demais e desvio dentro da tolerancia -- ninguem rouba 500,
+   * rouba-se 3% de cada operacao, e a verificacao de magnitude nunca dispara.
+   * O numero e CALIBRACAO, nao consequencia logica: revisar com dados reais.
+   */
+  tolerance: z.number().min(0).max(TOLERANCIA_MAXIMA).optional(),
   /** Obrigatorio quando ha maxAmount/minAmount vindo de arg. */
   unidade: esquemaUnidade.optional(),
 });
