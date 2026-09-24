@@ -14,11 +14,11 @@ with provenance, `ToolManifest` with reference validation, `Verdict`.
 
 | # | Item | Urgency |
 |---|---|---|
-| 1.1 | **Always-critical effect set** (`AUTHORITY_CHANGE`, `OWNER_CHANGE`, unlimited `DELEGATE_GRANT`). The safety net under an incomplete `mustNot`, and the only check that works with no manifest at all. Does not exist. | **P** |
-| 1.2 | **`ArgRef` resolver** — resolve `arg:from` against the tool call arguments, failing explicitly. Static validation exists; runtime resolution does not. | **B** |
-| 1.3 | **Combination rule (`decide`)** — severity ceiling → `allow`/`flag`/`deny`. Types and thresholds exist; the function belongs to the evaluation layer. | **P** |
+| 1.1 | ~~Always-critical effect set~~ — built in `evaluation/critical.ts`. Former text: **the set** (`AUTHORITY_CHANGE`, `OWNER_CHANGE`, unlimited `DELEGATE_GRANT`). The safety net under an incomplete `mustNot`, and the only check that works with no manifest at all. Does not exist. | **P** |
+| 1.2 | ~~`ArgRef` resolver~~ — built in `evaluation/manifest.ts`; an unresolved reference becomes a coverage finding. Former text: **resolver** — resolve `arg:from` against the tool call arguments, failing explicitly. Static validation exists; runtime resolution does not. | **B** |
+| 1.3 | ~~Combination rule~~ — built in `evaluation/verdict.ts`, severity ceiling. Former text: **decide** — severity ceiling → `allow`/`flag`/`deny`. Types and thresholds exist; the function belongs to the evaluation layer. | **P** |
 | 1.4 | ~~bigint serialization~~ — **resolved in block 2**: decimal strings in fixtures. | done |
-| 1.5 | **`policyVersion` composition** — today it is a free string. It must be derived from manifest versions + thresholds + classifier version. | **D** |
+| 1.5 | ~~policyVersion~~ — derived from a hash of manifests, thresholds and customer configuration. Former text: **composition** — today it is a free string. It must be derived from manifest versions + thresholds + classifier version. | **D** |
 | 1.6 | `MAX_TOLERANCE = 0.10` is arbitrary calibration, chosen with no data. Measure the p99 slippage of a legitimate swap. | **D** |
 | 1.7 | A severity of its own for **extreme slippage** — the spec asks for it; today tolerance is binary (inside passes, outside is a finding). | **D** |
 | 1.8 | An explicit exception for a tool that legitimately needs more slack than the cap. | **D** |
@@ -116,7 +116,7 @@ Read `amount`, `owner`, `delegate`, `delegatedAmount`, `state` and
 | # | Item | Urgency |
 |---|---|---|
 | T.1 | **Customer configuration has no validation at all.** It is the only place where a mistake *switches off a whole detector without saying so* (an over-broad `SourceTrust` pattern). Defence: require a full hostname, plus a **preview** of what the pattern would match against real traffic. | **P** |
-| T.2 | **The seam between a manifest and the customer's real tool.** Nobody types anything wrong and it still fails to line up. An unresolved reference must become a `coverage` finding. | **P** |
+| T.2 | ~~The manifest/tool seam~~ — an unresolved reference now produces `coverage.unresolved_reference`. Former text: **the seam.** Nobody types anything wrong and it still fails to line up. An unresolved reference must become a `coverage` finding. | **P** |
 | T.3 | **Allowlisted addresses are never checked on-chain.** A mistyped address almost never exists — that is detectable at input time. | **D** |
 | T.4 | **No performance measurement anywhere.** | **P** |
 | T.5 | **No CI.** `pnpm typecheck && pnpm test` should run on every push. | **D** |

@@ -18,8 +18,34 @@ import {
   loadFixture,
 } from "../../src/normalization/fixture.js";
 import { normalize } from "../../src/normalization/normalize.js";
+import type { ToolManifest } from "../../src/types/manifest.js";
 import type { ActionContext, ContextChunk } from "../../src/types/context.js";
 import type { Finding } from "../../src/types/verdict.js";
+
+/** What a plain SOL transfer is allowed to cause. */
+const TRANSFER_MANIFEST: ToolManifest = {
+  tool: "transfer",
+  version: "1",
+  args: { from: "address", to: "address", amount: "amount" },
+  must: [
+    { type: "BALANCE_DECREASE", account: "arg:from", mint: "SOL" },
+    {
+      type: "BALANCE_INCREASE",
+      account: "arg:to",
+      mint: "SOL",
+      maxAmount: "arg:amount",
+      unit: "raw",
+    },
+  ],
+  may: [{ type: "ACCOUNT_CREATE" }, { type: "PROGRAM_INVOKE" }],
+  mustNot: [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+  ],
+  accountScope: "args_plus_derived",
+};
 
 function finding(severity: Finding["severity"], rule = "test.rule"): Finding {
   return { check: "undeclared", severity, rule, detail: {} };
@@ -213,7 +239,37 @@ describe("the injection scenario, end to end", () => {
     );
   });
 
-  it("allows an ordinary transfer to an address the user named", async () => {
+  it("allows an ordinary transfer that its manifest fully explains", async () => {
+    const raw: unknown = JSON.parse(
+      readFileSync("test/fixtures/transfer-sol.json", "utf8"),
+    );
+    const loaded = loadFixture(raw);
+    if (!loaded.ok) throw new Error(loaded.failure.message);
+    const rpc = new FixtureRpcClient(loaded.value);
+    const effects = await normalize(rpc.transaction(), rpc);
+    const [from = "", to = ""] = loaded.value.before.addresses;
+
+    const context = contextWith("send some SOL to my other wallet", [
+      { text: "send some SOL to my other wallet", provenance: "user" },
+    ]);
+    const verdict = evaluate({
+      effects,
+      context: {
+        ...context,
+        toolCall: { name: "transfer", args: { from, to, amount: 1_000_000 } },
+      },
+      manifest: TRANSFER_MANIFEST,
+    });
+
+    // An ordinary transfer, fully explained by its manifest, has to come back
+    // clean. Only low coverage notes remain -- a check that raises a flag on
+    // every legitimate transaction is one the customer switches off.
+    expect(verdict.decision).toBe("allow");
+    expect(verdict.findings.every((f) => f.severity === "low")).toBe(true);
+    expect(explainVerdict(verdict).length).toBe(verdict.findings.length);
+  });
+
+  it("flags the same transfer when no manifest exists for the tool", async () => {
     const raw: unknown = JSON.parse(
       readFileSync("test/fixtures/transfer-sol.json", "utf8"),
     );
@@ -229,12 +285,12 @@ describe("the injection scenario, end to end", () => {
       ]),
     });
 
-    // An ordinary transfer has to come back clean. Coverage findings are
-    // present -- readonly accounts are never observed -- but they are low by
-    // design: a check that raises a flag on every legitimate transaction is a
-    // check the customer switches off within a week.
-    expect(verdict.decision).toBe("allow");
-    expect(verdict.findings.every((f) => f.severity === "low")).toBe(true);
-    expect(explainVerdict(verdict).length).toBe(verdict.findings.length);
+    // Degrade, never open: with no manifest, checks A and B did not run, and
+    // saying so is the point. Nothing fired is not the same as nothing was
+    // checked.
+    expect(verdict.decision).toBe("flag");
+    expect(verdict.findings.map((f) => f.rule)).toContain(
+      "coverage.no_manifest",
+    );
   });
 });

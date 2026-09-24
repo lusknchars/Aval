@@ -12,6 +12,7 @@
  */
 import { createHash } from "node:crypto";
 import { alwaysCriticalFindings, coverageFindings } from "./critical.js";
+import { manifestFindings } from "./manifest.js";
 import {
   provenanceFindings,
   EMPTY_PROVENANCE_CONFIG,
@@ -19,6 +20,7 @@ import {
 } from "./provenance.js";
 import type { EffectSet } from "../types/effects.js";
 import type { ActionContext } from "../types/context.js";
+import type { DecimalsByMint, ToolManifest } from "../types/manifest.js";
 import {
   DEFAULT_THRESHOLDS,
   type Decision,
@@ -100,6 +102,10 @@ export interface EvaluationInput {
   readonly effects: EffectSet;
   readonly context: ActionContext;
   readonly provenance?: ProvenanceConfig;
+  /** The manifest for the tool that was called, when one exists. */
+  readonly manifest?: ToolManifest | null;
+  /** Decimals per mint, for manifests that declare amounts in decimal units. */
+  readonly decimals?: DecimalsByMint;
   readonly thresholds?: Thresholds;
   readonly policy?: PolicyIdentity;
 }
@@ -107,17 +113,22 @@ export interface EvaluationInput {
 /**
  * Runs every check that works today and combines them.
  *
- * Deliberately missing, and each for its own reason: the manifest checks need
- * manifests written per tool, the aggregate needs persisted history, and the
- * task envelope needs a model call once per task. Until they exist, the safety
- * net and provenance carry the decision -- which is the point of both being
- * designed to work alone.
+ * Deliberately missing, and each for its own reason: the aggregate needs
+ * persisted history, and the task envelope needs a model call once per task.
+ * A tool with no manifest still gets the safety net and provenance, and the
+ * gap is reported rather than passed over.
  */
 export function evaluate(input: EvaluationInput): Verdict {
   const provenanceConfig = input.provenance ?? EMPTY_PROVENANCE_CONFIG;
   const findings: Finding[] = [
     ...alwaysCriticalFindings(input.effects),
     ...coverageFindings(input.effects),
+    ...manifestFindings({
+      effects: input.effects,
+      manifest: input.manifest ?? null,
+      toolCall: input.context.toolCall,
+      ...(input.decimals === undefined ? {} : { decimals: input.decimals }),
+    }),
     ...provenanceFindings(input.effects, input.context, provenanceConfig),
   ];
 
