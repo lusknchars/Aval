@@ -95,7 +95,12 @@ describe("the safety net, with no manifest at all", () => {
       baselineSlot: 1,
       fee: null,
       simulation: { status: "executed", unitsConsumed: 1 },
-      coverage: { referenced: [], observed: [], unobserved: [] },
+      coverage: {
+        referenced: [],
+        observed: [],
+        unobserved: [],
+        blindSpots: [],
+      },
     };
     const rules = alwaysCriticalFindings(set).map((f) => f.rule);
     expect(rules).toEqual([
@@ -113,7 +118,12 @@ describe("what the evaluation could not see", () => {
       baselineSlot: null,
       fee: null,
       simulation: { status: "unavailable", reason: "429 Too Many Requests" },
-      coverage: { referenced: ["A"], observed: [], unobserved: ["A"] },
+      coverage: {
+        referenced: ["A"],
+        observed: [],
+        unobserved: ["A"],
+        blindSpots: [],
+      },
     };
     const findings = coverageFindings(set);
     const unavailable = findings.find(
@@ -134,7 +144,12 @@ describe("what the evaluation could not see", () => {
       baselineSlot: 99,
       fee: null,
       simulation: { status: "executed", unitsConsumed: 0 },
-      coverage: { referenced: [], observed: [], unobserved: [] },
+      coverage: {
+        referenced: [],
+        observed: [],
+        unobserved: [],
+        blindSpots: [],
+      },
     };
     expect(
       coverageFindings(set).some(
@@ -150,5 +165,50 @@ describe("what the evaluation could not see", () => {
       (f) => f.rule === "coverage.transaction_would_fail",
     );
     expect(failed?.severity).toBe("low");
+  });
+});
+
+describe("a real blind spot is not the same as an expected one", () => {
+  it("raises a high finding when a lookup table could not be read", () => {
+    const set: EffectSet = {
+      effects: [],
+      slot: 10,
+      baselineSlot: 10,
+      fee: null,
+      simulation: { status: "executed", unitsConsumed: 0 },
+      coverage: {
+        referenced: ["A", "B"],
+        observed: ["A"],
+        unobserved: ["B"],
+        blindSpots: ["Table1: does not exist"],
+      },
+    };
+    const findings = coverageFindings(set);
+    const blind = findings.find(
+      (f) => f.rule === "coverage.unresolved_lookup_table",
+    );
+    expect(blind?.severity).toBe("high");
+  });
+
+  it("keeps unobserved readonly accounts at low severity", () => {
+    // Every ordinary transaction has these. At medium they would flag
+    // everything, and an alert that always fires teaches people to ignore it.
+    const set: EffectSet = {
+      effects: [],
+      slot: 10,
+      baselineSlot: 10,
+      fee: null,
+      simulation: { status: "executed", unitsConsumed: 0 },
+      coverage: {
+        referenced: ["A", "Program"],
+        observed: ["A"],
+        unobserved: ["Program"],
+        blindSpots: [],
+      },
+    };
+    const unobserved = coverageFindings(set).find(
+      (f) => f.rule === "coverage.accounts_unobserved",
+    );
+    expect(unobserved?.severity).toBe("low");
   });
 });

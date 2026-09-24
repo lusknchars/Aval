@@ -108,8 +108,21 @@ export interface AccountCoverage {
   readonly referenced: readonly string[];
   /** Accounts with state before AND after, from which effects could be derived. */
   readonly observed: readonly string[];
-  /** Referenced but never observed. Non-empty means coverage is incomplete. */
+  /**
+   * Referenced but never observed. Mostly readonly accounts, which cannot
+   * change state -- expected, and not worth an alert on its own.
+   */
   readonly unobserved: readonly string[];
+  /**
+   * Accounts the transaction touches whose address could not even be
+   * resolved, because a lookup table could not be read.
+   *
+   * Separate from `unobserved` on purpose. Not observing a readonly account
+   * is normal; not knowing an address exists at all is a real blind spot, and
+   * conflating the two would make every ordinary transaction raise a flag --
+   * which is how a customer learns to ignore the alert.
+   */
+  readonly blindSpots: readonly string[];
 }
 
 /**

@@ -65,6 +65,7 @@ const NO_COVERAGE: AccountCoverage = {
   referenced: [],
   observed: [],
   unobserved: [],
+  blindSpots: [],
 };
 
 /** Programs called through CPI, with index-shaped references resolved. */
@@ -145,7 +146,8 @@ export async function normalize(
     return unavailable(`could not read account state: ${reason}`, {
       referenced,
       observed: [],
-      unobserved: [...referenced, ...blind],
+      unobserved: referenced,
+      blindSpots: blind,
     });
   }
   if (simulated === null || !simulated.ok) {
@@ -154,7 +156,8 @@ export async function normalize(
     return unavailable(`could not simulate: ${reason}`, {
       referenced,
       observed: [],
-      unobserved: [...referenced, ...blind],
+      unobserved: referenced,
+      blindSpots: blind,
     });
   }
 
@@ -173,11 +176,15 @@ export async function normalize(
   const observed = toObserve.filter(
     (address) => beforeByAddress.has(address) && afterByAddress.has(address),
   );
-  const unobserved = [
-    ...referenced.filter((address) => !observed.includes(address)),
-    ...blind,
-  ];
-  const coverage: AccountCoverage = { referenced, observed, unobserved };
+  const unobserved = referenced.filter(
+    (address) => !observed.includes(address),
+  );
+  const coverage: AccountCoverage = {
+    referenced,
+    observed,
+    unobserved,
+    blindSpots: blind,
+  };
 
   // 4. The transaction ran and would fail. There is no post-state to diff --
   // the RPC returns nulls -- so the outcome is reported, not guessed at.
@@ -199,7 +206,8 @@ export async function normalize(
       coverage: {
         referenced,
         observed: [],
-        unobserved: [...referenced, ...blind],
+        unobserved: referenced,
+        blindSpots: blind,
       },
     };
   }

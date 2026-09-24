@@ -107,6 +107,7 @@ describe("EffectSet", () => {
       referenced: ["ATokenAcc", "SolAcc", "JUP6"],
       observed: ["ATokenAcc", "SolAcc", "JUP6"],
       unobserved: [],
+      blindSpots: [],
     },
   };
 
@@ -129,6 +130,7 @@ describe("EffectSet", () => {
       referenced: ["A", "B"],
       observed: ["A"],
       unobserved: ["B"],
+      blindSpots: [],
     };
     expect(coverageIsComplete(blind)).toBe(false);
   });

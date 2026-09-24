@@ -113,16 +113,35 @@ export function coverageFindings(set: EffectSet): readonly Finding[] {
     });
   }
 
+  // An address the transaction uses and VETO cannot even name. This is the
+  // one that matters: not observing a readonly account is normal, not knowing
+  // an account exists is not.
+  if (set.coverage.blindSpots.length > 0) {
+    findings.push({
+      check: "coverage",
+      severity: "high",
+      rule: "coverage.unresolved_lookup_table",
+      detail: {
+        blindSpots: set.coverage.blindSpots.length,
+        sample: set.coverage.blindSpots.slice(0, 3),
+        note: "accounts behind an unreadable lookup table: their effects cannot be seen",
+      },
+    });
+  }
+
+  // Readonly accounts are expected to go unobserved, so this is recorded for
+  // the audit trail rather than raised as a concern. A check that fires on
+  // every ordinary transaction is a check the customer switches off.
   if (!coverageIsComplete(set.coverage)) {
     findings.push({
       check: "coverage",
-      severity: "medium",
+      severity: "low",
       rule: "coverage.accounts_unobserved",
       detail: {
         unobserved: set.coverage.unobserved.length,
         referenced: set.coverage.referenced.length,
         sample: set.coverage.unobserved.slice(0, 5),
-        note: "a readonly account cannot change state; an unresolved lookup table is a real blind spot",
+        note: "expected for readonly accounts, which cannot change state",
       },
     });
   }
