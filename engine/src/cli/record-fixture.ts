@@ -169,7 +169,7 @@ async function record(
     const read = await rpc.readLookupTables(referencedTables);
     if (!read.ok)
       throw new Error(`lookup table read failed: ${read.failure.message}`);
-    for (const t of read.value)
+    for (const t of read.value.tables)
       lookupTables.push({ table: t.table, addresses: [...t.addresses] });
   }
 

@@ -18,6 +18,7 @@ import type {
   AccountState,
   AccountsRead,
   LookupTable,
+  LookupTableRead,
   RpcClient,
   RpcResult,
   SimulationOptions,
@@ -234,23 +235,22 @@ export class FixtureRpcClient implements RpcClient {
 
   async readLookupTables(
     addresses: readonly string[],
-  ): Promise<RpcResult<readonly LookupTable[]>> {
+  ): Promise<RpcResult<LookupTableRead>> {
     const tables: LookupTable[] = [];
+    const unresolved: { table: string; reason: string }[] = [];
     for (const address of addresses) {
       const recorded = this.#fixture.lookupTables.find(
         (t) => t.table === address,
       );
       if (recorded === undefined) {
-        return {
-          ok: false,
-          failure: {
-            step: "readLookupTables",
-            message: `fixture "${this.#fixture.name}" did not record table ${address}`,
-          },
-        };
+        unresolved.push({
+          table: address,
+          reason: `fixture "${this.#fixture.name}" did not record this table`,
+        });
+        continue;
       }
       tables.push(recorded);
     }
-    return { ok: true, value: tables };
+    return { ok: true, value: { tables, unresolved } };
   }
 }

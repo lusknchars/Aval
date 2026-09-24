@@ -75,6 +75,22 @@ export interface LookupTable {
   readonly addresses: readonly string[];
 }
 
+/**
+ * The outcome of reading several lookup tables.
+ *
+ * One table failing does not sink the rest. Resolving three of four and
+ * recording the fourth as unresolved is strictly better than reporting
+ * nothing: the accounts that did resolve can still be observed, and the gap
+ * becomes a coverage finding instead of a total blackout.
+ */
+export interface LookupTableRead {
+  readonly tables: readonly LookupTable[];
+  readonly unresolved: readonly {
+    readonly table: string;
+    readonly reason: string;
+  }[];
+}
+
 export interface SimulationOptions {
   /** Accounts whose post-state must come back. The RPC performs no discovery. */
   readonly accounts: readonly string[];
@@ -93,7 +109,7 @@ export interface RpcClient {
   ): Promise<RpcResult<SimulationResponse>>;
   readLookupTables(
     addresses: readonly string[],
-  ): Promise<RpcResult<readonly LookupTable[]>>;
+  ): Promise<RpcResult<LookupTableRead>>;
   /** Genesis hash, to confirm the endpoint is the network we expect. */
   identifyNetwork(): Promise<RpcResult<string>>;
 }
@@ -369,7 +385,7 @@ export class Web3RpcClient implements RpcClient {
    */
   async readLookupTables(
     addresses: readonly string[],
-  ): Promise<RpcResult<readonly LookupTable[]>> {
+  ): Promise<RpcResult<LookupTableRead>> {
     const results = await Promise.all(
       addresses.map(async (address): Promise<RpcResult<LookupTable>> => {
         try {
@@ -412,11 +428,14 @@ export class Web3RpcClient implements RpcClient {
       }),
     );
     const tables: LookupTable[] = [];
-    for (const r of results) {
-      if (!r.ok) return r;
-      tables.push(r.value);
-    }
-    return { ok: true, value: tables };
+    const unresolved: { table: string; reason: string }[] = [];
+    addresses.forEach((address, i) => {
+      const r = results[i];
+      if (r === undefined) return;
+      if (r.ok) tables.push(r.value);
+      else unresolved.push({ table: address, reason: r.failure.message });
+    });
+    return { ok: true, value: { tables, unresolved } };
   }
 }
 
