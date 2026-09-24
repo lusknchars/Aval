@@ -21,7 +21,6 @@ import {
   readRpcConfig,
   type Network,
 } from "../normalization/rpc.js";
-import { coverageIsComplete, type EffectSet } from "../types/effects.js";
 
 const VOTE_PROGRAM = "Vote111111111111111111111111111111111111111";
 
@@ -29,12 +28,14 @@ interface Args {
   readonly limit: number;
   readonly network: Network;
   readonly delayMs: number;
+  readonly blocks: number;
 }
 
 function parseArgs(argv: readonly string[]): Args | string {
   let limit = 20;
   let network: Network = "mainnet";
   let delayMs = 250;
+  let blocks = 1;
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--limit") {
@@ -47,6 +48,11 @@ function parseArgs(argv: readonly string[]): Args | string {
       if (value !== "mainnet" && value !== "devnet")
         return "--network takes mainnet or devnet";
       network = value;
+    } else if (arg === "--blocks") {
+      const value = Number(argv[++i]);
+      if (!Number.isInteger(value) || value < 1 || value > 20)
+        return "--blocks takes 1..20";
+      blocks = value;
     } else if (arg === "--delay") {
       const value = Number(argv[++i]);
       if (!Number.isInteger(value) || value < 0 || value > 5000)
@@ -56,7 +62,7 @@ function parseArgs(argv: readonly string[]): Args | string {
       return `unknown option: ${arg ?? ""}`;
     }
   }
-  return { limit, network, delayMs };
+  return { limit, network, delayMs, blocks };
 }
 
 /**
@@ -96,21 +102,18 @@ async function rpcCall(
   return response.json();
 }
 
-function summarise(set: EffectSet): string {
-  switch (set.simulation.status) {
-    case "unavailable":
-      return `unavailable   ${set.simulation.reason.slice(0, 58)}`;
-    case "failed":
-      return `would fail    ${set.simulation.error.slice(0, 58)}`;
-    case "executed": {
-      const counts = new Map<string, number>();
-      for (const effect of set.effects)
-        counts.set(effect.type, (counts.get(effect.type) ?? 0) + 1);
-      const listed = [...counts].map(([type, n]) => `${type}x${n}`).join(" ");
-      return `executed      ${listed === "" ? "no effects" : listed}`;
-    }
-  }
-}
+/**
+ * The effects VETO exists to catch. Counting how often they show up in traffic
+ * nobody designed for us is the point of sampling at all: a detector that
+ * never fires on real data is untested, and one that fires constantly is
+ * useless.
+ */
+const NOTABLE = new Set([
+  "DELEGATE_GRANT",
+  "OWNER_CHANGE",
+  "AUTHORITY_CHANGE",
+  "ACCOUNT_CLOSE",
+]);
 
 function isVote(message: VersionedMessage): boolean {
   return message.compiledInstructions.every(
@@ -131,73 +134,16 @@ async function main(): Promise<number> {
     return 1;
   }
   const rpc = createRpcClient(config.value);
+  const url = config.value.rpcUrl;
 
   const slotReply = slotSchema.safeParse(
-    await rpcCall(config.value.rpcUrl, "getSlot", [
-      { commitment: "finalized" },
-    ]),
+    await rpcCall(url, "getSlot", [{ commitment: "finalized" }]),
   );
   if (!slotReply.success) {
     console.error("could not read the current slot");
     return 3;
   }
-  const slot = slotReply.data.result - 40;
-
-  const blockReply = blockSchema.safeParse(
-    await rpcCall(config.value.rpcUrl, "getBlock", [
-      slot,
-      {
-        encoding: "base64",
-        transactionDetails: "full",
-        rewards: false,
-        commitment: config.value.commitment,
-        maxSupportedTransactionVersion: 1,
-      },
-    ]),
-  );
-  if (
-    !blockReply.success ||
-    blockReply.data.error !== undefined ||
-    blockReply.data.result === null
-  ) {
-    console.error(
-      blockReply.success
-        ? (blockReply.data.error?.message ?? "block unavailable")
-        : "unexpected getBlock shape",
-    );
-    return 3;
-  }
-
-  // Deserialize for the message, keep the base64 for the simulation.
-  const candidates: {
-    base64: string;
-    tx: VersionedTransaction;
-    version: string;
-  }[] = [];
-  let votes = 0;
-  let undecodable = 0;
-  for (const entry of blockReply.data.result.transactions) {
-    if (entry.meta?.err !== null) continue;
-    const base64 = entry.transaction[0];
-    let tx: VersionedTransaction;
-    try {
-      tx = VersionedTransaction.deserialize(Buffer.from(base64, "base64"));
-    } catch {
-      undecodable++;
-      continue;
-    }
-    if (isVote(tx.message)) {
-      votes++;
-      continue;
-    }
-    candidates.push({ base64, tx, version: String(tx.message.version) });
-    if (candidates.length >= args.limit) break;
-  }
-
-  console.log(
-    `block ${slot}: sampling ${candidates.length} transactions ` +
-      `(${votes} votes skipped, ${undecodable} undecodable)\n`,
-  );
+  const firstSlot = slotReply.data.result - 40;
 
   const tally = {
     executed: 0,
@@ -205,44 +151,107 @@ async function main(): Promise<number> {
     unavailable: 0,
     aligned: 0,
     withLookups: 0,
-    incomplete: 0,
     v1: 0,
-    v1Executed: 0,
+    sampled: 0,
   };
+  const effectCounts = new Map<string, number>();
+  const notable: string[] = [];
 
-  for (const [i, entry] of candidates.entries()) {
-    // One alignment attempt only, plus a pause. Bulk sampling on a free tier
-    // hits the rate limit long before anything else, and a 429 costs more
-    // accuracy than a missed slot alignment.
-    const set = await normalize(entry.tx, rpc, {
-      alignmentAttempts: 1,
-      rawTransactionBase64: entry.base64,
-    });
-    await new Promise((resolve) => setTimeout(resolve, args.delayMs));
-
-    tally[set.simulation.status]++;
-    const isV1 = entry.version === "1";
-    if (isV1) tally.v1++;
-    if (isV1 && set.simulation.status === "executed") tally.v1Executed++;
-    if (entry.tx.message.addressTableLookups.length > 0) tally.withLookups++;
-    if (set.slot !== null && set.slot === set.baselineSlot) tally.aligned++;
-    if (!coverageIsComplete(set.coverage)) tally.incomplete++;
-
-    const lookups = entry.tx.message.addressTableLookups.length;
-    console.log(
-      `${String(i + 1).padStart(3)}. v${entry.version.padEnd(6)} ` +
-        `${String(set.coverage.referenced.length).padStart(3)} accts  ` +
-        `${lookups > 0 ? `${String(lookups)} ALT` : "    "}  ` +
-        `${set.slot === set.baselineSlot ? "    " : "GAP "}${summarise(set)}`,
+  for (let b = 0; b < args.blocks; b++) {
+    const slot = firstSlot - b * 2;
+    const blockReply = blockSchema.safeParse(
+      await rpcCall(url, "getBlock", [
+        slot,
+        {
+          encoding: "base64",
+          transactionDetails: "full",
+          rewards: false,
+          commitment: config.value.commitment,
+          maxSupportedTransactionVersion: 1,
+        },
+      ]),
     );
+    if (
+      !blockReply.success ||
+      blockReply.data.error !== undefined ||
+      blockReply.data.result === null
+    ) {
+      console.error(`block ${slot}: unavailable, skipping`);
+      continue;
+    }
+
+    // Deserialize for the message, keep the base64 for the simulation.
+    const candidates: {
+      base64: string;
+      tx: VersionedTransaction;
+      version: string;
+    }[] = [];
+    for (const entry of blockReply.data.result.transactions) {
+      if (entry.meta?.err !== null) continue;
+      const base64 = entry.transaction[0];
+      let tx: VersionedTransaction;
+      try {
+        tx = VersionedTransaction.deserialize(Buffer.from(base64, "base64"));
+      } catch {
+        continue;
+      }
+      if (isVote(tx.message)) continue;
+      candidates.push({ base64, tx, version: String(tx.message.version) });
+      if (candidates.length >= args.limit) break;
+    }
+    console.log(`block ${slot}: ${candidates.length} transactions`);
+
+    for (const entry of candidates) {
+      // One alignment attempt only, plus a pause. Bulk sampling on a free tier
+      // hits the rate limit long before anything else, and a 429 costs more
+      // accuracy than a missed slot alignment.
+      const set = await normalize(entry.tx, rpc, {
+        alignmentAttempts: 1,
+        rawTransactionBase64: entry.base64,
+      });
+      await new Promise((resolve) => setTimeout(resolve, args.delayMs));
+
+      tally.sampled++;
+      tally[set.simulation.status]++;
+      if (entry.version === "1") tally.v1++;
+      if (entry.tx.message.addressTableLookups.length > 0) tally.withLookups++;
+      if (set.slot !== null && set.slot === set.baselineSlot) tally.aligned++;
+
+      for (const effect of set.effects) {
+        effectCounts.set(effect.type, (effectCounts.get(effect.type) ?? 0) + 1);
+        if (NOTABLE.has(effect.type)) {
+          const unlimited =
+            effect.type === "DELEGATE_GRANT" &&
+            effect.amount !== undefined &&
+            effect.amount >= 18_446_744_073_709_551_615n;
+          notable.push(
+            `slot ${slot}  ${effect.type}  account ${effect.account.slice(0, 8)}…` +
+              `${effect.counterparty === undefined ? "" : ` -> ${effect.counterparty.slice(0, 8)}…`}` +
+              `${unlimited ? "  UNLIMITED ALLOWANCE" : ""}`,
+          );
+        }
+      }
+    }
   }
 
+  const rate = (n: number): string =>
+    `${((n / Math.max(1, tally.sampled)) * 100).toFixed(0)}%`;
   console.log(
-    `\nexecuted ${tally.executed} · would fail ${tally.failed} · unavailable ${tally.unavailable}` +
-      `\nversion 1: ${tally.v1} sampled, ${tally.v1Executed} simulated successfully` +
-      `\nslot-aligned ${tally.aligned}/${candidates.length} · used lookup tables ${tally.withLookups}` +
-      `\nincomplete coverage ${tally.incomplete} (expected: readonly accounts are never observed)`,
+    `\n${tally.sampled} transactions across ${args.blocks} block(s)` +
+      `\n  executed ${tally.executed} (${rate(tally.executed)}) · would fail ${tally.failed} · unavailable ${tally.unavailable}` +
+      `\n  version 1 ${tally.v1} · used lookup tables ${tally.withLookups} · slot-aligned ${tally.aligned}`,
   );
+
+  console.log("\neffects observed:");
+  if (effectCounts.size === 0) console.log("  none");
+  for (const [type, n] of [...effectCounts].sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${type.padEnd(18)} ${n}`);
+  }
+
+  console.log(`\nsecurity-relevant effects: ${notable.length}`);
+  for (const line of notable.slice(0, 20)) console.log(`  ${line}`);
+  if (notable.length > 20) console.log(`  ... ${notable.length - 20} more`);
+
   return 0;
 }
 

@@ -24,6 +24,7 @@ import {
   TOKEN_PROGRAM_ID,
   createApproveInstruction,
   createAssociatedTokenAccountInstruction,
+  createCloseAccountInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { recordAccount, type Fixture } from "../normalization/fixture.js";
@@ -111,6 +112,42 @@ const SCENARIOS: readonly Scenario[] = [
           ),
         ],
         observe: [FEE_PAYER.toBase58(), ata.toBase58(), NATIVE_MINT.toBase58()],
+      };
+    },
+  },
+  {
+    name: "close-account",
+    description:
+      "creates an ATA and closes it in the same transaction: does a closed account come back as null?",
+    build: () => {
+      const owner = Keypair.generate().publicKey;
+      const ata = getAssociatedTokenAddressSync(
+        NATIVE_MINT,
+        owner,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+      );
+      return {
+        instructions: [
+          createAssociatedTokenAccountInstruction(
+            FEE_PAYER,
+            ata,
+            owner,
+            NATIVE_MINT,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID,
+          ),
+          // The owner would sign this; sigVerify: false lets us simulate it.
+          createCloseAccountInstruction(
+            ata,
+            FEE_PAYER,
+            owner,
+            [],
+            TOKEN_PROGRAM_ID,
+          ),
+        ],
+        observe: [FEE_PAYER.toBase58(), ata.toBase58()],
       };
     },
   },

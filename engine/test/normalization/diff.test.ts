@@ -185,3 +185,63 @@ describe("programs", () => {
     );
   });
 });
+
+describe("a closed account", () => {
+  it("is reported as closed, not as an owner change", async () => {
+    // A closed account does not come back as null. The runtime hands it back
+    // zeroed, owned by the System Program -- which would read as "the token
+    // program handed this account over" if taken at face value.
+    const effects = await effectsOf("close-account");
+    expect(ofType(effects, "ACCOUNT_CLOSE")).toHaveLength(1);
+    expect(ofType(effects, "OWNER_CHANGE")).toHaveLength(0);
+  });
+
+  it("reports both create and close when they happen in one transaction", async () => {
+    const effects = await effectsOf("close-account");
+    const fixture = open("close-account");
+    const ata = fixture.before.addresses[1];
+    expect(ofType(effects, "ACCOUNT_CREATE")[0]?.account).toBe(ata);
+    expect(ofType(effects, "ACCOUNT_CLOSE")[0]?.account).toBe(ata);
+  });
+
+  it("reports the closure of an account that already existed", () => {
+    // The general case: it existed with a balance, and the post-state is
+    // zeroed. That is a deletion, and the lamports left the account.
+    const existing = {
+      address: "TokenAcc",
+      lamports: 2_039_280n,
+      lamportsExact: true,
+      owner: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      executable: false,
+      data: Buffer.alloc(165),
+    };
+    const zeroed = {
+      address: "TokenAcc",
+      lamports: 0n,
+      lamportsExact: true,
+      owner: "11111111111111111111111111111111",
+      executable: false,
+      data: Buffer.alloc(0),
+    };
+    const effects = diffAccounts({
+      accounts: [
+        {
+          index: 0,
+          address: "TokenAcc",
+          signer: false,
+          writable: true,
+          source: "static",
+          table: null,
+        },
+      ],
+      before: new Map([["TokenAcc", existing]]),
+      after: new Map([["TokenAcc", zeroed]]),
+      feePayer: "Payer",
+      fee: null,
+      invokedPrograms: [],
+    });
+    expect(ofType(effects, "ACCOUNT_CLOSE")).toHaveLength(1);
+    expect(ofType(effects, "OWNER_CHANGE")).toHaveLength(0);
+    expect(ofType(effects, "BALANCE_DECREASE")[0]?.amount).toBe(2_039_280n);
+  });
+});

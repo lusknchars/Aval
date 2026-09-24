@@ -214,6 +214,19 @@ function creationEffects(
   return effects;
 }
 
+/**
+ * Whether the post-state describes an account that no longer exists.
+ *
+ * A closed account does NOT come back as null. The runtime zeroes it and hands
+ * it back owned by the System Program with no data and no lamports -- verified
+ * against a devnet simulation that creates a token account and closes it. An
+ * account with zero lamports is deleted when the transaction ends, so that is
+ * the test, not the null.
+ */
+function isClosed(state: AccountState | null): boolean {
+  return state !== null && state.lamports === 0n;
+}
+
 /** An account that existed and no longer does. Its lamports went somewhere. */
 function closureEffects(
   address: string,
@@ -252,6 +265,13 @@ export function diffAccounts(input: DiffInput): readonly Effect[] {
     const after = input.after.get(address) ?? null;
 
     if (before === null && after !== null) {
+      // Created and closed inside the same transaction. Both happened, and a
+      // manifest that forbids either one has to see it.
+      if (isClosed(after)) {
+        effects.push({ type: "ACCOUNT_CREATE", account: address });
+        effects.push({ type: "ACCOUNT_CLOSE", account: address });
+        continue;
+      }
       effects.push(...creationEffects(address, after));
       continue;
     }
@@ -260,6 +280,13 @@ export function diffAccounts(input: DiffInput): readonly Effect[] {
       continue;
     }
     if (before === null || after === null) continue;
+
+    // The account existed and is gone. Reporting this as an owner change plus
+    // a balance drop would hide the thing that actually matters.
+    if (isClosed(after) && before.lamports > 0n) {
+      effects.push(...closureEffects(address, before));
+      continue;
+    }
 
     if (before.owner !== after.owner) {
       effects.push({
