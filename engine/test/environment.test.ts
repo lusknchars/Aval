@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ACCOUNT_SIZE, AccountLayout, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  ACCOUNT_SIZE,
+  AccountLayout,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 import { z } from "zod";
@@ -56,7 +60,13 @@ describe("environment", () => {
 
   it("validates boundary input with zod", () => {
     // ActionContext, ToolManifest and TaskEnvelope all come in this way.
-    const provenance = z.enum(["user", "system", "retrieved", "memory", "tool_output"]);
+    const provenance = z.enum([
+      "user",
+      "system",
+      "retrieved",
+      "memory",
+      "tool_output",
+    ]);
     expect(provenance.parse("retrieved")).toBe("retrieved");
     expect(() => provenance.parse("invented")).toThrow();
   });

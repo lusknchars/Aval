@@ -27,7 +27,12 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { recordAccount, type Fixture } from "../normalization/fixture.js";
-import { GENESIS_BY_NETWORK, createRpcClient, readRpcConfig, type RpcClient } from "../normalization/rpc.js";
+import {
+  GENESIS_BY_NETWORK,
+  createRpcClient,
+  readRpcConfig,
+  type RpcClient,
+} from "../normalization/rpc.js";
 import { recentBlockhash } from "./blockhash.js";
 
 /** Public devnet account with a balance, used as fee payer in every scenario. */
@@ -44,12 +49,17 @@ interface Scenario {
 const SCENARIOS: readonly Scenario[] = [
   {
     name: "transfer-sol",
-    description: "SOL transfer that creates the destination account (rent-exempt)",
+    description:
+      "SOL transfer that creates the destination account (rent-exempt)",
     build: () => {
       const destination = Keypair.generate().publicKey;
       return {
         instructions: [
-          SystemProgram.transfer({ fromPubkey: FEE_PAYER, toPubkey: destination, lamports: 1_000_000n }),
+          SystemProgram.transfer({
+            fromPubkey: FEE_PAYER,
+            toPubkey: destination,
+            lamports: 1_000_000n,
+          }),
         ],
         observe: [FEE_PAYER.toBase58(), destination.toBase58()],
       };
@@ -57,13 +67,27 @@ const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "create-ata",
-    description: "Associated Token Account creation: CPIs into System and Token Program",
+    description:
+      "Associated Token Account creation: CPIs into System and Token Program",
     build: () => {
       const owner = Keypair.generate().publicKey;
-      const ata = getAssociatedTokenAddressSync(NATIVE_MINT, owner, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+      const ata = getAssociatedTokenAddressSync(
+        NATIVE_MINT,
+        owner,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+      );
       return {
         instructions: [
-          createAssociatedTokenAccountInstruction(FEE_PAYER, ata, owner, NATIVE_MINT, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID),
+          createAssociatedTokenAccountInstruction(
+            FEE_PAYER,
+            ata,
+            owner,
+            NATIVE_MINT,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID,
+          ),
         ],
         observe: [FEE_PAYER.toBase58(), ata.toBase58(), NATIVE_MINT.toBase58()],
       };
@@ -71,16 +95,37 @@ const SCENARIOS: readonly Scenario[] = [
   },
   {
     name: "unlimited-approve",
-    description: "creates an ATA and grants a delegate with u64::MAX allowance -- the flagship signal",
+    description:
+      "creates an ATA and grants a delegate with u64::MAX allowance -- the flagship signal",
     build: () => {
       const owner = Keypair.generate().publicKey;
       const delegate = Keypair.generate().publicKey;
-      const ata = getAssociatedTokenAddressSync(NATIVE_MINT, owner, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+      const ata = getAssociatedTokenAddressSync(
+        NATIVE_MINT,
+        owner,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+      );
       return {
         instructions: [
-          createAssociatedTokenAccountInstruction(FEE_PAYER, ata, owner, NATIVE_MINT, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID),
+          createAssociatedTokenAccountInstruction(
+            FEE_PAYER,
+            ata,
+            owner,
+            NATIVE_MINT,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID,
+          ),
           // The owner would sign this. sigVerify: false lets us simulate anyway.
-          createApproveInstruction(ata, delegate, owner, U64_MAX, [], TOKEN_PROGRAM_ID),
+          createApproveInstruction(
+            ata,
+            delegate,
+            owner,
+            U64_MAX,
+            [],
+            TOKEN_PROGRAM_ID,
+          ),
         ],
         observe: [FEE_PAYER.toBase58(), ata.toBase58(), delegate.toBase58()],
       };
@@ -88,7 +133,11 @@ const SCENARIOS: readonly Scenario[] = [
   },
 ];
 
-async function record(scenario: Scenario, rpc: RpcClient, blockhash: string): Promise<Fixture> {
+async function record(
+  scenario: Scenario,
+  rpc: RpcClient,
+  blockhash: string,
+): Promise<Fixture> {
   const { instructions, observe } = scenario.build();
 
   const message = new TransactionMessage({
@@ -100,19 +149,28 @@ async function record(scenario: Scenario, rpc: RpcClient, blockhash: string): Pr
   const tx = new VersionedTransaction(message);
 
   const before = await rpc.readAccounts(observe);
-  if (!before.ok) throw new Error(`before read failed: ${before.failure.message}`);
+  if (!before.ok)
+    throw new Error(`before read failed: ${before.failure.message}`);
 
-  const simulation = await rpc.simulate(tx, { accounts: observe, minContextSlot: before.value.slot });
-  if (!simulation.ok) throw new Error(`simulation failed: ${simulation.failure.message}`);
+  const simulation = await rpc.simulate(tx, {
+    accounts: observe,
+    minContextSlot: before.value.slot,
+  });
+  if (!simulation.ok)
+    throw new Error(`simulation failed: ${simulation.failure.message}`);
 
   // Scenarios build messages without lookups, so this is normally empty. It
   // stays generic for when we record a mainnet transaction that uses ALTs.
-  const referencedTables = message.addressTableLookups.map((l) => l.accountKey.toBase58());
+  const referencedTables = message.addressTableLookups.map((l) =>
+    l.accountKey.toBase58(),
+  );
   const lookupTables: { table: string; addresses: string[] }[] = [];
   if (referencedTables.length > 0) {
     const read = await rpc.readLookupTables(referencedTables);
-    if (!read.ok) throw new Error(`lookup table read failed: ${read.failure.message}`);
-    for (const t of read.value) lookupTables.push({ table: t.table, addresses: [...t.addresses] });
+    if (!read.ok)
+      throw new Error(`lookup table read failed: ${read.failure.message}`);
+    for (const t of read.value)
+      lookupTables.push({ table: t.table, addresses: [...t.addresses] });
   }
 
   return {
@@ -143,7 +201,8 @@ async function main(): Promise<number> {
   const requested = process.argv[2];
   if (requested === undefined || requested === "--list") {
     console.log("available scenarios:");
-    for (const s of SCENARIOS) console.log(`  ${s.name.padEnd(20)} ${s.description}`);
+    for (const s of SCENARIOS)
+      console.log(`  ${s.name.padEnd(20)} ${s.description}`);
     return requested === undefined ? 1 : 0;
   }
 
@@ -160,11 +219,16 @@ async function main(): Promise<number> {
     return 3;
   }
   if (network.value !== GENESIS_BY_NETWORK.devnet) {
-    console.error("VETO_RPC_URL_DEVNET answered, but it is not devnet. Refused.");
+    console.error(
+      "VETO_RPC_URL_DEVNET answered, but it is not devnet. Refused.",
+    );
     return 1;
   }
 
-  const chosen = requested === "--all" ? SCENARIOS : SCENARIOS.filter((s) => s.name === requested);
+  const chosen =
+    requested === "--all"
+      ? SCENARIOS
+      : SCENARIOS.filter((s) => s.name === requested);
   if (chosen.length === 0) {
     console.error(`unknown scenario: ${requested}. Use --list.`);
     return 1;
@@ -177,8 +241,13 @@ async function main(): Promise<number> {
     const fixture = await record(scenario, rpc, blockhash);
     const path = `test/fixtures/${scenario.name}.json`;
     await writeFile(path, `${JSON.stringify(fixture, null, 2)}\n`, "utf8");
-    const outcome = fixture.simulation.error === null ? "error: null" : `error: ${fixture.simulation.error}`;
-    console.log(`recorded ${path}  (slot ${fixture.simulation.slot}, ${outcome}, ${fixture.before.addresses.length} accounts)`);
+    const outcome =
+      fixture.simulation.error === null
+        ? "error: null"
+        : `error: ${fixture.simulation.error}`;
+    console.log(
+      `recorded ${path}  (slot ${fixture.simulation.slot}, ${outcome}, ${fixture.before.addresses.length} accounts)`,
+    );
   }
   return 0;
 }

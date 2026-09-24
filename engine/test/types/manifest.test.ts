@@ -14,11 +14,22 @@ const transfer: ToolManifest = {
   version: "1",
   args: { from: "address", to: "address", mint: "mint", amount: "amount" },
   must: [
-    { type: "BALANCE_DECREASE", account: "arg:from", mint: "arg:mint", maxAmount: "arg:amount", unit: "decimal" },
+    {
+      type: "BALANCE_DECREASE",
+      account: "arg:from",
+      mint: "arg:mint",
+      maxAmount: "arg:amount",
+      unit: "decimal",
+    },
     { type: "BALANCE_INCREASE", account: "arg:to", mint: "arg:mint" },
   ],
   may: [{ type: "ACCOUNT_CREATE" }, { type: "BALANCE_DECREASE", mint: "SOL" }],
-  mustNot: ["DELEGATE_GRANT", "AUTHORITY_CHANGE", "OWNER_CHANGE", "ACCOUNT_CLOSE"],
+  mustNot: [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+  ],
   accountScope: "args_plus_derived",
 };
 
@@ -71,10 +82,20 @@ describe("validation catches the typo before the attack, not during", () => {
     // Without a unit it would compare 10 (USDC) against 10000000n (raw).
     const noUnit: ToolManifest = {
       ...transfer,
-      must: [{ type: "BALANCE_DECREASE", account: "arg:from", maxAmount: "arg:amount" }],
+      must: [
+        {
+          type: "BALANCE_DECREASE",
+          account: "arg:from",
+          maxAmount: "arg:amount",
+        },
+      ],
     };
     const problems = validateReferences(noUnit);
-    expect(problems.some((p: ManifestProblem) => p.reason.includes("no unit was declared"))).toBe(true);
+    expect(
+      problems.some((p: ManifestProblem) =>
+        p.reason.includes("no unit was declared"),
+      ),
+    ).toBe(true);
   });
 
   it("reports an effect that is mandatory and forbidden at once", () => {
@@ -83,11 +104,18 @@ describe("validation catches the typo before the attack, not during", () => {
       must: [{ type: "DELEGATE_GRANT", account: "arg:from" }],
     };
     const problems = validateReferences(contradictory);
-    expect(problems.some((p: ManifestProblem) => p.reason.includes("also in mustNot"))).toBe(true);
+    expect(
+      problems.some((p: ManifestProblem) =>
+        p.reason.includes("also in mustNot"),
+      ),
+    ).toBe(true);
   });
 
   it("treats a malformed ref as a literal, which is the documented contract", () => {
-    const odd = { ...transfer, must: [{ type: "BALANCE_DECREASE", account: "arg:" }] };
+    const odd = {
+      ...transfer,
+      must: [{ type: "BALANCE_DECREASE", account: "arg:" }],
+    };
     expect(toolManifestSchema.safeParse(odd).success).toBe(true);
     expect(validateReferences(toolManifestSchema.parse(odd))).toEqual([]);
   });
@@ -95,18 +123,38 @@ describe("validation catches the typo before the attack, not during", () => {
 
 describe("tolerance cap", () => {
   it("accepts plausible slippage slack", () => {
-    expect(toolManifestSchema.safeParse({ ...transfer, may: [{ type: "BALANCE_DECREASE", tolerance: 0.03 }] }).success).toBe(true);
-    expect(toolManifestSchema.safeParse({ ...transfer, may: [{ type: "BALANCE_DECREASE", tolerance: MAX_TOLERANCE }] }).success).toBe(true);
+    expect(
+      toolManifestSchema.safeParse({
+        ...transfer,
+        may: [{ type: "BALANCE_DECREASE", tolerance: 0.03 }],
+      }).success,
+    ).toBe(true);
+    expect(
+      toolManifestSchema.safeParse({
+        ...transfer,
+        may: [{ type: "BALANCE_DECREASE", tolerance: MAX_TOLERANCE }],
+      }).success,
+    ).toBe(true);
   });
 
   it("refuses 0.3 typed in place of 0.03", () => {
     // 30% slack lets the skim fit inside the tolerance: the magnitude check
     // would never fire, and only the aggregate would see the sum.
-    expect(toolManifestSchema.safeParse({ ...transfer, may: [{ type: "BALANCE_DECREASE", tolerance: 0.3 }] }).success).toBe(false);
+    expect(
+      toolManifestSchema.safeParse({
+        ...transfer,
+        may: [{ type: "BALANCE_DECREASE", tolerance: 0.3 }],
+      }).success,
+    ).toBe(false);
   });
 
   it("refuses negative tolerance", () => {
-    expect(toolManifestSchema.safeParse({ ...transfer, may: [{ type: "BALANCE_DECREASE", tolerance: -0.01 }] }).success).toBe(false);
+    expect(
+      toolManifestSchema.safeParse({
+        ...transfer,
+        may: [{ type: "BALANCE_DECREASE", tolerance: -0.01 }],
+      }).success,
+    ).toBe(false);
   });
 });
 

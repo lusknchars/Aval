@@ -33,17 +33,24 @@ type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 function readConfig(env: NodeJS.ProcessEnv): Result<Config> {
   const url = env["VETO_RPC_URL_DEVNET"];
   if (url === undefined || url === "") {
-    return { ok: false, error: "VETO_RPC_URL_DEVNET is not set. Fill it in .env." };
+    return {
+      ok: false,
+      error: "VETO_RPC_URL_DEVNET is not set. Fill it in .env.",
+    };
   }
   if (!urlSchema.safeParse(url).success) {
-    return { ok: false, error: "VETO_RPC_URL_DEVNET is not a valid http(s) URL." };
+    return {
+      ok: false,
+      error: "VETO_RPC_URL_DEVNET is not a valid http(s) URL.",
+    };
   }
 
   const commitment = commitmentSchema.safeParse(env["VETO_RPC_COMMITMENT"]);
   if (!commitment.success) {
     return {
       ok: false,
-      error: "VETO_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.",
+      error:
+        "VETO_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.",
     };
   }
 
@@ -59,13 +66,19 @@ function readAddress(argv: readonly string[]): Result<PublicKey> {
     // Requires base58 that decodes to exactly 32 bytes.
     return { ok: true, value: new PublicKey(input) };
   } catch {
-    return { ok: false, error: `Invalid address: "${input}" is not a 32-byte base58 public key.` };
+    return {
+      ok: false,
+      error: `Invalid address: "${input}" is not a 32-byte base58 public key.`,
+    };
   }
 }
 
 // An SDK error may quote the URL. Erase the whole URL and any api-key.
 function redact(text: string, rpcUrl: string): string {
-  return text.split(rpcUrl).join("<devnet-rpc>").replace(/api-key=[^&\s"']+/gi, "api-key=***");
+  return text
+    .split(rpcUrl)
+    .join("<devnet-rpc>")
+    .replace(/api-key=[^&\s"']+/gi, "api-key=***");
 }
 
 function messageOf(error: unknown): string {
@@ -87,17 +100,24 @@ async function main(): Promise<number> {
   const { rpcUrl, commitment } = config.value;
 
   // No silent retry on 429: the error surfaces instead of stalling the script.
-  const connection = new Connection(rpcUrl, { commitment, disableRetryOnRateLimit: true });
+  const connection = new Connection(rpcUrl, {
+    commitment,
+    disableRetryOnRateLimit: true,
+  });
 
   let genesis: string;
   try {
     genesis = await connection.getGenesisHash();
   } catch (error) {
-    console.error(`RPC failure while connecting: ${redact(messageOf(error), rpcUrl)}`);
+    console.error(
+      `RPC failure while connecting: ${redact(messageOf(error), rpcUrl)}`,
+    );
     return EXIT_RPC;
   }
   if (genesis !== DEVNET_GENESIS) {
-    console.error("VETO_RPC_URL_DEVNET answered, but it is not devnet (different genesis hash). Refused.");
+    console.error(
+      "VETO_RPC_URL_DEVNET answered, but it is not devnet (different genesis hash). Refused.",
+    );
     return EXIT_INPUT;
   }
 
@@ -105,12 +125,16 @@ async function main(): Promise<number> {
   try {
     info = await connection.getAccountInfo(address.value, { commitment });
   } catch (error) {
-    console.error(`RPC failure while reading the account: ${redact(messageOf(error), rpcUrl)}`);
+    console.error(
+      `RPC failure while reading the account: ${redact(messageOf(error), rpcUrl)}`,
+    );
     return EXIT_RPC;
   }
 
   if (info === null) {
-    console.error(`Account does not exist on devnet (commitment ${commitment}): ${address.value.toBase58()}`);
+    console.error(
+      `Account does not exist on devnet (commitment ${commitment}): ${address.value.toBase58()}`,
+    );
     return EXIT_NOT_FOUND;
   }
 
@@ -123,7 +147,9 @@ async function main(): Promise<number> {
   // lamports arrives as a number (JSON.parse inside the SDK). Above 2^53-1 it
   // already came rounded -- converting to bigint here recovers nothing.
   if (!Number.isSafeInteger(info.lamports)) {
-    console.error("warning: lamports above Number.MAX_SAFE_INTEGER; the value above may be imprecise.");
+    console.error(
+      "warning: lamports above Number.MAX_SAFE_INTEGER; the value above may be imprecise.",
+    );
   }
 
   return EXIT_OK;

@@ -497,9 +497,10 @@ customer who turns off the alert in week two is a customer lost.
 
 Stages 1 through 5 constitute a defensible proof of concept.
 
-The immediate next step is the shared type layer in `src/tipos/` — the closed
-effect vocabulary and the `EffectSet`, `Verdict` and `Finding` contracts that
-every other component consumes.
+The shared type layer in `src/types/` and the RPC boundary in
+`src/normalization/` are built and tested. The next piece is SPL account
+decoding at fixed offsets, followed by the account diff that turns a simulated
+state transition into the closed effect vocabulary.
 
 ### Deliberately out of scope for now
 

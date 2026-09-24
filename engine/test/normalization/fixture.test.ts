@@ -11,7 +11,9 @@ import {
 import type { AccountState } from "../../src/normalization/rpc.js";
 
 function open(name: string): Fixture {
-  const raw: unknown = JSON.parse(readFileSync(`test/fixtures/${name}.json`, "utf8"));
+  const raw: unknown = JSON.parse(
+    readFileSync(`test/fixtures/${name}.json`, "utf8"),
+  );
   const loaded = loadFixture(raw);
   if (!loaded.ok) throw new Error(loaded.failure.message);
   return loaded.value;
@@ -24,7 +26,9 @@ describe("fixture format", () => {
       expect(f.network).toBe("devnet");
       expect(f.simulation.error).toBeNull();
       expect(f.before.addresses.length).toBe(f.before.accounts.length);
-      expect(f.simulation.requestedAccounts.length).toBe(f.simulation.accounts.length);
+      expect(f.simulation.requestedAccounts.length).toBe(
+        f.simulation.accounts.length,
+      );
     }
   });
 
@@ -33,7 +37,10 @@ describe("fixture format", () => {
     const f = open("transfer-sol");
     const tampered = {
       ...f,
-      before: { ...f.before, accounts: [{ ...f.before.accounts[0], lamports: 382313590904 }] },
+      before: {
+        ...f.before,
+        accounts: [{ ...f.before.accounts[0], lamports: 382313590904 }],
+      },
     };
     expect(loadFixture(tampered).ok).toBe(false);
   });
@@ -74,15 +81,20 @@ describe("fixture client", () => {
     expect(recorded.ok && recorded.value.accounts[0]).toBeNull();
 
     // An address never recorded must not silently become "account not found".
-    const neverRecorded = await rpc.readAccounts(["NeverRecordedXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"]);
+    const neverRecorded = await rpc.readAccounts([
+      "NeverRecordedXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    ]);
     expect(neverRecorded.ok).toBe(false);
-    if (!neverRecorded.ok) expect(neverRecorded.failure.message).toContain("did not record");
+    if (!neverRecorded.ok)
+      expect(neverRecorded.failure.message).toContain("did not record");
   });
 
   it("serves the post-simulation state carrying the unlimited delegate", async () => {
     const f = open("unlimited-approve");
     const rpc = new FixtureRpcClient(f);
-    const sim = await rpc.simulate(rpc.transaction(), { accounts: f.simulation.requestedAccounts });
+    const sim = await rpc.simulate(rpc.transaction(), {
+      accounts: f.simulation.requestedAccounts,
+    });
     expect(sim.ok).toBe(true);
     if (!sim.ok) return;
     expect(sim.value.error).toBeNull();
@@ -99,12 +111,16 @@ describe("fixture client", () => {
     const f = open("create-ata");
     const tx = readTransaction(f);
     expect(tx.message.version).toBe(0);
-    expect(tx.signatures.every((s: Uint8Array) => s.every((b: number) => b === 0))).toBe(true);
+    expect(
+      tx.signatures.every((s: Uint8Array) => s.every((b: number) => b === 0)),
+    ).toBe(true);
   });
 
   it("identifies the network from the recorded genesis hash", async () => {
     const rpc = new FixtureRpcClient(open("create-ata"));
     const network = await rpc.identifyNetwork();
-    expect(network.ok && network.value).toBe("EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG");
+    expect(network.ok && network.value).toBe(
+      "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+    );
   });
 });

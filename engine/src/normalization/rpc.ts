@@ -87,8 +87,13 @@ export interface SimulationOptions {
  */
 export interface RpcClient {
   readAccounts(addresses: readonly string[]): Promise<RpcResult<AccountsRead>>;
-  simulate(tx: VersionedTransaction, options: SimulationOptions): Promise<RpcResult<SimulationResponse>>;
-  readLookupTables(addresses: readonly string[]): Promise<RpcResult<readonly LookupTable[]>>;
+  simulate(
+    tx: VersionedTransaction,
+    options: SimulationOptions,
+  ): Promise<RpcResult<SimulationResponse>>;
+  readLookupTables(
+    addresses: readonly string[],
+  ): Promise<RpcResult<readonly LookupTable[]>>;
   /** Genesis hash, to confirm the endpoint is the network we expect. */
   identifyNetwork(): Promise<RpcResult<string>>;
 }
@@ -119,19 +124,31 @@ const ENV_VAR_BY_NETWORK: Readonly<Record<Network, string>> = {
 };
 
 /** Reads and validates config. No error message ever repeats the URL value. */
-export function readRpcConfig(env: NodeJS.ProcessEnv, network: Network): RpcResult<RpcConfig> {
+export function readRpcConfig(
+  env: NodeJS.ProcessEnv,
+  network: Network,
+): RpcResult<RpcConfig> {
   const variable = ENV_VAR_BY_NETWORK[network];
-  const fail = (message: string): RpcResult<RpcConfig> => ({ ok: false, failure: { step: "config", message } });
+  const fail = (message: string): RpcResult<RpcConfig> => ({
+    ok: false,
+    failure: { step: "config", message },
+  });
 
   const url = env[variable];
   if (url === undefined || url === "") return fail(`${variable} is not set.`);
-  if (!rpcUrlSchema.safeParse(url).success) return fail(`${variable} is not a valid http(s) URL.`);
+  if (!rpcUrlSchema.safeParse(url).success)
+    return fail(`${variable} is not a valid http(s) URL.`);
 
   const commitment = commitmentSchema.safeParse(env["VETO_RPC_COMMITMENT"]);
   if (!commitment.success) {
-    return fail("VETO_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.");
+    return fail(
+      "VETO_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.",
+    );
   }
-  return { ok: true, value: { rpcUrl: url, commitment: commitment.data, network } };
+  return {
+    ok: true,
+    value: { rpcUrl: url, commitment: commitment.data, network },
+  };
 }
 
 // ---------------------------------------------------------------- pure
@@ -141,11 +158,17 @@ export function readRpcConfig(env: NodeJS.ProcessEnv, network: Network): RpcResu
  * secret. Every error message leaving this module goes through here.
  */
 export function redact(text: string, rpcUrl: string): string {
-  return text.split(rpcUrl).join("<rpc>").replace(/api-key=[^&\s"']+/gi, "api-key=***");
+  return text
+    .split(rpcUrl)
+    .join("<rpc>")
+    .replace(/api-key=[^&\s"']+/gi, "api-key=***");
 }
 
 /** The number -> bigint boundary, with any precision loss declared. */
-export function toLamports(value: number): { lamports: bigint; exact: boolean } {
+export function toLamports(value: number): {
+  lamports: bigint;
+  exact: boolean;
+} {
   if (!Number.isSafeInteger(value)) {
     return { lamports: BigInt(Math.round(value)), exact: false };
   }
@@ -155,7 +178,12 @@ export function toLamports(value: number): { lamports: bigint; exact: boolean } 
 /** Converts an on-chain read into the internal state shape. */
 export function onChainState(
   address: string,
-  info: { lamports: number; owner: PublicKey; executable: boolean; data: Buffer } | null,
+  info: {
+    lamports: number;
+    owner: PublicKey;
+    executable: boolean;
+    data: Buffer;
+  } | null,
 ): AccountState | null {
   if (info === null) return null;
   const { lamports, exact } = toLamports(info.lamports);
@@ -175,25 +203,46 @@ export function onChainState(
  */
 export function simulatedState(
   address: string,
-  info: { lamports: number; owner: string; executable: boolean; data: string[] } | null,
+  info: {
+    lamports: number;
+    owner: string;
+    executable: boolean;
+    data: string[];
+  } | null,
 ): RpcResult<AccountState | null> {
   if (info === null) return { ok: true, value: null };
   const [content, encoding, ...rest] = info.data;
   if (content === undefined || encoding !== "base64" || rest.length > 0) {
     return {
       ok: false,
-      failure: { step: "simulate", message: `post-state of ${address} has an unexpected encoding` },
+      failure: {
+        step: "simulate",
+        message: `post-state of ${address} has an unexpected encoding`,
+      },
     };
   }
   const data = Buffer.from(content, "base64");
   // Buffer.from silently ignores invalid characters; the round trip catches it.
   if (data.toString("base64") !== content) {
-    return { ok: false, failure: { step: "simulate", message: `post-state of ${address} is not canonical base64` } };
+    return {
+      ok: false,
+      failure: {
+        step: "simulate",
+        message: `post-state of ${address} is not canonical base64`,
+      },
+    };
   }
   const { lamports, exact } = toLamports(info.lamports);
   return {
     ok: true,
-    value: { address, lamports, lamportsExact: exact, owner: info.owner, executable: info.executable, data },
+    value: {
+      address,
+      lamports,
+      lamportsExact: exact,
+      owner: info.owner,
+      executable: info.executable,
+      data,
+    },
   };
 }
 
@@ -228,13 +277,19 @@ export class Web3RpcClient implements RpcClient {
     }
   }
 
-  async readAccounts(addresses: readonly string[]): Promise<RpcResult<AccountsRead>> {
-    if (addresses.length === 0) return { ok: true, value: { slot: 0, accounts: [] } };
+  async readAccounts(
+    addresses: readonly string[],
+  ): Promise<RpcResult<AccountsRead>> {
+    if (addresses.length === 0)
+      return { ok: true, value: { slot: 0, accounts: [] } };
     try {
       const keys = addresses.map((a) => new PublicKey(a));
-      const response = await this.#connection.getMultipleAccountsInfoAndContext(keys, {
-        commitment: this.#commitment,
-      });
+      const response = await this.#connection.getMultipleAccountsInfoAndContext(
+        keys,
+        {
+          commitment: this.#commitment,
+        },
+      );
       if (response.value.length !== addresses.length) {
         return {
           ok: false,
@@ -244,14 +299,19 @@ export class Web3RpcClient implements RpcClient {
           },
         };
       }
-      const accounts = addresses.map((address, i) => onChainState(address, response.value[i] ?? null));
+      const accounts = addresses.map((address, i) =>
+        onChainState(address, response.value[i] ?? null),
+      );
       return { ok: true, value: { slot: response.context.slot, accounts } };
     } catch (error) {
       return this.#fail("readAccounts", error);
     }
   }
 
-  async simulate(tx: VersionedTransaction, options: SimulationOptions): Promise<RpcResult<SimulationResponse>> {
+  async simulate(
+    tx: VersionedTransaction,
+    options: SimulationOptions,
+  ): Promise<RpcResult<SimulationResponse>> {
     const requested = [...options.accounts];
     try {
       const config: SimulateTransactionConfig = {
@@ -260,7 +320,8 @@ export class Web3RpcClient implements RpcClient {
         commitment: this.#commitment,
         accounts: { encoding: "base64", addresses: requested },
       };
-      if (options.minContextSlot !== undefined) config.minContextSlot = options.minContextSlot;
+      if (options.minContextSlot !== undefined)
+        config.minContextSlot = options.minContextSlot;
       const response = await this.#connection.simulateTransaction(tx, config);
 
       const raw = response.value.accounts;
@@ -285,7 +346,10 @@ export class Web3RpcClient implements RpcClient {
         ok: true,
         value: {
           slot: response.context.slot,
-          error: response.value.err === null ? null : JSON.stringify(response.value.err),
+          error:
+            response.value.err === null
+              ? null
+              : JSON.stringify(response.value.err),
           unitsConsumed: response.value.unitsConsumed ?? null,
           logs: response.value.logs,
           requestedAccounts: requested,
@@ -303,19 +367,35 @@ export class Web3RpcClient implements RpcClient {
    * execution. Run serially, N tables would be N round trips inside the
    * decision's latency budget.
    */
-  async readLookupTables(addresses: readonly string[]): Promise<RpcResult<readonly LookupTable[]>> {
+  async readLookupTables(
+    addresses: readonly string[],
+  ): Promise<RpcResult<readonly LookupTable[]>> {
     const results = await Promise.all(
       addresses.map(async (address): Promise<RpcResult<LookupTable>> => {
         try {
-          const response = await this.#connection.getAddressLookupTable(new PublicKey(address), {
-            commitment: this.#commitment,
-          });
+          const response = await this.#connection.getAddressLookupTable(
+            new PublicKey(address),
+            {
+              commitment: this.#commitment,
+            },
+          );
           if (response.value === null) {
-            return { ok: false, failure: { step: "readLookupTables", message: `table ${address} does not exist` } };
+            return {
+              ok: false,
+              failure: {
+                step: "readLookupTables",
+                message: `table ${address} does not exist`,
+              },
+            };
           }
           return {
             ok: true,
-            value: { table: address, addresses: response.value.state.addresses.map((a) => a.toBase58()) },
+            value: {
+              table: address,
+              addresses: response.value.state.addresses.map((a) =>
+                a.toBase58(),
+              ),
+            },
           };
         } catch (error) {
           // An account that exists but is not a lookup table makes the SDK's

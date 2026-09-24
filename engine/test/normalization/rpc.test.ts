@@ -9,10 +9,15 @@ import {
   toLamports,
 } from "../../src/normalization/rpc.js";
 
-const FAKE_URL = "https://devnet.helius-rpc.com/?api-key=00000000-1111-2222-3333-444444444444";
+const FAKE_URL =
+  "https://devnet.helius-rpc.com/?api-key=00000000-1111-2222-3333-444444444444";
 
 describe("config", () => {
-  const base = { VETO_RPC_COMMITMENT: "confirmed", VETO_RPC_URL_DEVNET: FAKE_URL, VETO_RPC_URL: FAKE_URL };
+  const base = {
+    VETO_RPC_COMMITMENT: "confirmed",
+    VETO_RPC_URL_DEVNET: FAKE_URL,
+    VETO_RPC_URL: FAKE_URL,
+  };
 
   it("reads the right variable for each network", () => {
     const devnet = readRpcConfig(base, "devnet");
@@ -31,13 +36,21 @@ describe("config", () => {
   });
 
   it("refuses an invalid URL and a commitment outside the enum", () => {
-    expect(readRpcConfig({ ...base, VETO_RPC_URL_DEVNET: "not-a-url" }, "devnet").ok).toBe(false);
-    expect(readRpcConfig({ ...base, VETO_RPC_COMMITMENT: "recent" }, "devnet").ok).toBe(false);
+    expect(
+      readRpcConfig({ ...base, VETO_RPC_URL_DEVNET: "not-a-url" }, "devnet").ok,
+    ).toBe(false);
+    expect(
+      readRpcConfig({ ...base, VETO_RPC_COMMITMENT: "recent" }, "devnet").ok,
+    ).toBe(false);
   });
 
   it("knows the genesis hash of both networks", () => {
-    expect(GENESIS_BY_NETWORK.devnet).toBe("EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG");
-    expect(GENESIS_BY_NETWORK.mainnet).toBe("5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d");
+    expect(GENESIS_BY_NETWORK.devnet).toBe(
+      "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+    );
+    expect(GENESIS_BY_NETWORK.mainnet).toBe(
+      "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+    );
   });
 });
 
@@ -51,7 +64,10 @@ describe("redaction", () => {
   });
 
   it("erases an api-key even from a URL other than the configured one", () => {
-    const other = redact("error at https://other.xyz/?api-key=SECRET", FAKE_URL);
+    const other = redact(
+      "error at https://other.xyz/?api-key=SECRET",
+      FAKE_URL,
+    );
     expect(other).toContain("api-key=***");
     expect(other).not.toContain("SECRET");
   });
@@ -59,7 +75,10 @@ describe("redaction", () => {
 
 describe("number -> bigint boundary", () => {
   it("converts a safe integer with no loss", () => {
-    expect(toLamports(382313590904)).toEqual({ lamports: 382313590904n, exact: true });
+    expect(toLamports(382313590904)).toEqual({
+      lamports: 382313590904n,
+      exact: true,
+    });
     expect(toLamports(0)).toEqual({ lamports: 0n, exact: true });
   });
 

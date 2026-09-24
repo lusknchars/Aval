@@ -60,7 +60,9 @@ describe("finding and verdict", () => {
   };
 
   it("stores structured detail, not free text", () => {
-    expect(finding.detail["counterparty"]).toBe("7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU");
+    expect(finding.detail["counterparty"]).toBe(
+      "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+    );
     expect(typeof finding.detail["foundIn"]).toBe("object");
     // explanation is optional and takes no part in the decision
     expect(finding.explanation).toBeUndefined();
@@ -72,7 +74,12 @@ describe("finding and verdict", () => {
       decision: "deny",
       findings: [
         finding,
-        { check: "undeclared", severity: "critical", rule: "mustNot.DELEGATE_GRANT", detail: {} },
+        {
+          check: "undeclared",
+          severity: "critical",
+          rule: "mustNot.DELEGATE_GRANT",
+          detail: {},
+        },
       ],
       evaluatedAt: 1_758_000_000_000,
       policyVersion: "manifests@1+thresholds@1",
@@ -81,7 +88,9 @@ describe("finding and verdict", () => {
       "provenance.retrieved_only",
       "mustNot.DELEGATE_GRANT",
     ]);
-    expect(highestSeverity(verdict.findings.map((f: Finding) => f.severity))).toBe("critical");
+    expect(
+      highestSeverity(verdict.findings.map((f: Finding) => f.severity)),
+    ).toBe("critical");
     expect(verdict.policyVersion).not.toBe("");
   });
 

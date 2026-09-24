@@ -26,7 +26,9 @@ import type {
 
 // ---------------------------------------------------------------- format
 
-const decimalStringSchema = z.string().regex(/^\d+$/, "amount must be a decimal integer in a string");
+const decimalStringSchema = z
+  .string()
+  .regex(/^\d+$/, "amount must be a decimal integer in a string");
 
 export const recordedAccountSchema = z.object({
   address: z.string(),
@@ -67,13 +69,17 @@ export const fixtureSchema = z.object({
   }),
 
   /** Contents of any referenced Address Lookup Tables. */
-  lookupTables: z.array(z.object({ table: z.string(), addresses: z.array(z.string()) })),
+  lookupTables: z.array(
+    z.object({ table: z.string(), addresses: z.array(z.string()) }),
+  ),
 });
 export type Fixture = z.infer<typeof fixtureSchema>;
 
 // ---------------------------------------------------------------- conversion
 
-export function recordAccount(state: AccountState | null): RecordedAccount | null {
+export function recordAccount(
+  state: AccountState | null,
+): RecordedAccount | null {
   if (state === null) return null;
   return {
     address: state.address,
@@ -85,7 +91,9 @@ export function recordAccount(state: AccountState | null): RecordedAccount | nul
   };
 }
 
-export function readAccount(recorded: RecordedAccount | null): AccountState | null {
+export function readAccount(
+  recorded: RecordedAccount | null,
+): AccountState | null {
   if (recorded === null) return null;
   return {
     address: recorded.address,
@@ -98,7 +106,9 @@ export function readAccount(recorded: RecordedAccount | null): AccountState | nu
 }
 
 export function readTransaction(fixture: Fixture): VersionedTransaction {
-  return VersionedTransaction.deserialize(Buffer.from(fixture.txBase64, "base64"));
+  return VersionedTransaction.deserialize(
+    Buffer.from(fixture.txBase64, "base64"),
+  );
 }
 
 /** Reads and validates a fixture already parsed from JSON. */
@@ -107,7 +117,10 @@ export function loadFixture(raw: unknown): RpcResult<Fixture> {
   if (!parsed.success) {
     return {
       ok: false,
-      failure: { step: "fixture", message: `invalid fixture: ${parsed.error.issues[0]?.message ?? "bad shape"}` },
+      failure: {
+        step: "fixture",
+        message: `invalid fixture: ${parsed.error.issues[0]?.message ?? "bad shape"}`,
+      },
     };
   }
   return { ok: true, value: parsed.data };
@@ -147,8 +160,14 @@ export class FixtureRpcClient implements RpcClient {
 
   constructor(fixture: Fixture) {
     this.#fixture = fixture;
-    this.#before = indexByRequest(fixture.before.addresses, fixture.before.accounts);
-    this.#after = indexByRequest(fixture.simulation.requestedAccounts, fixture.simulation.accounts);
+    this.#before = indexByRequest(
+      fixture.before.addresses,
+      fixture.before.accounts,
+    );
+    this.#after = indexByRequest(
+      fixture.simulation.requestedAccounts,
+      fixture.simulation.accounts,
+    );
   }
 
   get fixture(): Fixture {
@@ -163,7 +182,9 @@ export class FixtureRpcClient implements RpcClient {
     return { ok: true, value: this.#fixture.genesis };
   }
 
-  async readAccounts(addresses: readonly string[]): Promise<RpcResult<AccountsRead>> {
+  async readAccounts(
+    addresses: readonly string[],
+  ): Promise<RpcResult<AccountsRead>> {
     const accounts: (AccountState | null)[] = [];
     for (const address of addresses) {
       if (!this.#before.has(address)) {
@@ -200,14 +221,25 @@ export class FixtureRpcClient implements RpcClient {
     const { slot, error, unitsConsumed, logs } = this.#fixture.simulation;
     return {
       ok: true,
-      value: { slot, error, unitsConsumed, logs, requestedAccounts: [...options.accounts], accounts },
+      value: {
+        slot,
+        error,
+        unitsConsumed,
+        logs,
+        requestedAccounts: [...options.accounts],
+        accounts,
+      },
     };
   }
 
-  async readLookupTables(addresses: readonly string[]): Promise<RpcResult<readonly LookupTable[]>> {
+  async readLookupTables(
+    addresses: readonly string[],
+  ): Promise<RpcResult<readonly LookupTable[]>> {
     const tables: LookupTable[] = [];
     for (const address of addresses) {
-      const recorded = this.#fixture.lookupTables.find((t) => t.table === address);
+      const recorded = this.#fixture.lookupTables.find(
+        (t) => t.table === address,
+      );
       if (recorded === undefined) {
         return {
           ok: false,

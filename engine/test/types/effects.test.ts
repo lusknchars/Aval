@@ -41,7 +41,12 @@ describe("effect vocabulary", () => {
   });
 
   it("has the 4 authorities of the account model", () => {
-    expect(authorityKindSchema.options).toEqual(["mint", "freeze", "upgrade", "close"]);
+    expect(authorityKindSchema.options).toEqual([
+      "mint",
+      "freeze",
+      "upgrade",
+      "close",
+    ]);
     expect(authorityKindSchema.safeParse("owner").success).toBe(false);
   });
 
@@ -73,10 +78,26 @@ describe("effect vocabulary", () => {
 describe("EffectSet", () => {
   const set: EffectSet = {
     effects: [
-      { type: "BALANCE_DECREASE", account: "ATokenAcc", mint: "USDC", amount: 400n, counterparty: "PoolAcc" },
-      { type: "BALANCE_INCREASE", account: "SolAcc", mint: "SOL", amount: 1_940_000_000n },
+      {
+        type: "BALANCE_DECREASE",
+        account: "ATokenAcc",
+        mint: "USDC",
+        amount: 400n,
+        counterparty: "PoolAcc",
+      },
+      {
+        type: "BALANCE_INCREASE",
+        account: "SolAcc",
+        mint: "SOL",
+        amount: 1_940_000_000n,
+      },
       { type: "PROGRAM_INVOKE", account: "JUP6", program: "JUP6" },
-      { type: "DELEGATE_GRANT", account: "ATokenAcc", counterparty: "7xKX", amount: 2n ** 64n - 1n },
+      {
+        type: "DELEGATE_GRANT",
+        account: "ATokenAcc",
+        counterparty: "7xKX",
+        amount: 2n ** 64n - 1n,
+      },
     ],
     slot: 502538365,
     simulation: { status: "executed", unitsConsumed: 13476 },
@@ -102,7 +123,11 @@ describe("EffectSet", () => {
 
   it("reports incomplete coverage when an account was never observed", () => {
     expect(coverageIsComplete(set.coverage)).toBe(true);
-    const blind: AccountCoverage = { referenced: ["A", "B"], observed: ["A"], unobserved: ["B"] };
+    const blind: AccountCoverage = {
+      referenced: ["A", "B"],
+      observed: ["A"],
+      unobserved: ["B"],
+    };
     expect(coverageIsComplete(blind)).toBe(false);
   });
 
@@ -114,7 +139,10 @@ describe("EffectSet", () => {
       error: '{"InsufficientFundsForRent":{"account_index":1}}',
       unitsConsumed: 150,
     };
-    const unavailable: SimulationOutcome = { status: "unavailable", reason: "RPC timeout" };
+    const unavailable: SimulationOutcome = {
+      status: "unavailable",
+      reason: "RPC timeout",
+    };
     expect(failed.status).not.toBe(unavailable.status);
 
     const describeOutcome = (r: SimulationOutcome): string => {
