@@ -1,45 +1,45 @@
 {
   "compilerOptions": {
-    // --- Alvo e biblioteca ---------------------------------------------
-    // Node 20+ suporta ES2022 nativamente. bigint literal (123n) exige >= ES2020.
+    // --- Target and library ----------------------------------------------
+    // Node 20+ supports ES2022 natively. bigint literals (123n) need >= ES2020.
     "target": "ES2022",
     "lib": ["ES2023"],
 
-    // --- Sistema de modulos ---------------------------------------------
-    // "nodenext" faz o TypeScript resolver modulos exatamente como o Node.
-    // Consequencia: import relativo precisa de extensao .js, mesmo apontando
-    // para um arquivo .ts.  Ex: import { x } from "../tipos/efeitos.js"
+    // --- Module system ----------------------------------------------------
+    // "nodenext" makes TypeScript resolve modules exactly as Node does.
+    // Consequence: relative imports need a .js extension, even when the file
+    // is .ts.  e.g. import { x } from "../types/effects.js"
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "resolveJsonModule": true,
 
-    // --- Rigor ----------------------------------------------------------
+    // --- Strictness -------------------------------------------------------
     "strict": true,
-    // array[0] tem tipo T | undefined. Essencial ao ler bytes de conta SPL
-    // em offsets fixos: impede que um acesso fora do buffer passe calado.
+    // array[0] has type T | undefined. Essential when reading SPL account
+    // bytes at fixed offsets: it stops an out-of-range read passing silently.
     "noUncheckedIndexedAccess": true,
-    // { delegate?: string } deixa de aceitar { delegate: undefined }.
-    // No EffectSet, "campo ausente" e "campo nulo" sao coisas diferentes.
+    // { delegate?: string } no longer accepts { delegate: undefined }.
+    // In the effect model, "absent field" and "null field" are different.
     "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
-    // Protege o switch sobre os 8 EffectType.
+    // Protects the switch over the 8 effect types.
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": true,
     "forceConsistentCasingInFileNames": true,
 
-    // --- Interop / emissao ----------------------------------------------
-    // Obriga "import type" para o que so existe em tempo de compilacao.
+    // --- Interop / emit ---------------------------------------------------
+    // Forces "import type" for anything that only exists at compile time.
     "verbatimModuleSyntax": true,
-    // Garante que cada arquivo e transpilavel isoladamente (e o que tsx e
-    // vitest fazem de fato, via esbuild).
+    // Guarantees every file is transpilable in isolation, which is what tsx
+    // and vitest actually do through esbuild.
     "isolatedModules": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
 
-    // Nao emitimos JavaScript ainda. O typecheck e um portao, nao um build.
-    // Quando existir build, trocar por outDir/rootDir em tsconfig.build.json.
+    // No JavaScript is emitted yet. The typecheck is a gate, not a build.
+    // When a build exists, replace with outDir/rootDir in tsconfig.build.json.
     "noEmit": true,
     "types": ["node"]
   },

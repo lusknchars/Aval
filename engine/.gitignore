@@ -1,7 +1,7 @@
-# dependencias
+# dependencies
 node_modules/
 
-# segredo -- a URL do Helius carrega a API key na query string
+# secret -- the Helius URL carries the api-key in its query string
 .env
 .env.local
 .env.*.local
@@ -10,10 +10,10 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# teste
+# tests
 coverage/
 
-# sistema operacional / editor
+# OS / editor
 .DS_Store
 *.log
 .idea/

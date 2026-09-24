@@ -2,28 +2,28 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    // Sem DOM. VETO e biblioteca de servidor.
+    // No DOM. VETO is a server-side library.
     environment: "node",
 
-    // globals: false -> describe/it/expect sao importados explicitamente.
-    // Mais verboso, sem magia global, melhor tipagem.
+    // globals: false -> describe/it/expect are imported explicitly.
+    // More verbose, no global magic, better typing.
     globals: false,
 
     include: ["test/**/*.test.ts"],
-    // Fixtures sao dados gravados, nunca arquivos de teste.
+    // Fixtures are recorded data, never test files.
     exclude: ["node_modules/**", "test/fixtures/**"],
 
-    // CLAUDE.md: toda funcao pura, testavel sem rede. Teste que passa de
-    // 5s provavelmente esta chamando RPC -- e isso e um bug do teste.
+    // Every pure function must be testable without a network. A test that
+    // takes over 5s is probably calling an RPC -- that is a bug in the test.
     testTimeout: 5_000,
 
     coverage: {
-      // Profiler nativo do V8. Sem instrumentacao do codigo.
+      // V8's native profiler. No code instrumentation.
       provider: "v8",
       reportsDirectory: "coverage",
       reporter: ["text", "html"],
       include: ["src/**/*.ts"],
-      // RPC fica isolado em modulo proprio e nao e coberto por teste offline.
+      // RPC lives in its own module and is not covered by offline tests.
       exclude: ["src/**/*.rpc.ts", "src/index.ts"],
     },
   },

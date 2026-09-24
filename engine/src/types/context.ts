@@ -1,120 +1,123 @@
 /**
- * O contexto capturado no runtime do agente do cliente.
+ * Context captured inside the client's agent runtime.
  *
- * `provenance` e o campo mais importante de todo o sistema: sem ele, o
- * detector de maior valor do VETO nao existe. Um endereco que aparece so num
- * chunk `retrieved` e a impressao digital de prompt injection indireta.
+ * `provenance` is the single most important field in the system: without it,
+ * VETO's highest-value detector does not exist. An address that appears only
+ * in a `retrieved` chunk is the fingerprint of indirect prompt injection.
  *
- * Tudo aqui e ENTRADA NAO CONFIAVEL. Vem do processo do cliente, nao do
- * VETO, e por isso cada tipo tem schema Zod: se `provenance` chegar errado, a
- * verificacao de proveniencia degrada em silencio -- que e o pior modo de
- * falha possivel para este projeto.
+ * Everything here is UNTRUSTED INPUT. It comes from the client's process, not
+ * from VETO, which is why every type has a Zod schema: if `provenance` arrives
+ * malformed, the provenance check degrades silently -- the worst possible
+ * failure mode for this project.
  *
- * A origem NUNCA e declarada pelo agente. Ela e atribuida pela instrumentacao
- * do VETO no momento em que cada conteudo entra no runtime. O agente nao e
- * fonte confiavel sobre a propria decisao.
+ * Origin is NEVER declared by the agent. It is assigned by VETO's
+ * instrumentation at the moment each piece of content enters the runtime. The
+ * agent is not a trusted source about its own decision.
  */
 import { VersionedTransaction } from "@solana/web3.js";
 import { z } from "zod";
 
-/** De onde veio um pedaco de contexto. Fechado. */
-export const esquemaProveniencia = z.enum([
-  "user", // digitado pelo usuario humano
-  "system", // system prompt, sob controle do operador
-  "retrieved", // RAG, pagina web, documento buscado
-  "memory", // memoria persistida do agente
-  "tool_output", // retorno de ferramenta
+/** Where a piece of context came from. Closed. */
+export const provenanceSchema = z.enum([
+  "user", // typed by the human
+  "system", // system prompt, under the operator's control
+  "retrieved", // RAG, web page, fetched document
+  "memory", // the agent's persisted memory
+  "tool_output", // return value of a tool
 ]);
-export type Provenance = z.infer<typeof esquemaProveniencia>;
+export type Provenance = z.infer<typeof provenanceSchema>;
 
 /**
- * Nivel de confianca por fonte, configurado pelo cliente no onboarding.
+ * Per-source trust level, configured by the customer at onboarding.
  *
- * Existe para conter a maior fonte de falso positivo do sistema: nem todo
- * conteudo recuperado e hostil. Um agente que consulta a API de roteamento de
- * uma DEX recebe enderecos legitimos que nao estavam no objetivo do usuario.
- * Tratar todo `tool_output` como hostil faria o cliente desligar o alerta.
+ * It exists to contain the system's largest source of false positives: not all
+ * retrieved content is hostile. An agent calling a DEX routing API receives
+ * legitimate addresses that were never in the user's goal. Treating every
+ * `tool_output` as hostile would make the customer turn the alert off.
  *
- * O padrao para fonte NAO configurada e `untrusted` -- degradar, nao liberar.
+ * An unconfigured source defaults to `untrusted` -- degrade, never open.
  */
-export const esquemaNivelDeConfianca = z.enum(["trusted", "semi", "untrusted"]);
-export type TrustLevel = z.infer<typeof esquemaNivelDeConfianca>;
+export const trustLevelSchema = z.enum(["trusted", "semi", "untrusted"]);
+export type TrustLevel = z.infer<typeof trustLevelSchema>;
 
-export const esquemaConfiancaDeFonte = z.object({
-  /** Dominio, nome de ferramenta ou chave de memoria. */
+export const sourceTrustSchema = z.object({
+  /** Domain, tool name or memory key. */
   pattern: z.string().min(1),
-  level: esquemaNivelDeConfianca,
+  level: trustLevelSchema,
 });
-export type SourceTrust = z.infer<typeof esquemaConfiancaDeFonte>;
+export type SourceTrust = z.infer<typeof sourceTrustSchema>;
 
-/** Um pedaco de contexto que entrou no modelo, com a origem atribuida. */
-export const esquemaChunkDeContexto = z.object({
+/** A piece of context that entered the model, with its origin assigned. */
+export const contextChunkSchema = z.object({
   text: z.string(),
-  provenance: esquemaProveniencia,
-  /** url, id de documento ou chave de memoria. Casa com SourceTrust.pattern. */
+  provenance: provenanceSchema,
+  /** url, document id or memory key. Matched against SourceTrust.pattern. */
   source: z.string().optional(),
 });
-export type ContextChunk = z.infer<typeof esquemaChunkDeContexto>;
+export type ContextChunk = z.infer<typeof contextChunkSchema>;
 
-/** A chamada de ferramenta emitida pelo agente: o nivel 2, ja estruturado. */
-export const esquemaToolCall = z.object({
+/** The tool call emitted by the agent: level 2, already structured. */
+export const toolCallSchema = z.object({
   name: z.string().min(1),
-  /** Valores contra os quais os placeholders `arg:` do manifesto resolvem. */
+  /** Values the manifest's `arg:` placeholders resolve against. */
   args: z.record(z.string(), z.unknown()),
 });
-export type ToolCall = z.infer<typeof esquemaToolCall>;
+export type ToolCall = z.infer<typeof toolCallSchema>;
 
 /**
- * Tudo que o VETO recebe sobre uma acao, antes de avaliar.
+ * Everything VETO receives about one action, before evaluating it.
  *
- * A transacao entra como objeto ja desserializado. A fronteira do SDK (formato
- * de fio, base64) e problema da camada de captura, nao deste contrato.
+ * The transaction arrives already deserialized. The SDK boundary (wire format,
+ * base64) belongs to the capture layer, not to this contract.
  */
-export const esquemaActionContext = z.object({
+export const actionContextSchema = z.object({
   actionId: z.string().min(1),
   agentId: z.string().min(1),
   taskId: z.string().min(1).optional(),
 
-  /** O que o humano pediu. Nivel 1, ambiguo por natureza. */
+  /** What the human asked for. Level 1, ambiguous by nature. */
   userGoal: z.string(),
   systemPrompt: z.string(),
 
-  /** Tudo que entrou no contexto do modelo, cada pedaco com sua origem. */
-  contextChunks: z.array(esquemaChunkDeContexto),
-  toolCall: esquemaToolCall,
+  /** Everything that entered the model's context, each piece with its origin. */
+  contextChunks: z.array(contextChunkSchema),
+  toolCall: toolCallSchema,
 
   unsignedTx: z.instanceof(VersionedTransaction),
-  /** Milissegundos desde a epoca. */
+  /** Milliseconds since the epoch. */
   timestamp: z.number().int().nonnegative(),
 });
-export type ActionContext = z.infer<typeof esquemaActionContext>;
+export type ActionContext = z.infer<typeof actionContextSchema>;
 
 /**
- * Confianca de uma fonte, com `untrusted` como padrao para o que nao foi
- * configurado. Primeiro padrao que casa vence, entao a ordem da lista importa.
+ * Trust level of a source, defaulting to `untrusted` for anything not
+ * configured. First matching pattern wins, so list order matters.
  *
- * LIMITACAO CONHECIDA: o casamento e por substring. Um atacante que controla
- * "https://malicioso.xyz/?ref=quote-api.jup.ag" seria tratado como `trusted`
- * se esse padrao estiver configurado. Endurecer para comparacao por hostname
- * (com sufixo de dominio) quando o detector de proveniencia for construido --
- * ate la, a configuracao do cliente precisa usar padroes especificos.
+ * KNOWN LIMITATION: matching is by substring. An attacker controlling
+ * "https://malicious.xyz/?ref=quote-api.jup.ag" would be treated as `trusted`
+ * if that pattern is configured. Harden to hostname comparison (with domain
+ * suffix) when the provenance detector is built -- until then, customer
+ * configuration must use specific patterns.
  */
-export function confiancaDaFonte(
+export function sourceTrustLevel(
   source: string | undefined,
-  configurado: readonly SourceTrust[],
+  configured: readonly SourceTrust[],
 ): TrustLevel {
   if (source === undefined) return "untrusted";
-  const casou = configurado.find((c) => source.includes(c.pattern));
-  return casou?.level ?? "untrusted";
+  const matched = configured.find((c) => source.includes(c.pattern));
+  return matched?.level ?? "untrusted";
 }
 
 /**
- * Se um chunk pode ser usado para explicar a origem de um endereco.
+ * Whether a chunk can be used to explain where an address came from.
  *
- * `user` e `system` sao confiaveis por construcao. Os outros tres so contam
- * quando a fonte foi explicitamente marcada como `trusted` pelo cliente.
+ * `user` and `system` are trusted by construction. The other three only count
+ * when the source was explicitly marked `trusted` by the customer.
  */
-export function chunkEhConfiavel(chunk: ContextChunk, configurado: readonly SourceTrust[]): boolean {
+export function chunkIsTrusted(
+  chunk: ContextChunk,
+  configured: readonly SourceTrust[],
+): boolean {
   switch (chunk.provenance) {
     case "user":
     case "system":
@@ -122,6 +125,6 @@ export function chunkEhConfiavel(chunk: ContextChunk, configurado: readonly Sour
     case "retrieved":
     case "memory":
     case "tool_output":
-      return confiancaDaFonte(chunk.source, configurado) === "trusted";
+      return sourceTrustLevel(chunk.source, configured) === "trusted";
   }
 }

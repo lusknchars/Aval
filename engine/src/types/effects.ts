@@ -1,146 +1,159 @@
 /**
- * O vocabulario de efeitos: o nucleo do VETO.
+ * The effect vocabulary: the core of VETO.
  *
- * Tudo que uma transacao faz e expresso nestes tipos, e tudo que um manifesto
- * de ferramenta espera e expresso nos mesmos. Com isso, "o que a transacao
- * fez" e "o que a ferramenta deveria fazer" viram dois conjuntos do mesmo
- * tipo, e a comparacao entre eles e operacao de conjunto -- nao interpretacao.
+ * Everything a transaction does is expressed in these types, and everything a
+ * tool manifest expects is expressed in the same ones. That makes "what the
+ * transaction did" and "what the tool is allowed to do" two sets of the same
+ * type, so comparing them is a set operation -- not an interpretation.
  *
- * FECHADO de proposito. Nao adicionar tipo sem decisao explicita: cada tipo
- * novo e uma regra nova em todo manifesto ja escrito.
+ * CLOSED on purpose. Do not add a type without an explicit decision: every new
+ * type is a new rule in every manifest already written.
  *
- * AGNOSTICO A PROGRAMA de proposito. Os tipos derivam do modelo de contas,
- * nao das instrucoes. Um programa nunca visto, se conceder um delegate,
- * produz DELEGATE_GRANT igual.
+ * PROGRAM-AGNOSTIC on purpose. The types derive from the account model, not
+ * from instructions. A program never seen before, if it grants a delegate,
+ * produces DELEGATE_GRANT all the same.
  */
 import { z } from "zod";
 
 /**
- * Fonte unica dos 8 tipos. O schema existe porque manifestos sao escritos a
- * mao e precisam ser validados em runtime; o tipo TS e derivado dele para que
- * nao haja duas listas capazes de divergir em silencio.
+ * Single source for the 8 types. The schema exists because manifests are
+ * hand-written and must be validated at runtime; the TypeScript type derives
+ * from it so there are never two lists able to drift apart.
  */
-export const esquemaTipoDeEfeito = z.enum([
-  "BALANCE_DECREASE", // conta perdeu valor
-  "BALANCE_INCREASE", // conta ganhou valor
-  "DELEGATE_GRANT", // autoridade de gasto concedida a terceiro
-  "AUTHORITY_CHANGE", // mint / freeze / upgrade / close authority alterada
-  "OWNER_CHANGE", // dono da conta alterado
+export const effectTypeSchema = z.enum([
+  "BALANCE_DECREASE", // account lost value
+  "BALANCE_INCREASE", // account gained value
+  "DELEGATE_GRANT", // spending authority granted to a third party
+  "AUTHORITY_CHANGE", // mint / freeze / upgrade / close authority changed
+  "OWNER_CHANGE", // account owner changed
   "ACCOUNT_CREATE",
   "ACCOUNT_CLOSE",
-  "PROGRAM_INVOKE", // programa chamado, inclusive via CPI
+  "PROGRAM_INVOKE", // program called, including through CPI
 ]);
 
-export type EffectType = z.infer<typeof esquemaTipoDeEfeito>;
+export type EffectType = z.infer<typeof effectTypeSchema>;
 
-/** Os 8 tipos em ordem de declaracao. Derivado do schema, sem duplicar a lista. */
-export const TIPOS_DE_EFEITO: readonly EffectType[] = esquemaTipoDeEfeito.options;
+/** The 8 types in declaration order. Derived from the schema, never duplicated. */
+export const EFFECT_TYPES: readonly EffectType[] = effectTypeSchema.options;
 
-/** Qual autoridade mudou, quando o efeito e AUTHORITY_CHANGE. */
-export const esquemaTipoDeAuthority = z.enum(["mint", "freeze", "upgrade", "close"]);
-export type AuthorityKind = z.infer<typeof esquemaTipoDeAuthority>;
+/** Which authority changed, when the effect is AUTHORITY_CHANGE. */
+export const authorityKindSchema = z.enum([
+  "mint",
+  "freeze",
+  "upgrade",
+  "close",
+]);
+export type AuthorityKind = z.infer<typeof authorityKindSchema>;
 
 /**
- * Um efeito observado na simulacao.
+ * An effect observed in the simulation.
  *
- * Campos opcionais sao opcionais porque nem todo tipo de efeito os tem:
- * PROGRAM_INVOKE nao tem `mint`, BALANCE_INCREASE nao tem `authority`.
- * A combinacao valida por tipo e responsabilidade de quem constroi (o
- * normalizador) e de quem compara (a avaliacao), nao deste arquivo.
+ * Optional fields are optional because not every effect type has them:
+ * PROGRAM_INVOKE has no `mint`, BALANCE_INCREASE has no authority. Which
+ * combination is valid per type belongs to whoever builds effects (the
+ * normalizer) and whoever compares them (the evaluation layer), not here.
  *
- * `amount` e sempre bigint. Valor de token nunca e number: lamports e
- * quantidade bruta de SPL sao u64, e number perde precisao acima de 2^53-1.
+ * `amount` is always bigint. A token amount is never a number: lamports and
+ * raw SPL amounts are u64, and number loses precision above 2^53-1.
  */
 export interface Effect {
   readonly type: EffectType;
 
-  /** Conta afetada, em base58. */
+  /** Affected account, base58. */
   readonly account: string;
 
-  /** Mint do token, ou "SOL" para o ativo nativo. */
+  /** Token mint, or "SOL" for the native asset. */
   readonly mint?: string;
 
-  /** Magnitude em unidades brutas (lamports para SOL, menor unidade para SPL). */
+  /** Magnitude in raw units (lamports for SOL, smallest unit for SPL). */
   readonly amount?: bigint;
 
-  /** Quem recebe valor ou autoridade, em base58. */
+  /** Who receives value or authority, base58. */
   readonly counterparty?: string;
 
-  /** Programa envolvido, em base58. */
+  /** Program involved, base58. */
   readonly program?: string;
 
-  /** So para AUTHORITY_CHANGE: qual autoridade mudou. */
+  /** AUTHORITY_CHANGE only: which authority changed. */
   readonly authorityKind?: AuthorityKind;
 }
 
 // ---------------------------------------------------------------- EffectSet
 
 /**
- * Resultado da tentativa de simular. E um RESULTADO, nunca uma excecao
- * engolida: a diferenca entre "simulou e a tx falharia" e "nao consegui
- * simular" muda a decisao, e por isso e uniao discriminada -- quem consome e
- * obrigado pelo compilador a tratar os tres casos.
+ * The outcome of trying to simulate. It is a RESULT, never a swallowed
+ * exception: the difference between "it ran and the transaction would fail"
+ * and "I could not simulate" changes the decision. A discriminated union
+ * forces every consumer to handle all three cases.
  */
-export type ResultadoDeSimulacao =
-  | { readonly status: "executada"; readonly unitsConsumed: number | null }
-  | { readonly status: "falhou"; readonly erro: string; readonly unitsConsumed: number | null }
-  | { readonly status: "indisponivel"; readonly motivo: string };
+export type SimulationOutcome =
+  | { readonly status: "executed"; readonly unitsConsumed: number | null }
+  | {
+      readonly status: "failed";
+      readonly error: string;
+      readonly unitsConsumed: number | null;
+    }
+  | { readonly status: "unavailable"; readonly reason: string };
 
 /**
- * Quais contas o VETO conseguiu de fato observar.
+ * Which accounts VETO was actually able to observe.
  *
- * `simulateTransaction` com a opcao `accounts` devolve SO os enderecos
- * pedidos -- o RPC nao faz descoberta. Se o normalizador nao pedir uma conta
- * que a transacao toca, existe ponto cego. Ponto cego vira achado, nao
- * silencio: e o "degradar, nao liberar" virando estrutura.
+ * `simulateTransaction` with the `accounts` option returns ONLY the addresses
+ * asked for -- the RPC performs no discovery. If the normalizer does not ask
+ * for an account the transaction touches, there is a blind spot. A blind spot
+ * becomes a finding, never silence: this is "degrade, never open" as a type.
  */
-export interface CoberturaDeContas {
-  /** Todas as contas referenciadas pela mensagem, ja com as ALTs resolvidas. */
-  readonly referenciadas: readonly string[];
-  /** Contas com estado antes E depois, das quais foi possivel extrair efeito. */
-  readonly observadas: readonly string[];
-  /** Referenciadas sem estado observado. Nao vazio = cobertura incompleta. */
-  readonly naoObservadas: readonly string[];
+export interface AccountCoverage {
+  /** Every account referenced by the message, with lookup tables resolved. */
+  readonly referenced: readonly string[];
+  /** Accounts with state before AND after, from which effects could be derived. */
+  readonly observed: readonly string[];
+  /** Referenced but never observed. Non-empty means coverage is incomplete. */
+  readonly unobserved: readonly string[];
 }
 
 /**
- * A base factual da avaliacao: o que a transacao faria, no vocabulario fechado.
+ * The factual basis of the evaluation: what the transaction would do, in the
+ * closed vocabulary.
  *
- * Lista achatada de propositio. A comparacao com o manifesto e operacao de
- * conjunto, e conjunto exige elementos do mesmo tipo. Visoes por categoria
- * (contrapartes, programas, efeitos de um tipo) sao derivadas pelas funcoes
- * abaixo, nunca campos duplicados que podem divergir da lista.
+ * A flat list on purpose. Comparison against a manifest is a set operation,
+ * and a set needs elements of the same type. Category views (counterparties,
+ * programs, effects of one type) are derived by the functions below, never
+ * duplicated fields that could drift from the list.
  */
 export interface EffectSet {
   readonly effects: readonly Effect[];
-  /** Slot em que a simulacao foi avaliada. null quando indisponivel. */
+  /** Slot the simulation was evaluated against. null when unavailable. */
   readonly slot: number | null;
-  readonly simulacao: ResultadoDeSimulacao;
-  readonly cobertura: CoberturaDeContas;
+  readonly simulation: SimulationOutcome;
+  readonly coverage: AccountCoverage;
 }
 
-export function coberturaCompleta(cobertura: CoberturaDeContas): boolean {
-  return cobertura.naoObservadas.length === 0;
+export function coverageIsComplete(coverage: AccountCoverage): boolean {
+  return coverage.unobserved.length === 0;
 }
 
-export function efeitosDoTipo(conjunto: EffectSet, tipo: EffectType): readonly Effect[] {
-  return conjunto.effects.filter((e) => e.type === tipo);
+export function effectsOfType(
+  set: EffectSet,
+  type: EffectType,
+): readonly Effect[] {
+  return set.effects.filter((e) => e.type === type);
 }
 
-/** Quem recebe valor ou autoridade. E a entrada da verificacao de proveniencia. */
-export function contrapartes(conjunto: EffectSet): readonly string[] {
-  const vistas = new Set<string>();
-  for (const e of conjunto.effects) {
-    if (e.counterparty !== undefined) vistas.add(e.counterparty);
+/** Who receives value or authority. This is the input of the provenance check. */
+export function counterparties(set: EffectSet): readonly string[] {
+  const seen = new Set<string>();
+  for (const e of set.effects) {
+    if (e.counterparty !== undefined) seen.add(e.counterparty);
   }
-  return [...vistas];
+  return [...seen];
 }
 
-/** Programas invocados, inclusive por CPI. */
-export function programasInvocados(conjunto: EffectSet): readonly string[] {
-  const vistos = new Set<string>();
-  for (const e of conjunto.effects) {
-    if (e.program !== undefined) vistos.add(e.program);
+/** Programs invoked, including through CPI. */
+export function invokedPrograms(set: EffectSet): readonly string[] {
+  const seen = new Set<string>();
+  for (const e of set.effects) {
+    if (e.program !== undefined) seen.add(e.program);
   }
-  return [...vistos];
+  return [...seen];
 }

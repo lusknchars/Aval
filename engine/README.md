@@ -296,15 +296,15 @@ Missing information never becomes an ALLOW.
 
 The work so far has been to verify, against real mainnet and devnet responses,
 that every input the normalizer needs is actually obtainable. Four exploration
-scripts live in `test/exploracao/`. None of them signs, sends or persists
+scripts live in `test/exploration/`. None of them signs, sends or persists
 anything.
 
 | Script | What it proves | Observed |
 |---|---|---|
-| `ler-conta.ts` | Account state is readable by address | Token Program on devnet: owner `BPFLoaderUpgradeab1e…`, 36 bytes, executable |
-| `inspecionar-transacao.ts` | A confirmed transaction can be fully decomposed | A mainnet arbitrage: 30 accounts (16 resolved through Address Lookup Tables), 8 outer instructions, 9 inner instructions, SOL and token deltas reconciled to the lamport |
-| `simular-transferencia.ts` | An unsigned transaction can be simulated and post-state requested | 1 lamport to a new account → `InsufficientFundsForRent`; at the rent-exempt minimum → `err: null`, with the destination existing only inside the simulation |
-| `inspecionar-inner-instructions.ts` | CPIs are visible before signing | Simulated ATA creation: 1 outer instruction, 4 inner instructions at `stackHeight: 2`, calling System Program and Token Program |
+| `read-account.ts` | Account state is readable by address | Token Program on devnet: owner `BPFLoaderUpgradeab1e…`, 36 bytes, executable |
+| `inspect-transaction.ts` | A confirmed transaction can be fully decomposed | A mainnet arbitrage: 30 accounts (16 resolved through Address Lookup Tables), 8 outer instructions, 9 inner instructions, SOL and token deltas reconciled to the lamport |
+| `simulate-transfer.ts` | An unsigned transaction can be simulated and post-state requested | 1 lamport to a new account → `InsufficientFundsForRent`; at the rent-exempt minimum → `err: null`, with the destination existing only inside the simulation |
+| `inspect-inner-instructions.ts` | CPIs are visible before signing | Simulated ATA creation: 1 outer instruction, 4 inner instructions at `stackHeight: 2`, calling System Program and Token Program |
 
 Every figure above came from a real RPC response, not from documentation.
 
@@ -340,20 +340,22 @@ Findings that directly shape the normalizer's design:
 
 ```
 src/
-  captura/        # agent wrapper, ActionContext, provenance tagging
-  normalizacao/   # unsigned tx -> EffectSet (simulation + account diff)
-  avaliacao/      # manifests, provenance, aggregate -> Verdict
+  capture/        # agent wrapper, ActionContext, provenance tagging
+  normalization/  # unsigned tx -> EffectSet (simulation + account diff)
+  evaluation/     # manifests, provenance, aggregate -> Verdict
   gate/           # allow / flag / deny
-  tipos/          # shared interfaces and Zod schemas
+  types/          # shared interfaces and Zod schemas
+  cli/            # command-line tools over the library
 test/
-  exploracao/     # exploration scripts (not part of the product)
-  fixtures/       # recorded transactions for offline tests
-docs/             # specification (pt-BR)
+  types/          # mirrors src/types
+  normalization/  # mirrors src/normalization
+  exploration/    # exploration scripts (not part of the product)
+  fixtures/       # recorded RPC responses for offline tests
+docs/             # specification (Portuguese), pending work and decisions
 ```
 
-Domain names are in Brazilian Portuguese (`proveniencia`, `veredito`,
-`manifesto`); Solana technical terms stay in English (`delegate`, `authority`,
-`mint`).
+The three specification documents in `docs/` are written in Portuguese and
+kept as internal design notes; everything else in the repository is in English.
 
 ---
 
@@ -387,23 +389,29 @@ pnpm typecheck      # tsc --noEmit
 `tsx` and `vitest` transpile with esbuild, which strips types without checking
 them. `pnpm typecheck` is the only thing that validates types — run both.
 
+### Command-line tools
+
+```bash
+# record a fixture from a real devnet simulation
+pnpm exec tsx --env-file=.env src/cli/record-fixture.ts --list
+pnpm exec tsx --env-file=.env src/cli/record-fixture.ts --all
+```
+
 ### Running the exploration scripts
 
 ```bash
 # read an account's metadata on devnet
-pnpm exec tsx --env-file=.env test/exploracao/ler-conta.ts <address>
+pnpm exec tsx --env-file=.env test/exploration/read-account.ts <address>
 
 # decompose a confirmed mainnet transaction
-pnpm exec tsx --env-file=.env test/exploracao/inspecionar-transacao.ts <signature>
-
-# simulate a transfer before signing, with post-simulation account state
-pnpm exec tsx --env-file=.env test/exploracao/simular-transferencia.ts <source> [lamports]
-
-# observe CPIs by simulating an ATA creation
-pnpm exec tsx --env-file=.env test/exploracao/inspecionar-inner-instructions.ts
+pnpm exec tsx --env-file=.env test/exploration/inspect-transaction.ts <signature>
 ```
 
-Each script exits with a distinct code per outcome — invalid input,
+Two further scripts — a pre-signature transfer simulation and a CPI inspector —
+were removed once the fixture recorder and the normalizer superseded them. Their
+findings are recorded above and in `docs/decisions.md`.
+
+Everything here exits with a distinct code per outcome — invalid input,
 configuration error, account not found, RPC failure, simulation executed with an
 error, simulation executed successfully — so a failed transaction is never
 confused with an unavailable RPC.
@@ -474,7 +482,8 @@ customer who turns off the alert in week two is a customer lost.
 |---|---|---|
 | 1 | Vulnerable agent on devnet, as a target and a research artifact | not started |
 | 2 | Context capture with provenance | blocked on framework choice |
-| 3 | **Normalizer — unsigned tx to `EffectSet`** | **exploration complete, implementation next** |
+| 3 | **Normalizer — unsigned tx to `EffectSet`** | **in progress — shared types and RPC layer built** |
+| 3b | CLI over the normalizer: inspect a transaction, record a fixture | not started |
 | 4 | Provenance detector | not started |
 | 5 | SDK gate | not started |
 | 6 | Tool manifests, checks A and B | not started |
@@ -609,6 +618,8 @@ Detailed design documents live in `docs/` (written in Brazilian Portuguese):
 - `veto-status.md` — what is settled and what is still open
 - `veto-construcao.md` — overall architecture and build order
 - `veto-camada-avaliacao.md` — the evaluation engine in detail
+- `pending.md` — what is missing in each block, tracked during construction
+- `decisions.md` — risk decisions taken, open holes, and rejected ideas
 
 ---
 

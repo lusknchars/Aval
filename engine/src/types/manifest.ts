@@ -1,191 +1,206 @@
 /**
- * Manifesto de ferramenta: o lado esquerdo da comparacao.
+ * Tool manifest: the left-hand side of the comparison.
  *
- * Declara, no mesmo vocabulario fechado de efeitos, o que uma ferramenta
- * legitimamente causa. Escrito a mao, uma vez, versionado junto do codigo.
+ * Declares, in the same closed effect vocabulary, what a tool legitimately
+ * causes. Hand-written once, versioned alongside the code.
  *
- * O ponto que nenhuma politica estatica alcanca: DELEGATE_GRANT e proibido em
- * `transfer` e em `swap`, e obrigatorio em `approve`. O mesmo efeito e critico
- * num contexto e esperado noutro -- o manifesto e onde essa diferenca cabe.
+ * The point no static policy reaches: DELEGATE_GRANT is forbidden in
+ * `transfer` and in `swap`, and mandatory in `approve`. The same effect is
+ * critical in one context and expected in another -- the manifest is where
+ * that difference fits.
  */
 import { z } from "zod";
-import { esquemaTipoDeEfeito, type EffectType } from "./efeitos.js";
+import { effectTypeSchema, type EffectType } from "./effects.js";
 
-/** Referencia a um argumento do tool call. Resolve no momento da avaliacao. */
+/** Reference to a tool call argument. Resolved at evaluation time. */
 export type ArgRef = `arg:${string}`;
 
-const PADRAO_ARG_REF = /^arg:[A-Za-z_][A-Za-z0-9_]*$/;
+const ARG_REF_PATTERN = /^arg:[A-Za-z_][A-Za-z0-9_]*$/;
 
-export function ehArgRef(valor: unknown): valor is ArgRef {
-  return typeof valor === "string" && PADRAO_ARG_REF.test(valor);
+export function isArgRef(value: unknown): value is ArgRef {
+  return typeof value === "string" && ARG_REF_PATTERN.test(value);
 }
 
-export const esquemaArgRef = z.custom<ArgRef>(ehArgRef, {
-  error: 'referencia invalida: use o formato "arg:nomeDoArgumento"',
+export const argRefSchema = z.custom<ArgRef>(isArgRef, {
+  error: 'invalid reference: use the form "arg:argumentName"',
 });
 
 /**
- * Tipo declarado de um argumento da ferramenta.
+ * Declared type of a tool argument.
  *
- * Existe para que a resolucao possa FALHAR EXPLICITAMENTE quando o agente
- * manda o tipo errado, em vez de comparar lixo com lixo.
+ * It exists so resolution can FAIL EXPLICITLY when the agent sends the wrong
+ * type, instead of comparing garbage against garbage.
  */
-export const esquemaTipoDeArgumento = z.enum([
-  "endereco", // chave publica base58
-  "mint", // mint SPL, ou "SOL"
-  "quantidade", // valor numerico de token
-  "texto",
+export const argTypeSchema = z.enum([
+  "address", // base58 public key
+  "mint", // SPL mint, or "SOL"
+  "amount", // numeric token value
+  "text",
 ]);
-export type TipoDeArgumento = z.infer<typeof esquemaTipoDeArgumento>;
+export type ArgType = z.infer<typeof argTypeSchema>;
 
 /**
- * Unidade em que a quantidade do tool call esta expressa.
+ * The unit the tool call's amount is expressed in.
  *
- * ESTE CAMPO EVITA O FALSO POSITIVO MAIS OBVIO DO SISTEMA. Um tool call diz
- * `amount: 10` (USDC); o efeito simulado diz `10000000n` (unidade bruta).
- * Comparar direto acusa "declarou 10, moveu 10 milhoes" em toda transferencia
- * legitima. `decimal` exige converter usando os decimals do mint antes de
- * comparar; `bruta` compara direto.
+ * THIS FIELD PREVENTS THE MOST OBVIOUS FALSE POSITIVE IN THE SYSTEM. A tool
+ * call says `amount: 10` (USDC); the simulated effect says `10000000n` (raw
+ * units). Comparing them directly reports "declared 10, moved 10 million" on
+ * every legitimate transfer. `decimal` requires converting with the mint's
+ * decimals before comparing; `raw` compares directly.
  */
-export const esquemaUnidade = z.enum(["bruta", "decimal"]);
-export type UnidadeDeQuantidade = z.infer<typeof esquemaUnidade>;
+export const amountUnitSchema = z.enum(["raw", "decimal"]);
+export type AmountUnit = z.infer<typeof amountUnitSchema>;
 
-/** Decimals por mint, fornecido pelo normalizador. Sem isso, `decimal` nao compara. */
-export type TabelaDeDecimais = ReadonlyMap<string, number>;
+/** Decimals per mint, supplied by the normalizer. Without it, `decimal` cannot compare. */
+export type DecimalsByMint = ReadonlyMap<string, number>;
 
 /**
- * Teto de folga aceito num manifesto. Acima disso deixa de ser slippage.
- * Se uma ferramenta real precisar de mais, a excecao tem que ser explicita.
+ * Maximum slack accepted in a manifest. Above this it stops being slippage.
+ * A tool that legitimately needs more requires an explicit exception.
  */
-export const TOLERANCIA_MAXIMA = 0.1;
+export const MAX_TOLERANCE = 0.1;
 
-/** Um padrao de efeito esperado. Campos ausentes significam "nao restringe". */
-export const esquemaPadraoDeEfeito = z.object({
-  type: esquemaTipoDeEfeito,
-  account: z.union([esquemaArgRef, z.string()]).optional(),
-  mint: z.union([esquemaArgRef, z.string()]).optional(),
-  counterparty: z.union([esquemaArgRef, z.string()]).optional(),
-  maxAmount: z.union([esquemaArgRef, z.bigint()]).optional(),
-  minAmount: z.union([esquemaArgRef, z.bigint()]).optional(),
+/** An expected effect pattern. Absent fields mean "does not constrain". */
+export const effectPatternSchema = z.object({
+  type: effectTypeSchema,
+  account: z.union([argRefSchema, z.string()]).optional(),
+  mint: z.union([argRefSchema, z.string()]).optional(),
+  counterparty: z.union([argRefSchema, z.string()]).optional(),
+  maxAmount: z.union([argRefSchema, z.bigint()]).optional(),
+  minAmount: z.union([argRefSchema, z.bigint()]).optional(),
   /**
-   * Fracao aceita de folga, para slippage e taxa. 0.03 = 3%.
+   * Accepted fraction of slack, for slippage and fees. 0.03 = 3%.
    *
-   * Teto em TOLERANCIA_MAXIMA para pegar `0.3` digitado no lugar de `0.03`.
-   * Folga alta demais e desvio dentro da tolerancia -- ninguem rouba 500,
-   * rouba-se 3% de cada operacao, e a verificacao de magnitude nunca dispara.
-   * O numero e CALIBRACAO, nao consequencia logica: revisar com dados reais.
+   * Capped at MAX_TOLERANCE to catch `0.3` typed in place of `0.03`. Too much
+   * slack means the skim fits inside the tolerance -- nobody steals 500, they
+   * steal 3% of every operation, and the magnitude check never fires. The
+   * number is CALIBRATION, not a logical consequence: revisit with real data.
    */
-  tolerance: z.number().min(0).max(TOLERANCIA_MAXIMA).optional(),
-  /** Obrigatorio quando ha maxAmount/minAmount vindo de arg. */
-  unidade: esquemaUnidade.optional(),
+  tolerance: z.number().min(0).max(MAX_TOLERANCE).optional(),
+  /** Required when maxAmount/minAmount comes from an argument. */
+  unit: amountUnitSchema.optional(),
 });
-export type EffectPattern = z.infer<typeof esquemaPadraoDeEfeito>;
+export type EffectPattern = z.infer<typeof effectPatternSchema>;
 
 /**
- * Que contas a ferramenta pode tocar.
- * Conta tocada fora do escopo e achado de severidade alta.
+ * Which accounts the tool may touch.
+ * An account touched outside the scope is a high-severity finding.
  */
-export const esquemaEscopoDeContas = z.enum([
-  "args_only", // so as contas citadas nos argumentos
-  "args_plus_derived", // tambem PDAs e ATAs derivados delas
-  "open", // sem restricao; usar so quando inevitavel
+export const accountScopeSchema = z.enum([
+  "args_only", // only the accounts named in the arguments
+  "args_plus_derived", // plus PDAs and ATAs derived from them
+  "open", // unrestricted; use only when unavoidable
 ]);
-export type AccountScope = z.infer<typeof esquemaEscopoDeContas>;
+export type AccountScope = z.infer<typeof accountScopeSchema>;
 
-export const esquemaManifesto = z.object({
+export const toolManifestSchema = z.object({
   tool: z.string().min(1),
-  /** Versao do manifesto. Entra no policyVersion de cada veredito. */
+  /** Manifest version. Feeds the policyVersion of every verdict. */
   version: z.string().min(1),
 
-  /** Os argumentos que esta ferramenta tem. Toda ArgRef precisa apontar para um deles. */
-  args: z.record(z.string(), esquemaTipoDeArgumento),
+  /** The arguments this tool has. Every ArgRef must point at one of them. */
+  args: z.record(z.string(), argTypeSchema),
 
-  must: z.array(esquemaPadraoDeEfeito), // tem que acontecer
-  may: z.array(esquemaPadraoDeEfeito), // pode acontecer
-  mustNot: z.array(esquemaTipoDeEfeito), // presenca = violacao imediata
+  must: z.array(effectPatternSchema), // has to happen
+  may: z.array(effectPatternSchema), // may happen
+  mustNot: z.array(effectTypeSchema), // presence = immediate violation
 
-  accountScope: esquemaEscopoDeContas,
+  accountScope: accountScopeSchema,
   programAllowlist: z.array(z.string()).optional(),
 });
-export type ToolManifest = z.infer<typeof esquemaManifesto>;
+export type ToolManifest = z.infer<typeof toolManifestSchema>;
 
-/** Problema estrutural encontrado num manifesto, antes de qualquer avaliacao. */
-export interface ProblemaDeManifesto {
-  readonly campo: string;
-  readonly motivo: string;
+/** A structural problem found in a manifest, before any evaluation. */
+export interface ManifestProblem {
+  readonly field: string;
+  readonly reason: string;
 }
 
-function referenciasDoPadrao(padrao: EffectPattern): { campo: string; ref: ArgRef }[] {
-  const achadas: { campo: string; ref: ArgRef }[] = [];
-  const candidatos: [string, unknown][] = [
-    ["account", padrao.account],
-    ["mint", padrao.mint],
-    ["counterparty", padrao.counterparty],
-    ["maxAmount", padrao.maxAmount],
-    ["minAmount", padrao.minAmount],
+function patternReferences(
+  pattern: EffectPattern,
+): { field: string; ref: ArgRef }[] {
+  const found: { field: string; ref: ArgRef }[] = [];
+  const candidates: [string, unknown][] = [
+    ["account", pattern.account],
+    ["mint", pattern.mint],
+    ["counterparty", pattern.counterparty],
+    ["maxAmount", pattern.maxAmount],
+    ["minAmount", pattern.minAmount],
   ];
-  for (const [campo, valor] of candidatos) {
-    if (ehArgRef(valor)) achadas.push({ campo, ref: valor });
+  for (const [field, value] of candidates) {
+    if (isArgRef(value)) found.push({ field, ref: value });
   }
-  return achadas;
+  return found;
 }
 
-const TIPO_ESPERADO: Readonly<Record<string, TipoDeArgumento>> = {
-  account: "endereco",
-  counterparty: "endereco",
+const EXPECTED_ARG_TYPE: Readonly<Record<string, ArgType>> = {
+  account: "address",
+  counterparty: "address",
   mint: "mint",
-  maxAmount: "quantidade",
-  minAmount: "quantidade",
+  maxAmount: "amount",
+  minAmount: "amount",
 };
 
 /**
- * Confere a coerencia interna do manifesto ANTES de usa-lo.
+ * Checks a manifest's internal coherence BEFORE using it.
  *
- * Erro de digitacao em `arg:form` tem que estourar ao carregar o manifesto,
- * nao seis meses depois, no meio de um ataque, como uma comparacao que
- * silenciosamente nao casa com nada.
+ * A typo in `arg:form` has to blow up when the manifest loads, not months
+ * later, in the middle of an attack, as a comparison that silently matches
+ * nothing.
  */
-export function validarReferencias(manifesto: ToolManifest): readonly ProblemaDeManifesto[] {
-  const problemas: ProblemaDeManifesto[] = [];
-  const declarados = manifesto.args;
+export function validateReferences(
+  manifest: ToolManifest,
+): readonly ManifestProblem[] {
+  const problems: ManifestProblem[] = [];
+  const declared = manifest.args;
 
-  const conferir = (lista: readonly EffectPattern[], origem: string): void => {
-    lista.forEach((padrao, i) => {
-      for (const { campo, ref } of referenciasDoPadrao(padrao)) {
-        const nome = ref.slice("arg:".length);
-        const tipo = declarados[nome];
-        const onde = `${origem}[${i}].${campo}`;
-        if (tipo === undefined) {
-          problemas.push({ campo: onde, motivo: `"${ref}" nao consta em args` });
+  const check = (patterns: readonly EffectPattern[], origin: string): void => {
+    patterns.forEach((pattern, i) => {
+      for (const { field, ref } of patternReferences(pattern)) {
+        const name = ref.slice("arg:".length);
+        const declaredType = declared[name];
+        const where = `${origin}[${i}].${field}`;
+        if (declaredType === undefined) {
+          problems.push({
+            field: where,
+            reason: `"${ref}" is not declared in args`,
+          });
           continue;
         }
-        const esperado = TIPO_ESPERADO[campo];
-        if (esperado !== undefined && tipo !== esperado) {
-          problemas.push({ campo: onde, motivo: `"${ref}" e ${tipo}, mas ${campo} exige ${esperado}` });
+        const expected = EXPECTED_ARG_TYPE[field];
+        if (expected !== undefined && declaredType !== expected) {
+          problems.push({
+            field: where,
+            reason: `"${ref}" is ${declaredType}, but ${field} requires ${expected}`,
+          });
         }
       }
-      // Quantidade vinda de argumento sem unidade declarada compararia
-      // 10 (USDC) com 10000000n (bruto) -- falso positivo garantido.
-      const temQuantidadePorRef = ehArgRef(padrao.maxAmount) || ehArgRef(padrao.minAmount);
-      if (temQuantidadePorRef && padrao.unidade === undefined) {
-        problemas.push({
-          campo: `${origem}[${i}].unidade`,
-          motivo: "quantidade vem de argumento mas a unidade nao foi declarada",
+      // An amount coming from an argument with no declared unit would compare
+      // 10 (USDC) against 10000000n (raw) -- a guaranteed false positive.
+      const amountFromRef =
+        isArgRef(pattern.maxAmount) || isArgRef(pattern.minAmount);
+      if (amountFromRef && pattern.unit === undefined) {
+        problems.push({
+          field: `${origin}[${i}].unit`,
+          reason: "amount comes from an argument but no unit was declared",
         });
       }
     });
   };
 
-  conferir(manifesto.must, "must");
-  conferir(manifesto.may, "may");
+  check(manifest.must, "must");
+  check(manifest.may, "may");
 
-  // Um efeito nao pode ser obrigatorio e proibido ao mesmo tempo.
-  const proibidos = new Set<EffectType>(manifesto.mustNot);
-  manifesto.must.forEach((padrao, i) => {
-    if (proibidos.has(padrao.type)) {
-      problemas.push({ campo: `must[${i}].type`, motivo: `${padrao.type} tambem esta em mustNot` });
+  // An effect cannot be mandatory and forbidden at the same time.
+  const forbidden = new Set<EffectType>(manifest.mustNot);
+  manifest.must.forEach((pattern, i) => {
+    if (forbidden.has(pattern.type)) {
+      problems.push({
+        field: `must[${i}].type`,
+        reason: `${pattern.type} is also in mustNot`,
+      });
     }
   });
 
-  return problemas;
+  return problems;
 }

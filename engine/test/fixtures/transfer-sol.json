@@ -1,0 +1,58 @@
+{
+  "name": "transfer-sol",
+  "description": "SOL transfer that creates the destination account (rent-exempt)",
+  "network": "devnet",
+  "recordedAt": "2026-09-24T12:47:12.832Z",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "txBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQABAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEqE6Sn3Q2HDHxkBnyenBDlUFxlKEEV/i/k1k5n7xLtkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHiUbQ801r7fuMJ8eLmxWAaLdZiecEb63U7ao3sIzkvDAQICAAEMAgAAAEBCDwAAAAAAAA==",
+  "before": {
+    "slot": 503473865,
+    "addresses": [
+      "11111111111111111111111111111112",
+      "2Fivtg8H328BQp3v4iBk9R49SBbT6aJQfkZcShJJz5mz"
+    ],
+    "accounts": [
+      {
+        "address": "11111111111111111111111111111112",
+        "lamports": "382315590904",
+        "lamportsExact": true,
+        "owner": "11111111111111111111111111111111",
+        "executable": false,
+        "dataBase64": ""
+      },
+      null
+    ]
+  },
+  "simulation": {
+    "slot": 503473865,
+    "error": null,
+    "unitsConsumed": 150,
+    "logs": [
+      "Program 11111111111111111111111111111111 invoke [1]",
+      "Program 11111111111111111111111111111111 success"
+    ],
+    "requestedAccounts": [
+      "11111111111111111111111111111112",
+      "2Fivtg8H328BQp3v4iBk9R49SBbT6aJQfkZcShJJz5mz"
+    ],
+    "accounts": [
+      {
+        "address": "11111111111111111111111111111112",
+        "lamports": "382314585904",
+        "lamportsExact": true,
+        "owner": "11111111111111111111111111111111",
+        "executable": false,
+        "dataBase64": ""
+      },
+      {
+        "address": "2Fivtg8H328BQp3v4iBk9R49SBbT6aJQfkZcShJJz5mz",
+        "lamports": "1000000",
+        "lamportsExact": true,
+        "owner": "11111111111111111111111111111111",
+        "executable": false,
+        "dataBase64": ""
+      }
+    ]
+  },
+  "lookupTables": []
+}
