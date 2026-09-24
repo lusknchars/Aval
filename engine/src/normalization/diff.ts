@@ -93,12 +93,21 @@ function tokenEffects(
 ): readonly Effect[] {
   const effects: Effect[] = [];
 
-  const balance = balanceEffect(
-    address,
-    after.mint,
-    after.amount - before.amount,
-  );
-  if (balance !== null) effects.push(balance);
+  const delta = after.amount - before.amount;
+  const balance = balanceEffect(address, after.mint, delta);
+  if (balance !== null) {
+    // A token account address is derived, so it appears in no prompt and on
+    // no page -- but the wallet behind it does. Naming the owner as the
+    // counterparty is what lets provenance answer the question that actually
+    // matters: who ends up holding the tokens.
+    //
+    // Without this, a legitimate transfer to a wallet the user named would be
+    // flagged as an unexplained address, and the real recipient would never
+    // be checked at all.
+    effects.push(
+      delta > 0n ? { ...balance, counterparty: after.owner } : balance,
+    );
+  }
 
   // Who controls the tokens changed: a SetAuthority(AccountOwner), which is
   // the quietest way to lose an account without any balance moving.
@@ -197,6 +206,9 @@ function creationEffects(
         account: address,
         mint: token.mint,
         amount: token.amount,
+        // Same reasoning: the wallet behind the account is the party
+        // receiving value, and the one a human would recognise.
+        counterparty: token.owner,
       });
     }
     // A brand new account already carrying a delegate: the grant happened in

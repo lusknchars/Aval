@@ -90,30 +90,119 @@ export const actionContextSchema = z.object({
 export type ActionContext = z.infer<typeof actionContextSchema>;
 
 /**
+ * Whether a configured pattern matches a source.
+ *
+ * Substring matching used to be the rule here, and it was the single most
+ * dangerous line in the system: a customer who configured `jup` would be
+ * trusting `evil-jup-clone.xyz`, and would have no way of knowing. Worse, the
+ * failure is silent -- an over-broad pattern does not raise an error, it just
+ * quietly stops the provenance check from ever firing.
+ *
+ * Two shapes are allowed, and nothing else:
+ *
+ *   - a hostname, matched on label boundaries, so `jup.ag` covers
+ *     `quote-api.jup.ag` and never `jup.ag.attacker.com`;
+ *   - an exact identifier for a tool name or memory key, matched whole.
+ */
+export function sourceMatches(source: string, pattern: string): boolean {
+  if (pattern.includes(".")) {
+    const host = hostnameOf(source);
+    if (host === null) return false;
+    return host === pattern || host.endsWith(`.${pattern}`);
+  }
+  return source === pattern;
+}
+
+function hostnameOf(source: string): string | null {
+  try {
+    return new URL(source).hostname.toLowerCase();
+  } catch {
+    // Not a URL: a bare hostname is still usable, anything else is not.
+    return /^[a-z0-9.-]+$/i.test(source) ? source.toLowerCase() : null;
+  }
+}
+
+/**
  * Trust level of a source, defaulting to `untrusted` for anything not
  * configured. First matching pattern wins, so list order matters.
- *
- * KNOWN LIMITATION: matching is by substring. An attacker controlling
- * "https://malicious.xyz/?ref=quote-api.jup.ag" would be treated as `trusted`
- * if that pattern is configured. Harden to hostname comparison (with domain
- * suffix) when the provenance detector is built -- until then, customer
- * configuration must use specific patterns.
  */
 export function sourceTrustLevel(
   source: string | undefined,
   configured: readonly SourceTrust[],
 ): TrustLevel {
   if (source === undefined) return "untrusted";
-  const matched = configured.find((c) => source.includes(c.pattern));
+  const matched = configured.find((c) => sourceMatches(source, c.pattern));
   return matched?.level ?? "untrusted";
 }
 
+export interface ConfigProblem {
+  readonly pattern: string;
+  readonly reason: string;
+}
+
 /**
- * Whether a chunk can be used to explain where an address came from.
+ * Rejects configuration that would silently disable the provenance check.
  *
- * `user` and `system` are trusted by construction. The other three only count
- * when the source was explicitly marked `trusted` by the customer.
+ * This runs at onboarding, not at decision time. A customer mistake here is
+ * the only kind that switches off a whole detector without producing a single
+ * alert, so it has to fail loudly when it is written, not quietly forever
+ * after.
  */
+export function validateSourceTrust(
+  configured: readonly SourceTrust[],
+): readonly ConfigProblem[] {
+  const problems: ConfigProblem[] = [];
+  for (const entry of configured) {
+    const pattern = entry.pattern.trim();
+    if (pattern !== entry.pattern) {
+      problems.push({
+        pattern: entry.pattern,
+        reason: "has leading or trailing whitespace",
+      });
+    }
+    if (pattern.length < 3) {
+      problems.push({ pattern, reason: "too short to identify a source" });
+      continue;
+    }
+    if (pattern.includes("://") || pattern.includes("/")) {
+      problems.push({
+        pattern,
+        reason: "use a hostname, not a URL: paths and schemes are not matched",
+      });
+      continue;
+    }
+    if (!pattern.includes(".")) {
+      // Allowed, but only as an exact identifier, and worth saying out loud.
+      if (!/^[A-Za-z0-9_:-]+$/.test(pattern)) {
+        problems.push({
+          pattern,
+          reason: "not a hostname and not a valid identifier",
+        });
+      }
+      continue;
+    }
+    const labels = pattern.split(".");
+    if (labels.length < 2 || labels.some((label) => label === "")) {
+      problems.push({ pattern, reason: "not a valid hostname" });
+      continue;
+    }
+    const tld = labels[labels.length - 1] ?? "";
+    if (tld.length < 2) {
+      problems.push({
+        pattern,
+        reason: "hostname has no usable top-level domain",
+      });
+    }
+    if (labels.length === 1) {
+      problems.push({
+        pattern,
+        reason: "a bare label would trust every domain under it",
+      });
+    }
+  }
+  return problems;
+}
+
 export function chunkIsTrusted(
   chunk: ContextChunk,
   configured: readonly SourceTrust[],

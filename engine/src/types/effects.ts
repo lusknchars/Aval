@@ -193,7 +193,12 @@ export function counterparties(set: EffectSet): readonly string[] {
 
   for (const e of set.effects) {
     if (e.counterparty !== undefined) seen.add(e.counterparty);
-    if (e.type === "BALANCE_INCREASE") gained.add(e.account);
+    // An account that names a counterparty is the vessel, not the party. A
+    // token account is derived from its owner's address, so reporting both
+    // would ask the context to explain an address no human ever types -- and
+    // would deny a transfer to a wallet the user named by its real name.
+    if (e.type === "BALANCE_INCREASE" && e.counterparty === undefined)
+      gained.add(e.account);
     if (e.type === "BALANCE_DECREASE") spent.add(e.account);
   }
   for (const account of gained) {

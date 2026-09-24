@@ -29,6 +29,7 @@ import type { Finding, Severity } from "../types/verdict.js";
  * not silence.
  */
 export type Origin =
+  | "own_account" // the agent receiving its own funds back
   | "user_goal" // the human named it
   | "allowlist" // the customer approved it in advance
   | "trusted_source" // came from a source the customer marked trusted
@@ -37,6 +38,7 @@ export type Origin =
   | "unexplained"; // appears nowhere
 
 const SEVERITY_BY_ORIGIN: Readonly<Record<Origin, Severity | null>> = {
+  own_account: null,
   user_goal: null,
   allowlist: null,
   trusted_source: "low",
@@ -51,12 +53,23 @@ export interface ProvenanceConfig {
   readonly allowlist: readonly string[];
   /** Addresses this agent has transacted with before. Empty until history exists. */
   readonly knownCounterparties: readonly string[];
+  /**
+   * The agent's own addresses: its wallet, and any account it controls.
+   *
+   * Value arriving at one of these is the agent receiving its own funds --
+   * the output side of a swap, change coming back, a token account it owns.
+   * Treating that as a counterparty would raise a critical finding on every
+   * legitimate swap, since the agent's own derived accounts appear in no
+   * prompt and on no page.
+   */
+  readonly ownAccounts: readonly string[];
 }
 
 export const EMPTY_PROVENANCE_CONFIG: ProvenanceConfig = {
   trustedSources: [],
   allowlist: [],
   knownCounterparties: [],
+  ownAccounts: [],
 };
 
 /**
@@ -147,6 +160,15 @@ export function classifyAddress(
     .map((i) => context.contextChunks[i]?.source)
     .filter((source): source is string => source !== undefined);
 
+  // Money coming back to the agent is not money leaving.
+  if (config.ownAccounts.includes(address)) {
+    return {
+      address,
+      origin: "own_account",
+      foundInChunks: chunkIndexes,
+      sources,
+    };
+  }
   if (addressAppearsIn(context.userGoal, address)) {
     return {
       address,

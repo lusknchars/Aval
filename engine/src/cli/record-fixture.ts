@@ -25,6 +25,7 @@ import {
   createApproveInstruction,
   createAssociatedTokenAccountInstruction,
   createCloseAccountInstruction,
+  createSyncNativeInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { recordAccount, type Fixture } from "../normalization/fixture.js";
@@ -148,6 +149,41 @@ const SCENARIOS: readonly Scenario[] = [
           ),
         ],
         observe: [FEE_PAYER.toBase58(), ata.toBase58()],
+      };
+    },
+  },
+  {
+    name: "token-to-wallet",
+    description:
+      "wraps SOL into an ATA owned by someone else: the recipient is a wallet, not the derived account",
+    build: () => {
+      const recipient = Keypair.generate().publicKey;
+      const ata = getAssociatedTokenAddressSync(
+        NATIVE_MINT,
+        recipient,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+      );
+      return {
+        instructions: [
+          createAssociatedTokenAccountInstruction(
+            FEE_PAYER,
+            ata,
+            recipient,
+            NATIVE_MINT,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID,
+          ),
+          SystemProgram.transfer({
+            fromPubkey: FEE_PAYER,
+            toPubkey: ata,
+            lamports: 2_000_000n,
+          }),
+          // Makes the token balance reflect the lamports that just arrived.
+          createSyncNativeInstruction(ata, TOKEN_PROGRAM_ID),
+        ],
+        observe: [FEE_PAYER.toBase58(), ata.toBase58(), recipient.toBase58()],
       };
     },
   },

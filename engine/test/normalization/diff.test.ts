@@ -245,3 +245,22 @@ describe("a closed account", () => {
     expect(ofType(effects, "BALANCE_DECREASE")[0]?.amount).toBe(2_039_280n);
   });
 });
+
+describe("who actually receives the tokens", () => {
+  it("names the wallet behind a token account, not the derived address", async () => {
+    // A token account address is derived, so it appears in no prompt and on
+    // no page. The wallet behind it is the one a human would recognise, and
+    // the one provenance has to be asked about.
+    const effects = await effectsOf("token-to-wallet");
+    const fixture = open("token-to-wallet");
+    const ata = fixture.before.addresses[1];
+    const wallet = fixture.before.addresses[2];
+
+    const increase = ofType(effects, "BALANCE_INCREASE").find(
+      (e) => e.account === ata,
+    );
+    expect(increase).toBeDefined();
+    expect(increase?.counterparty).toBe(wallet);
+    expect(increase?.mint).toBe("So11111111111111111111111111111111111111112");
+  });
+});

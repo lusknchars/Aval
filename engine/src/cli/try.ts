@@ -30,6 +30,7 @@ import type { Verdict } from "../types/verdict.js";
 const SCENARIOS = [
   "unlimited-approve",
   "transfer-sol",
+  "token-to-wallet",
   "create-ata",
   "close-account",
   "rent-failure",

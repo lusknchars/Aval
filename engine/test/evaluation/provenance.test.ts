@@ -244,3 +244,32 @@ describe("truncated forms people actually paste", () => {
     ).toBe(false);
   });
 });
+
+describe("the agent's own accounts", () => {
+  it("does not treat the agent receiving its own funds as a counterparty", () => {
+    // The output side of a swap lands in an account the agent owns, derived
+    // rather than typed, so it appears in no prompt and on no page. Flagging
+    // it would raise a critical finding on every legitimate swap.
+    const config: ProvenanceConfig = {
+      ...EMPTY_PROVENANCE_CONFIG,
+      ownAccounts: [BOB],
+    };
+    const verdict = classifyAddress(
+      BOB,
+      contextWith("swap USDC for SOL", []),
+      config,
+    );
+    expect(verdict.origin).toBe("own_account");
+  });
+
+  it("still flags an address that is not the agent's, in the same transaction", () => {
+    const config: ProvenanceConfig = {
+      ...EMPTY_PROVENANCE_CONFIG,
+      ownAccounts: [BOB],
+    };
+    expect(
+      classifyAddress(ATTACKER, contextWith("swap USDC for SOL", []), config)
+        .origin,
+    ).toBe("unexplained");
+  });
+});

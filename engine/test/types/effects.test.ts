@@ -178,3 +178,57 @@ describe("EffectSet", () => {
     expect(describeOutcome(unavailable)).toBe("could not simulate");
   });
 });
+
+describe("the vessel and the party", () => {
+  it("counts the counterparty rather than the account that holds the tokens", () => {
+    // Reporting both would ask the captured context to explain a derived
+    // address no human ever types, and would deny a transfer to a wallet the
+    // user named by its real name.
+    const withOwner: EffectSet = {
+      effects: [
+        {
+          type: "BALANCE_INCREASE",
+          account: "DerivedAta",
+          mint: "USDC",
+          amount: 10n,
+          counterparty: "BobWallet",
+        },
+      ],
+      slot: 1,
+      baselineSlot: 1,
+      fee: null,
+      simulation: { status: "executed", unitsConsumed: 1 },
+      coverage: {
+        referenced: [],
+        observed: [],
+        unobserved: [],
+        blindSpots: [],
+      },
+    };
+    expect(counterparties(withOwner)).toEqual(["BobWallet"]);
+  });
+
+  it("still counts a plain account that gains value and names nobody", () => {
+    const plain: EffectSet = {
+      effects: [
+        {
+          type: "BALANCE_INCREASE",
+          account: "Wallet",
+          mint: "SOL",
+          amount: 10n,
+        },
+      ],
+      slot: 1,
+      baselineSlot: 1,
+      fee: null,
+      simulation: { status: "executed", unitsConsumed: 1 },
+      coverage: {
+        referenced: [],
+        observed: [],
+        unobserved: [],
+        blindSpots: [],
+      },
+    };
+    expect(counterparties(plain)).toEqual(["Wallet"]);
+  });
+});
