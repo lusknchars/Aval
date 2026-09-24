@@ -126,6 +126,38 @@ Implementation gaps per block live in `pending.md`.
     findings are recorded in `README.md` and here; the git history keeps the
     code.
 
+## Product and policy decisions (settled with the project owner)
+
+40. **Degradation is fail-open with a loud alert.** When VETO cannot evaluate —
+    RPC down, rate limited, timeout — the transaction is allowed, a critical
+    `coverage` finding is recorded and the customer is alerted immediately.
+    Fail-closed would turn an outage of ours into an outage of the customer's
+    operation, which is a denial of service caused by the defence itself.
+    Configurable per customer; this is the default.
+41. **Timeouts: 1.5s per RPC call, 3s total**, after which the outcome degrades
+    to `unavailable`. Provisional until 2.7 measures the real distribution.
+42. **Only writable accounts are requested for post-state.** A readonly account
+    cannot change state, so it needs no post-state. This cuts a DeFi
+    transaction from ~256 referenced accounts to a few dozen. Caveat recorded:
+    the message's writable flag can be demoted by the runtime, so it is treated
+    as an upper bound, never a lower one.
+43. **Nothing is filtered as noise.** Every state change becomes an effect;
+    fees, rent and duplicated wrapped SOL get explicit attribution instead of
+    being dropped by size. A size filter is exactly the blind spot salami
+    slicing exploits.
+44. **`policyVersion` is a hash of the effective policy bundle** with a readable
+    prefix (`p1-a3f9c2`): manifests, thresholds and customer configuration. It
+    changes on its own when any part changes — nobody has to remember to bump a
+    number, which is where manual versioning always breaks.
+45. **Tolerance above the cap requires `toleranceOverride: { value, reason }`.**
+    The normal path stays capped at 10%; exceeding it requires writing down why,
+    and the reason is versioned with the manifest and visible in review.
+46. **The CLI stays on `tsx`.** No `bin` entry, no build step, until somebody
+    outside the project wants to install it.
+47. **Only `veto-construcao.md` gets translated** of the three specification
+    documents. It is the architecture one, the one a technical reviewer would
+    open. The other two stay in Portuguese.
+
 ---
 
 ## Open attention points — no defence implemented
