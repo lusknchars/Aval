@@ -173,11 +173,31 @@ export function effectsOfType(
   return set.effects.filter((e) => e.type === type);
 }
 
-/** Who receives value or authority. This is the input of the provenance check. */
+/**
+ * Who receives value or authority. This is the input of the provenance check.
+ *
+ * Two kinds of recipient, and missing the second one would leave the most
+ * common attack unchecked:
+ *
+ * 1. Whoever a DELEGATE_GRANT, OWNER_CHANGE or AUTHORITY_CHANGE names.
+ * 2. Whoever ends up with more value than they started with.
+ *
+ * An account that both gains and loses is the transaction moving value
+ * through itself -- a fee payer, or a wrapped SOL account in a swap -- not a
+ * party receiving anything. Those are left out.
+ */
 export function counterparties(set: EffectSet): readonly string[] {
   const seen = new Set<string>();
+  const gained = new Set<string>();
+  const spent = new Set<string>();
+
   for (const e of set.effects) {
     if (e.counterparty !== undefined) seen.add(e.counterparty);
+    if (e.type === "BALANCE_INCREASE") gained.add(e.account);
+    if (e.type === "BALANCE_DECREASE") spent.add(e.account);
+  }
+  for (const account of gained) {
+    if (!spent.has(account)) seen.add(account);
   }
   return [...seen];
 }

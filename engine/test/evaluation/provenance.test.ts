@@ -216,3 +216,31 @@ describe("the attack scenario, end to end", () => {
     expect(provenanceFindings(set, context)).toEqual([]);
   });
 });
+
+describe("truncated forms people actually paste", () => {
+  it("matches head-only truncation when enough of the address is there", () => {
+    // Logs and hand-written notes drop the tail. Eight base58 characters is
+    // about 47 bits, so a match is the address rather than a coincidence.
+    expect(
+      addressAppearsIn(
+        `approve ${ATTACKER.slice(0, 8)}... for spending`,
+        ATTACKER,
+      ),
+    ).toBe(true);
+    expect(
+      addressAppearsIn(`approve ${ATTACKER.slice(0, 10)}…`, ATTACKER),
+    ).toBe(true);
+  });
+
+  it("refuses a head too short to identify anything", () => {
+    // Four characters would collide with a great many addresses, and a false
+    // "the user mentioned it" is the worst possible error here: it would turn
+    // an attacker's address into a legitimate one.
+    expect(
+      addressAppearsIn(`approve ${ATTACKER.slice(0, 4)}...`, ATTACKER),
+    ).toBe(false);
+    expect(
+      addressAppearsIn(`approve ${ATTACKER.slice(0, 6)}...`, ATTACKER),
+    ).toBe(false);
+  });
+});

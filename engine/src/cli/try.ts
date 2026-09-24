@@ -179,9 +179,13 @@ async function main(): Promise<number> {
     `\ntransaction: ${chosen}  (recorded on devnet, ${set.effects.length} effects)`,
   );
   if (counterparty !== null) {
-    console.log(`its counterparty is ${counterparty}`);
+    console.log("\nits counterparty is:\n");
+    console.log(`  ${counterparty}\n`);
     console.log(
-      "paste that address into the second answer to see what happens.",
+      "copy that whole line into the second answer to see the attack,",
+    );
+    console.log(
+      "or into the first one to see what changes when the user asked for it.",
     );
   }
   console.log("empty input at the first question exits.\n");

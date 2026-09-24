@@ -112,7 +112,22 @@ describe("EffectSet", () => {
   };
 
   it("derives counterparties without duplicates, to feed the provenance check", () => {
-    expect(counterparties(set)).toEqual(["PoolAcc", "7xKX"]);
+    // PoolAcc and 7xKX are named by effects. SolAcc is there because it ends
+    // up with more value than it started with, which is what a recipient is.
+    expect(counterparties(set)).toEqual(["PoolAcc", "7xKX", "SolAcc"]);
+  });
+
+  it("leaves out an account that both gains and loses", () => {
+    // Value moving through an account -- a fee payer, or a wrapped SOL
+    // account inside a swap -- is not a party receiving anything.
+    const throughput: EffectSet = {
+      ...set,
+      effects: [
+        { type: "BALANCE_INCREASE", account: "Wsol", mint: "SOL", amount: 10n },
+        { type: "BALANCE_DECREASE", account: "Wsol", mint: "SOL", amount: 10n },
+      ],
+    };
+    expect(counterparties(throughput)).toEqual([]);
   });
 
   it("derives invoked programs", () => {

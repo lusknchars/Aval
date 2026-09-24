@@ -59,9 +59,12 @@ export const EMPTY_PROVENANCE_CONFIG: ProvenanceConfig = {
   knownCounterparties: [],
 };
 
-function escapeForRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+/**
+ * How much of an address has to be present for a head-only truncation to
+ * count. Eight base58 characters is about 47 bits: enough that the match is
+ * the address, not a collision.
+ */
+const PREFIX_ONLY_LENGTH = 8;
 
 /**
  * Whether an address appears in a piece of text.
@@ -80,9 +83,31 @@ function escapeForRegex(text: string): string {
 export function addressAppearsIn(text: string, address: string): boolean {
   if (text.includes(address)) return true;
   if (address.length < 12) return false;
-  const prefix = escapeForRegex(address.slice(0, 4));
-  const suffix = escapeForRegex(address.slice(-4));
-  return new RegExp(`${prefix}(?:\\.{2,3}|…|\\*{2,})${suffix}`).test(text);
+
+  // Walk forward from each place the address starts, see how much of it
+  // actually continues, and then decide. A regex cannot do this cleanly
+  // because the truncation point varies: wallets cut at four characters,
+  // logs at ten, people at wherever they stopped copying.
+  const head = address.slice(0, 4);
+  const tail = address.slice(-4);
+  for (let from = 0; ;) {
+    const at = text.indexOf(head, from);
+    if (at === -1) return false;
+    from = at + 1;
+
+    let matched = 0;
+    while (matched < address.length && text[at + matched] === address[matched])
+      matched++;
+
+    const rest = text.slice(at + matched);
+    const cut = /^(?:\.{2,3}|…|\*{2,})(.*)$/.exec(rest);
+    if (cut === null) continue;
+
+    // Enough of the head to identify the address on its own.
+    if (matched >= PREFIX_ONLY_LENGTH) return true;
+    // Or the shorter form wallets display, where the tail follows the cut.
+    if (cut[1]?.startsWith(tail) === true) return true;
+  }
 }
 
 /** Every chunk the address shows up in, by index, so the finding can name them. */

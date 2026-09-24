@@ -249,9 +249,10 @@ describe("the injection scenario, end to end", () => {
     const effects = await normalize(rpc.transaction(), rpc);
     const [from = "", to = ""] = loaded.value.before.addresses;
 
-    const context = contextWith("send some SOL to my other wallet", [
-      { text: "send some SOL to my other wallet", provenance: "user" },
-    ]);
+    // The user names the destination, which is what a legitimate transfer
+    // looks like: the human knows where the money is going.
+    const goal = `send some SOL to my other wallet ${to}`;
+    const context = contextWith(goal, [{ text: goal, provenance: "user" }]);
     const verdict = evaluate({
       effects,
       context: {
@@ -278,11 +279,11 @@ describe("the injection scenario, end to end", () => {
     const rpc = new FixtureRpcClient(loaded.value);
     const effects = await normalize(rpc.transaction(), rpc);
 
+    const [, to = ""] = loaded.value.before.addresses;
+    const goal = `send some SOL to my other wallet ${to}`;
     const verdict = evaluate({
       effects,
-      context: contextWith("send some SOL to my other wallet", [
-        { text: "send some SOL to my other wallet", provenance: "user" },
-      ]),
+      context: contextWith(goal, [{ text: goal, provenance: "user" }]),
     });
 
     // Degrade, never open: with no manifest, checks A and B did not run, and
