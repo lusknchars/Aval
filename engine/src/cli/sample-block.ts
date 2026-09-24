@@ -15,6 +15,7 @@
  */
 import { VersionedTransaction, type VersionedMessage } from "@solana/web3.js";
 import { z } from "zod";
+import { counterparties } from "../types/effects.js";
 import { normalize } from "../normalization/normalize.js";
 import {
   createRpcClient,
@@ -156,6 +157,13 @@ async function main(): Promise<number> {
   };
   const effectCounts = new Map<string, number>();
   const notable: string[] = [];
+  /**
+   * How many addresses the provenance check would have to explain per
+   * transaction. This is the false-positive surface: every counterparty a
+   * legitimate flow produces is an address the customer's captured context
+   * has to account for, or the check fires on honest work.
+   */
+  const counterpartyCounts: number[] = [];
 
   for (let b = 0; b < args.blocks; b++) {
     const slot = firstSlot - b * 2;
@@ -217,6 +225,10 @@ async function main(): Promise<number> {
       if (entry.tx.message.addressTableLookups.length > 0) tally.withLookups++;
       if (set.slot !== null && set.slot === set.baselineSlot) tally.aligned++;
 
+      if (set.simulation.status === "executed") {
+        counterpartyCounts.push(counterparties(set).length);
+      }
+
       for (const effect of set.effects) {
         effectCounts.set(effect.type, (effectCounts.get(effect.type) ?? 0) + 1);
         if (NOTABLE.has(effect.type)) {
@@ -246,6 +258,20 @@ async function main(): Promise<number> {
   if (effectCounts.size === 0) console.log("  none");
   for (const [type, n] of [...effectCounts].sort((a, b) => b[1] - a[1])) {
     console.log(`  ${type.padEnd(18)} ${n}`);
+  }
+
+  if (counterpartyCounts.length > 0) {
+    const sorted = [...counterpartyCounts].sort((a, b) => a - b);
+    const at = (fraction: number): number =>
+      sorted[
+        Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))
+      ] ?? 0;
+    const none = sorted.filter((n) => n === 0).length;
+    console.log(
+      `\ncounterparties per executed transaction` +
+        `\n  median ${at(0.5)} · p90 ${at(0.9)} · max ${sorted[sorted.length - 1] ?? 0}` +
+        `\n  with none at all: ${none} of ${sorted.length}`,
+    );
   }
 
   console.log(`\nsecurity-relevant effects: ${notable.length}`);

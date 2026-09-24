@@ -51,6 +51,7 @@ function failingAt(
         : base.simulate(tx, options),
     readLookupTables: async (addresses): Promise<RpcResult<LookupTableRead>> =>
       base.readLookupTables(addresses),
+    feeFor: async (): Promise<RpcResult<bigint | null>> => base.feeFor(),
     identifyNetwork: async (): Promise<RpcResult<string>> =>
       base.identifyNetwork(),
   };

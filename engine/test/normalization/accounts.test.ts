@@ -65,6 +65,10 @@ function lookupOnlyRpc(read: RpcResult<LookupTableRead>): RpcClient {
       failure: { step: "simulate", message: "not used in this test" },
     }),
     readLookupTables: async (): Promise<RpcResult<LookupTableRead>> => read,
+    feeFor: async (): Promise<RpcResult<bigint | null>> => ({
+      ok: true,
+      value: null,
+    }),
     identifyNetwork: async (): Promise<RpcResult<string>> => ({
       ok: true,
       value: "test",

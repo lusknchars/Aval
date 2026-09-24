@@ -190,6 +190,12 @@ export class FixtureRpcClient implements RpcClient {
     return readTransaction(this.#fixture);
   }
 
+  async feeFor(): Promise<RpcResult<bigint | null>> {
+    // Fixtures do not record a fee, so the recorded balance change still
+    // includes it. Stated rather than guessed at.
+    return { ok: true, value: null };
+  }
+
   async identifyNetwork(): Promise<RpcResult<string>> {
     return { ok: true, value: this.#fixture.genesis };
   }

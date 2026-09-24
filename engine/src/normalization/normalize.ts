@@ -91,7 +91,7 @@ export async function normalize(
   rpc: RpcClient,
   options: NormalizeOptions = {},
 ): Promise<EffectSet> {
-  const fee = options.fee ?? null;
+  const declaredFee = options.fee ?? null;
 
   // 1. Which accounts does this transaction touch?
   const resolved = await resolveAccounts(tx.message, rpc);
@@ -116,6 +116,7 @@ export async function normalize(
   // an observed account in between would be attributed to this transaction.
   // A few attempts usually land on the same slot; when they do not, the gap is
   // reported instead of hidden.
+  let fee: bigint | null = declaredFee;
   let before: Awaited<ReturnType<RpcClient["readAccounts"]>> | null = null;
   let simulated: Awaited<ReturnType<RpcClient["simulate"]>> | null = null;
 
@@ -124,7 +125,7 @@ export async function normalize(
     options.alignmentAttempts ?? DEFAULT_ALIGNMENT_ATTEMPTS,
   );
   for (let attempt = 0; attempt < attempts; attempt++) {
-    const [read, run] = await Promise.all([
+    const [read, run, charged] = await Promise.all([
       rpc.readAccounts(toObserve),
       rpc.simulate(tx, {
         accounts: toObserve,
@@ -133,9 +134,16 @@ export async function normalize(
           ? {}
           : { rawTransactionBase64: options.rawTransactionBase64 }),
       }),
+      // In parallel, so knowing the fee costs no extra latency. Without it
+      // the fee lands inside the payer's balance change and every legitimate
+      // transfer looks slightly larger than the tool call declared.
+      declaredFee === null
+        ? rpc.feeFor(tx)
+        : Promise.resolve({ ok: true, value: declaredFee }),
     ]);
     before = read;
     simulated = run;
+    fee = charged.ok ? charged.value : null;
     if (!read.ok || !run.ok) break;
     if (read.value.slot === run.value.slot) break;
   }

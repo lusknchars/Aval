@@ -142,6 +142,14 @@ export interface RpcClient {
   readLookupTables(
     addresses: readonly string[],
   ): Promise<RpcResult<LookupTableRead>>;
+  /**
+   * What the network would charge for this transaction, in lamports.
+   *
+   * null when it cannot be determined -- an expired blockhash, or a version 1
+   * message, which this SDK cannot serialize. A null fee is not zero: it means
+   * the fee stays folded into the fee payer's balance change.
+   */
+  feeFor(tx: VersionedTransaction): Promise<RpcResult<bigint | null>>;
   /** Genesis hash, to confirm the endpoint is the network we expect. */
   identifyNetwork(): Promise<RpcResult<string>>;
 }
@@ -386,6 +394,10 @@ const simulateResponseSchema = z.object({
   }),
 });
 
+const feeResponseSchema = z.object({
+  result: z.object({ value: z.number().nullable() }).nullable().optional(),
+});
+
 const jsonRpcSchema = z.object({
   result: z.unknown().optional(),
   error: z.object({ code: z.number(), message: z.string() }).optional(),
@@ -417,6 +429,35 @@ export class Web3RpcClient implements RpcClient {
       return { ok: true, value: await this.#connection.getGenesisHash() };
     } catch (error) {
       return this.#fail("identifyNetwork", error);
+    }
+  }
+
+  async feeFor(tx: VersionedTransaction): Promise<RpcResult<bigint | null>> {
+    let encoded: string;
+    try {
+      encoded = Buffer.from(tx.message.serialize()).toString("base64");
+    } catch {
+      // A version 1 message cannot be serialized by this SDK. Reported as
+      // unknown rather than as a failure: the evaluation still runs, and the
+      // fee simply stays inside the payer's balance change.
+      return { ok: true, value: null };
+    }
+    try {
+      const response = await fetch(this.#url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "getFeeForMessage",
+          params: [encoded, { commitment: this.#commitment }],
+        }),
+      });
+      const parsed = feeResponseSchema.safeParse(await response.json());
+      const value = parsed.success ? (parsed.data.result?.value ?? null) : null;
+      return { ok: true, value: value === null ? null : BigInt(value) };
+    } catch (error) {
+      return this.#fail("feeFor", error);
     }
   }
 
