@@ -37,73 +37,73 @@ implementation; `fixture.ts` with the recorded format and a fake client;
 | 2.2 | ~~Minimum fixtures~~ — `transfer-sol`, `create-ata`, `unlimited-approve` recorded. | done |
 | 2.3 | ~~Fake `RpcClient`~~ | done |
 | 2.4 | **`lamportsExact` is consumed by nobody.** When an effect is computed from an inexact value it must become a `coverage` finding. Today it disappears. | **P** |
-| 2.5 | **Partial failure in `readLookupTables`** — the first error currently brings down the whole read. Resolving what it can and flagging incomplete coverage is probably right. | **P** |
+| 2.5 | ~~Partial failure in `readLookupTables`~~ — resolved: unreadable tables are named in `unresolvedTables`. Former text: **partial failure** — the first error currently brings down the whole read. Resolving what it can and flagging incomplete coverage is probably right. | **P** |
 | 2.6 | **Timeout and retry policy** — does not exist. It must be explicit: how long before degrading to `unavailable`. | **P** |
 | 2.7 | **Latency budget unmeasured.** Resolving lookup tables is an extra round trip; the target is deciding under 100 ms. No measurement has been taken. | **P** |
 | 2.8 | `identifyNetwork` exists but is never called automatically. Decide whether it is mandatory at client construction. | **D** |
 | 2.9 | Behaviour under **rate limiting** (429): today `disableRetryOnRateLimit: true` surfaces the error. What the gate does then is undecided. | **P** |
-| 2.10 | **No fixture uses an Address Lookup Table.** Fixtures are built by us on devnet; a historical mainnet transaction cannot be simulated today because state has moved. `contas`/`accounts` resolution will need a different fixture shape: message and table contents, with no post-state. | **B** |
+| 2.10 | ~~No fixture uses an Address Lookup Table~~ — resolved differently: lookup tables are built offline in the tests, so no recorded mainnet fixture is needed. Former text: **no fixture uses a lookup table.** Fixtures are built by us on devnet; a historical mainnet transaction cannot be simulated today because state has moved. `contas`/`accounts` resolution will need a different fixture shape: message and table contents, with no post-state. | **B** |
 
 ---
 
-## Block 3 — SPL decoding (`spl.ts`) — *not started*
+## Block 3 — SPL decoding (`spl.ts`) — *built*
 
 Read `amount`, `owner`, `delegate`, `delegatedAmount`, `state` and
 `closeAuthority` from the bytes, at fixed offsets, with no IDL.
 
 | # | Item | Urgency |
 |---|---|---|
-| 3.1 | **Token-2022 not covered.** Same base layout, but extensions change the account size. Decision: cover the classic Token Program only and record Token-2022 as "not covered" in `coverage`. | **P** |
+| 3.1 | ~~Token-2022~~ — base fields decode; `hasExtensions` is exposed so the caller records incomplete coverage. Former text: **not covered.** Same base layout, but extensions change the account size. Decision: cover the classic Token Program only and record Token-2022 as "not covered" in `coverage`. | **P** |
 | 3.2 | **Stake and vote out of scope.** `AUTHORITY_CHANGE` includes stake authorities and program upgrade authority; none will be read at first. Mark as not covered. | **P** |
-| 3.3 | **Mint `decimals`** — needed for the manifest's `decimal` unit. It requires reading the mint account, which is another round trip. Cache? | **B** |
-| 3.4 | A **closed** token account comes back as `null` in the post-state. Tell that apart from "not observed". | **B** |
+| 3.3 | ~~Mint `decimals`~~ — `decodeMint` reads them. Caching is still open. Former text: **mint decimals** — needed for the manifest's `decimal` unit. It requires reading the mint account, which is another round trip. Cache? | **B** |
+| 3.4 | ~~Closed account vs unobserved~~ — resolved in the diff. Former text: a **closed** token account comes back as `null` in the post-state. Tell that apart from "not observed". | **B** |
 
 ---
 
-## Block 4 — Account resolution (`accounts.ts`) — *not started*
+## Block 4 — Account resolution (`accounts.ts`) — *built*
 
 | # | Item | Urgency |
 |---|---|---|
-| 4.1 | **Resolve lookup tables before signing** — verified to work (table `Hu5cMUbi…` index 111 returns the same account the executed transaction showed). Implementation missing. | **B** |
-| 4.2 | **Build the list of accounts to observe.** This is what defines coverage: anything not requested never shows up in the simulation. | **B** |
+| 4.1 | ~~Resolve lookup tables before signing~~ — done. Former text: **resolve lookup tables** — verified to work (table `Hu5cMUbi…` index 111 returns the same account the executed transaction showed). Implementation missing. | **B** |
+| 4.2 | ~~Build the observation list~~ — done: writable accounts only. Former text: **build the list.** This is what defines coverage: anything not requested never shows up in the simulation. | **B** |
 | 4.3 | **`args_plus_derived` scope** — requires deriving PDAs and ATAs from the arguments. Without it the manifest's account scope is not verifiable. | **P** |
 | 4.4 | **Writable demotion** — the message declares writable; the runtime may demote. The message flag is not absolute truth. | **D** |
-| 4.5 | **Account cap.** A transaction can reference ~256 accounts with lookup tables. Asking for all of them costs; asking for fewer creates a blind spot. Decide the limit and what happens past it. | **P** |
+| 4.5 | ~~Account cap~~ — resolved by observing only writable accounts. Former text: **account cap.** A transaction can reference ~256 accounts with lookup tables. Asking for all of them costs; asking for fewer creates a blind spot. Decide the limit and what happens past it. | **P** |
 
 ---
 
-## Block 5 — Diff (`diff.ts`) — *not started · the big piece*
+## Block 5 — Diff (`diff.ts`) — *built*
 
 | # | Item | Urgency |
 |---|---|---|
-| 5.1 | **Wrapped SOL counted twice.** Observed in a real swap: the lamport delta and the token delta on the same account are identical. Needs an explicit rule. | **B** |
-| 5.2 | **Fee and rent attribution.** The post-state already deducts the fee from the fee payer (verified). That must not become a `BALANCE_DECREASE` attributed to the user's intent. | **B** |
-| 5.3 | **Detect `ACCOUNT_CREATE` and `ACCOUNT_CLOSE`** from `null → exists` and `exists → null` transitions. Depends on 3.4. | **B** |
-| 5.4 | **`PROGRAM_INVOKE` from `innerInstructions`** — two possible shapes in the response (`jsonParsed` and compiled). The installed SDK only validates the first. | **P** |
-| 5.5 | **Noise threshold.** Not every lamport change is a meaningful effect. Define what counts as noise without creating a blind spot. | **P** |
+| 5.1 | ~~Wrapped SOL counted twice~~ — resolved: a token account reports its token side only. Former text: **counted twice.** Observed in a real swap: the lamport delta and the token delta on the same account are identical. Needs an explicit rule. | **B** |
+| 5.2 | ~~Fee attribution~~ — resolved: the fee leaves the payer's delta and is carried on `EffectSet.fee`. Former text: **fee and rent.** The post-state already deducts the fee from the fee payer (verified). That must not become a `BALANCE_DECREASE` attributed to the user's intent. | **B** |
+| 5.3 | ~~Detect create and close~~ — done. Former text: **detect create/close** from `null → exists` and `exists → null` transitions. Depends on 3.4. | **B** |
+| 5.4 | ~~PROGRAM_INVOKE from innerInstructions~~ — done, both response shapes narrowed at runtime. Former text: **two shapes** — two possible shapes in the response (`jsonParsed` and compiled). The installed SDK only validates the first. | **P** |
+| 5.5 | ~~Noise threshold~~ — settled: nothing is filtered by size. Former text: **noise threshold.** Not every lamport change is a meaningful effect. Define what counts as noise without creating a blind spot. | **P** |
 | 5.6 | **Unlimited allowance** — `delegatedAmount == u64::MAX` must become a signal of its own, not just another `DELEGATE_GRANT`. | **P** |
 
 ---
 
-## Block 6 — Orchestration (`simulate.ts`) — *not started*
+## Block 6 — Orchestration (`normalize.ts`) — *built*
 
 | # | Item | Urgency |
 |---|---|---|
-| 6.1 | Assemble the full `EffectSet`: effects + `slot` + `simulation` + `coverage`. | **B** |
-| 6.2 | **Explicit degradation**: RPC down, simulation refused, incomplete coverage — each with its own path, none collapsing into an empty effect list. | **B** |
-| 6.3 | `minContextSlot` between the before-read and the simulation. Decide whether it is mandatory. | **D** |
+| 6.1 | ~~Assemble the EffectSet~~ — done. Former text: assemble: effects + `slot` + `simulation` + `coverage`. | **B** |
+| 6.2 | ~~Explicit degradation~~ — done, with tests for each path. Former text: **explicit degradation**: RPC down, simulation refused, incomplete coverage — each with its own path, none collapsing into an empty effect list. | **B** |
+| 6.3 | ~~minContextSlot~~ — applied between the read and the simulation. Former text: `minContextSlot` between the before-read and the simulation. Decide whether it is mandatory. | **D** |
 
 ---
 
-## Block 7 — CLI (`src/cli/`) — *partially built*
+## Block 7 — CLI (`src/cli/`) — *built*
 
 | # | Item | Urgency |
 |---|---|---|
-| 7.1 | **`inspect`** — take a mainnet signature or a base64 transaction and print a readable `EffectSet`. | **P** |
+| 7.1 | ~~`inspect`~~ — done. Former text: **inspect** — take a mainnet signature or a base64 transaction and print a readable `EffectSet`. | **P** |
 | 7.2 | ~~`record-fixture`~~ | done |
-| 7.3 | **JSON output** (`--json`) for research scripts. | **P** |
-| 7.4 | **Never print the RPC URL or the api-key.** Handled in the RPC module; the CLI must inherit the discipline. | **P** |
-| 7.5 | Distinct exit codes per outcome, like the exploration scripts. | **D** |
+| 7.3 | ~~JSON output~~ — done, amounts as decimal strings. Former text: **JSON output** (`--json`) for research scripts. | **P** |
+| 7.4 | ~~Never print secrets~~ — inherited from the RPC module, verified. Former text: **never print.** Handled in the RPC module; the CLI must inherit the discipline. | **P** |
+| 7.5 | ~~Distinct exit codes~~ — done: 0 pass, 1 input, 3 unavailable, 4 would fail. Former text: distinct exit codes, like the exploration scripts. | **D** |
 | 7.6 | Decide whether this becomes a publishable binary (`bin` in `package.json`) or stays on `tsx`. | **D** |
 
 ---
