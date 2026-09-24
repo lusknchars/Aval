@@ -24,15 +24,25 @@ import { diffAccounts } from "./diff.js";
 import type { AccountState, InnerInstructionRef, RpcClient } from "./rpc.js";
 
 /**
- * How many times to try landing the read and the simulation on the same slot.
- * Slots are roughly 400ms and a round trip is shorter than that, so a couple
- * of attempts is usually enough.
+ * Default number of attempts at landing the read and the simulation on the
+ * same slot. Slots are roughly 400ms and a round trip is shorter than that,
+ * so a couple of attempts usually suffice.
+ *
+ * Each attempt costs two RPC calls, so this multiplies request volume. Under
+ * a rate limit that trade goes the wrong way: measured over 60 mainnet
+ * transactions, three attempts produced enough 429s to make alignment WORSE
+ * than one attempt. Callers doing bulk work should lower it.
  */
-const ALIGNMENT_ATTEMPTS = 3;
+const DEFAULT_ALIGNMENT_ATTEMPTS = 3;
 
 export interface NormalizeOptions {
   /** Network fee in lamports, when the caller already knows it. */
   readonly fee?: bigint | null;
+  /**
+   * How many times to retry for slot alignment. Each attempt is two more RPC
+   * calls; 1 disables retrying.
+   */
+  readonly alignmentAttempts?: number;
 }
 
 function unavailable(reason: string, coverage: AccountCoverage): EffectSet {
@@ -103,7 +113,11 @@ export async function normalize(
   let before: Awaited<ReturnType<RpcClient["readAccounts"]>> | null = null;
   let simulated: Awaited<ReturnType<RpcClient["simulate"]>> | null = null;
 
-  for (let attempt = 0; attempt < ALIGNMENT_ATTEMPTS; attempt++) {
+  const attempts = Math.max(
+    1,
+    options.alignmentAttempts ?? DEFAULT_ALIGNMENT_ATTEMPTS,
+  );
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const [read, run] = await Promise.all([
       rpc.readAccounts(toObserve),
       rpc.simulate(tx, { accounts: toObserve, innerInstructions: true }),
