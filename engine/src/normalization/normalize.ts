@@ -140,12 +140,19 @@ export async function normalize(
       error: simulated.value.error,
       unitsConsumed: simulated.value.unitsConsumed,
     };
+    // Nothing was observed: a failed run has no post-state at all. Reporting
+    // these accounts as observed would tell the evaluation layer it has
+    // visibility it does not have.
     return {
       effects: [],
       slot: simulated.value.slot,
       fee,
       simulation: outcome,
-      coverage,
+      coverage: {
+        referenced,
+        observed: [],
+        unobserved: [...referenced, ...blind],
+      },
     };
   }
 

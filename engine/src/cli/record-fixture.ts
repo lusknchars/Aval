@@ -66,6 +66,27 @@ const SCENARIOS: readonly Scenario[] = [
     },
   },
   {
+    name: "rent-failure",
+    description:
+      "1 lamport to a new account: the runtime refuses it for rent, so the simulation reports err",
+    build: () => {
+      const destination = Keypair.generate().publicKey;
+      return {
+        instructions: [
+          // A new account must be born rent-exempt. One lamport is not enough,
+          // so this runs and fails -- which is a different thing from the RPC
+          // being unavailable, and the fixture exists to prove we tell them apart.
+          SystemProgram.transfer({
+            fromPubkey: FEE_PAYER,
+            toPubkey: destination,
+            lamports: 1n,
+          }),
+        ],
+        observe: [FEE_PAYER.toBase58(), destination.toBase58()],
+      };
+    },
+  },
+  {
     name: "create-ata",
     description:
       "Associated Token Account creation: CPIs into System and Token Program",

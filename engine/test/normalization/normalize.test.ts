@@ -154,8 +154,11 @@ describe("degradation", () => {
     if (set.simulation.status === "failed") {
       expect(set.simulation.error).toContain("InsufficientFundsForRent");
     }
-    // No post-state exists for a failed run, so there is nothing to diff.
+    // No post-state exists for a failed run, so there is nothing to diff and
+    // nothing was observed. Claiming otherwise would tell the evaluation layer
+    // it has visibility it does not have.
     expect(set.effects).toEqual([]);
-    expect(set.coverage.unobserved.length).toBeGreaterThan(0);
+    expect(set.coverage.observed).toEqual([]);
+    expect(set.coverage.unobserved).toEqual(set.coverage.referenced);
   });
 });
