@@ -31,61 +31,7 @@ import { formatRawAmount } from "../normalization/spl.js";
 import type { ActionContext, ContextChunk } from "../types/context.js";
 import type { Effect, EffectSet } from "../types/effects.js";
 import type { Verdict } from "../types/verdict.js";
-
-/** Which tool a scenario stands for, so the right manifest is applied. */
-const TOOL_BY_SCENARIO: Readonly<Record<string, string>> = {
-  "unlimited-approve": "approve",
-  "transfer-sol": "transfer_sol",
-  "token-to-wallet": "transfer_token",
-  "create-ata": "transfer_token",
-  "close-account": "close_account",
-  "rent-failure": "transfer_sol",
-};
-
-const WRAPPED_SOL = "So11111111111111111111111111111111111111112";
-
-/**
- * The arguments the agent's tool call would have carried.
- *
- * A demo with empty arguments produces a pile of unresolved-reference
- * findings, which is honest but says nothing: it is the seam between a
- * manifest and a real tool, not the thing being demonstrated. These come from
- * the recorded transaction, so the manifest has something real to resolve
- * against.
- */
-function argsFor(
-  scenario: string,
-  addresses: readonly string[],
-): Record<string, unknown> {
-  const [first = "", second = "", third = ""] = addresses;
-  switch (scenario) {
-    case "transfer-sol":
-    case "rent-failure":
-      return { from: first, to: second, amount: 1_000_000 };
-    case "token-to-wallet":
-      return { from: first, to: third, mint: WRAPPED_SOL, amount: "0.002" };
-    case "unlimited-approve":
-      return {
-        account: second,
-        delegate: third,
-        mint: WRAPPED_SOL,
-        amount: "18446744073709.551615",
-      };
-    case "close-account":
-      return { account: second, destination: first };
-    default:
-      return {};
-  }
-}
-
-const SCENARIOS = [
-  "unlimited-approve",
-  "transfer-sol",
-  "token-to-wallet",
-  "create-ata",
-  "close-account",
-  "rent-failure",
-];
+import { argsFor, DECIMALS, SCENARIOS, toolFor } from "./scenarios.js";
 
 function short(address: string): string {
   return address.length > 14
@@ -206,8 +152,7 @@ async function main(): Promise<number> {
   const flagIndex = process.argv.indexOf("--fixture");
   const chosen =
     flagIndex >= 0 ? (process.argv[flagIndex + 1] ?? "") : "unlimited-approve";
-  const tool = TOOL_BY_SCENARIO[chosen] ?? "unknown_tool";
-  const DECIMALS = new Map([[WRAPPED_SOL, 9]]);
+  const tool = toolFor(chosen);
   if (!SCENARIOS.includes(chosen)) {
     console.error(
       `unknown fixture: ${chosen}\navailable: ${SCENARIOS.join(", ")}`,

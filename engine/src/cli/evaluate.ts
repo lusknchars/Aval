@@ -30,6 +30,7 @@ import { formatRawAmount } from "../normalization/spl.js";
 import type { ActionContext, ContextChunk } from "../types/context.js";
 import type { Effect, EffectSet } from "../types/effects.js";
 import type { Verdict } from "../types/verdict.js";
+import { argsFor, DECIMALS, SCENARIOS, toolFor } from "./scenarios.js";
 
 const EXIT_ALLOW = 0;
 const EXIT_INPUT = 1;
@@ -39,7 +40,8 @@ const EXIT_DENY = 3;
 interface Args {
   readonly fixture: string;
   readonly goal: string;
-  readonly toolCall: string;
+  /** null means: use the tool the scenario stands for. */
+  readonly toolCall: string | null;
   readonly retrieved: string | null;
   readonly source: string | null;
 }
@@ -47,7 +49,7 @@ interface Args {
 function parseArgs(argv: readonly string[]): Args | string {
   let fixture: string | null = null;
   let goal = "";
-  let toolCall = "swap";
+  let toolCall: string | null = null;
   let retrieved: string | null = null;
   let source: string | null = null;
 
@@ -74,7 +76,10 @@ function parseArgs(argv: readonly string[]): Args | string {
     }
   }
   if (fixture === null)
-    return "Usage: evaluate.ts --fixture <name> --goal <text> [--retrieved <text>] [--source <url>]";
+    return (
+      "Usage: evaluate.ts --fixture <name> --goal <text> [--retrieved <text>] [--source <url>] [--tool <name>]" +
+      `\navailable fixtures: ${SCENARIOS.join(", ")}`
+    );
   return { fixture, goal, toolCall, retrieved, source };
 }
 
@@ -251,6 +256,11 @@ async function main(): Promise<number> {
 
   const rpc = new FixtureRpcClient(loaded.value);
   const set = await normalize(rpc.transaction(), rpc);
+  // The tool the scenario stands for, unless the caller named another one to
+  // see what the same transaction looks like under a different manifest.
+  const tool = args.toolCall ?? toolFor(args.fixture);
+  const toolArgs =
+    args.toolCall === null ? argsFor(args.fixture, loaded.value.before.addresses) : {};
 
   // The captured context: what the user said, plus whatever the agent read.
   const chunks: ContextChunk[] = [{ text: args.goal, provenance: "user" }];
@@ -267,7 +277,7 @@ async function main(): Promise<number> {
     userGoal: args.goal,
     systemPrompt: "",
     contextChunks: chunks,
-    toolCall: { name: args.toolCall, args: {} },
+    toolCall: { name: tool, args: toolArgs },
     unsignedTx: emptyTx(),
     timestamp: Date.now(),
   };
@@ -275,7 +285,8 @@ async function main(): Promise<number> {
   const verdict = evaluate({
     effects: set,
     context,
-    manifest: manifestFor(args.toolCall),
+    manifest: manifestFor(tool),
+    decimals: DECIMALS,
     policy: {
       manifests: manifestVersions(),
       thresholds: DEFAULT_THRESHOLDS,

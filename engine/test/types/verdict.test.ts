@@ -27,11 +27,12 @@ describe("severity", () => {
 });
 
 describe("check and decision vocabularies", () => {
-  it("covers the 5 checks plus envelope and degradation", () => {
+  it("covers the 5 checks plus scope, envelope and degradation", () => {
     expect(checkKindSchema.options).toEqual([
       "undeclared",
       "magnitude",
       "provenance",
+      "scope",
       "aggregate",
       "content",
       "envelope",

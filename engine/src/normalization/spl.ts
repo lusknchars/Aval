@@ -124,6 +124,101 @@ function stateFrom(byte: number): TokenAccountState {
   }
 }
 
+/**
+ * Token-2022 extensions, read far enough to tell danger from decoration.
+ *
+ * After the base layout the program appends a TLV list: one byte of account
+ * type at offset 165, then entries of `u16 type, u16 length, value`. Mints
+ * are padded to the account size first, so both start at the same place.
+ *
+ * Only the TYPE ids are read, never the values. That is enough to answer the
+ * one question that matters -- is there something here that could move the
+ * tokens without showing up as an effect -- and it keeps this a few lines of
+ * offset arithmetic rather than a second decoder.
+ *
+ * The list below is an ALLOWLIST of extensions that are harmless for that
+ * question, and everything else is reported, including ids this code has
+ * never heard of. New extension types get added to the program over time;
+ * treating an unknown one as harmless is precisely how a detector goes quiet
+ * on the attack it was built for.
+ */
+const ACCOUNT_TYPE_OFFSET = TOKEN_ACCOUNT_SIZE;
+const TLV_START = ACCOUNT_TYPE_OFFSET + 1;
+
+/**
+ * Extensions that cannot hide movement of the tokens.
+ *
+ * A transfer fee is in here because both sides of it are observed: the payer
+ * loses and the recipient gains, and the gap between them is already in the
+ * diff. Metadata, groups and the CPI guard change nothing about who can move
+ * what. Interest accrues into the balance, which is read.
+ */
+const BENIGN_EXTENSIONS: ReadonlyMap<number, string> = new Map([
+  [1, "transfer_fee_config"],
+  [2, "transfer_fee_amount"],
+  [7, "immutable_owner"],
+  [8, "memo_transfer"],
+  [10, "interest_bearing"],
+  [11, "cpi_guard"],
+  [18, "metadata_pointer"],
+  [19, "token_metadata"],
+  [20, "group_pointer"],
+  [21, "token_group"],
+  [22, "group_member_pointer"],
+  [23, "token_group_member"],
+]);
+
+/** Names for the ones worth reporting, so the finding says something. */
+const EXTENSION_NAMES: ReadonlyMap<number, string> = new Map([
+  [3, "mint_close_authority"],
+  [4, "confidential_transfer_mint"],
+  [5, "confidential_transfer_account"],
+  [6, "default_account_state"],
+  [9, "non_transferable"],
+  [12, "permanent_delegate"],
+  [13, "non_transferable_account"],
+  [14, "transfer_hook"],
+  [15, "transfer_hook_account"],
+  [16, "confidential_transfer_fee_config"],
+  [17, "confidential_transfer_fee_amount"],
+]);
+
+/**
+ * Extensions on this account that VETO cannot see through, by name.
+ *
+ * Empty means either no extensions at all or only harmless ones -- and that
+ * distinction is the whole point: reporting every Token-2022 account made
+ * every legitimate transfer of such a token produce a finding, measured on
+ * real mainnet traffic.
+ */
+export function opaqueExtensionsOf(
+  ownerProgram: string,
+  data: Buffer,
+): readonly string[] {
+  if (!isTokenProgram(ownerProgram)) return [];
+  if (data.length <= TLV_START) return [];
+
+  const found: string[] = [];
+  let offset = TLV_START;
+  while (offset + 4 <= data.length) {
+    const type = data.readUInt16LE(offset);
+    const length = data.readUInt16LE(offset + 2);
+    // Type 0 is uninitialized: the end of the list, or zero padding.
+    if (type === 0) break;
+    const next = offset + 4 + length;
+    if (next > data.length) {
+      // The list runs past the buffer. Stop, and say so: a malformed tail is
+      // a thing not read, which is exactly what this function reports.
+      found.push("malformed_extension_list");
+      break;
+    }
+    offset = next;
+    if (BENIGN_EXTENSIONS.has(type)) continue;
+    found.push(EXTENSION_NAMES.get(type) ?? `unknown_extension_${type}`);
+  }
+  return [...new Set(found)];
+}
+
 export function isTokenProgram(owner: string): boolean {
   return owner === TOKEN_PROGRAM_ID || owner === TOKEN_2022_PROGRAM_ID;
 }

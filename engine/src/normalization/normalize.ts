@@ -22,6 +22,7 @@ import {
 } from "./accounts.js";
 import { diffAccounts } from "./diff.js";
 import type { AccountState, InnerInstructionRef, RpcClient } from "./rpc.js";
+import { opaqueExtensionsOf } from "./spl.js";
 
 /**
  * Default number of attempts at landing the read and the simulation on the
@@ -50,12 +51,17 @@ export interface NormalizeOptions {
   readonly rawTransactionBase64?: string;
 }
 
-function unavailable(reason: string, coverage: AccountCoverage): EffectSet {
+function unavailable(
+  reason: string,
+  coverage: AccountCoverage,
+  feePayer: string | null = null,
+): EffectSet {
   return {
     effects: [],
     slot: null,
     baselineSlot: null,
     fee: null,
+    feePayer,
     simulation: { status: "unavailable", reason },
     coverage,
   };
@@ -66,6 +72,7 @@ const NO_COVERAGE: AccountCoverage = {
   observed: [],
   unobserved: [],
   blindSpots: [],
+  tokenExtensions: [],
 };
 
 /** Programs called through CPI, with index-shaped references resolved. */
@@ -103,6 +110,8 @@ export async function normalize(
   }
   const { accounts, toObserve, unresolvedTables } = resolved.value;
   const referenced = accounts.map((a) => a.address);
+  // First account of the message, by the wire format: the signer who pays.
+  const feePayer = accounts[0]?.address ?? null;
 
   // An account behind an unreadable lookup table is referenced but has no
   // address, so it can never be observed. Named here, not swallowed.
@@ -151,22 +160,32 @@ export async function normalize(
   if (before === null || !before.ok) {
     const reason =
       before === null ? "no attempt was made" : before.failure.message;
-    return unavailable(`could not read account state: ${reason}`, {
-      referenced,
-      observed: [],
-      unobserved: referenced,
-      blindSpots: blind,
-    });
+    return unavailable(
+      `could not read account state: ${reason}`,
+      {
+        referenced,
+        observed: [],
+        unobserved: referenced,
+        blindSpots: blind,
+        tokenExtensions: [],
+      },
+      feePayer,
+    );
   }
   if (simulated === null || !simulated.ok) {
     const reason =
       simulated === null ? "no attempt was made" : simulated.failure.message;
-    return unavailable(`could not simulate: ${reason}`, {
-      referenced,
-      observed: [],
-      unobserved: referenced,
-      blindSpots: blind,
-    });
+    return unavailable(
+      `could not simulate: ${reason}`,
+      {
+        referenced,
+        observed: [],
+        unobserved: referenced,
+        blindSpots: blind,
+        tokenExtensions: [],
+      },
+      feePayer,
+    );
   }
 
   const beforeByAddress = new Map<string, AccountState | null>(
@@ -187,11 +206,23 @@ export async function normalize(
   const unobserved = referenced.filter(
     (address) => !observed.includes(address),
   );
+  // Read off the post-state: an account whose base layout decoded fine but
+  // which carries Token-2022 extensions VETO cannot see through. Same shape
+  // as blindSpots -- what, and on which account.
+  const tokenExtensions: string[] = [];
+  for (const address of observed) {
+    const after = afterByAddress.get(address);
+    if (after === undefined || after === null) continue;
+    const opaque = opaqueExtensionsOf(after.owner, after.data);
+    if (opaque.length > 0) tokenExtensions.push(`${address}: ${opaque.join(", ")}`);
+  }
+
   const coverage: AccountCoverage = {
     referenced,
     observed,
     unobserved,
     blindSpots: blind,
+    tokenExtensions,
   };
 
   // 4. The transaction ran and would fail. There is no post-state to diff --
@@ -210,12 +241,14 @@ export async function normalize(
       slot: simulated.value.slot,
       baselineSlot: before.value.slot,
       fee,
+      feePayer,
       simulation: outcome,
       coverage: {
         referenced,
         observed: [],
         unobserved: referenced,
         blindSpots: blind,
+        tokenExtensions: [],
       },
     };
   }
@@ -228,7 +261,7 @@ export async function normalize(
     accounts,
     before: beforeByAddress,
     after: afterByAddress,
-    feePayer: accounts[0]?.address ?? "",
+    feePayer: feePayer ?? "",
     fee,
     invokedPrograms: [...new Set(programs)],
   });
@@ -238,6 +271,7 @@ export async function normalize(
     slot: simulated.value.slot,
     baselineSlot: before.value.slot,
     fee,
+    feePayer,
     simulation: {
       status: "executed",
       unitsConsumed: simulated.value.unitsConsumed,

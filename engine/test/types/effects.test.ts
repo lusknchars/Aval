@@ -102,12 +102,14 @@ describe("EffectSet", () => {
     slot: 502538365,
     baselineSlot: 502538365,
     fee: 5000n,
+    feePayer: null,
     simulation: { status: "executed", unitsConsumed: 13476 },
     coverage: {
       referenced: ["ATokenAcc", "SolAcc", "JUP6"],
       observed: ["ATokenAcc", "SolAcc", "JUP6"],
       unobserved: [],
       blindSpots: [],
+      tokenExtensions: [],
     },
   };
 
@@ -145,8 +147,7 @@ describe("EffectSet", () => {
       referenced: ["A", "B"],
       observed: ["A"],
       unobserved: ["B"],
-      blindSpots: [],
-    };
+      blindSpots: [], tokenExtensions: [] };
     expect(coverageIsComplete(blind)).toBe(false);
   });
 
@@ -197,12 +198,14 @@ describe("the vessel and the party", () => {
       slot: 1,
       baselineSlot: 1,
       fee: null,
+      feePayer: null,
       simulation: { status: "executed", unitsConsumed: 1 },
       coverage: {
         referenced: [],
         observed: [],
         unobserved: [],
         blindSpots: [],
+        tokenExtensions: [],
       },
     };
     expect(counterparties(withOwner)).toEqual(["BobWallet"]);
@@ -221,12 +224,14 @@ describe("the vessel and the party", () => {
       slot: 1,
       baselineSlot: 1,
       fee: null,
+      feePayer: null,
       simulation: { status: "executed", unitsConsumed: 1 },
       coverage: {
         referenced: [],
         observed: [],
         unobserved: [],
         blindSpots: [],
+        tokenExtensions: [],
       },
     };
     expect(counterparties(plain)).toEqual(["Wallet"]);

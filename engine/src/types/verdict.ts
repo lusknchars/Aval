@@ -13,6 +13,7 @@ export const checkKindSchema = z.enum([
   "undeclared", // A -- effect the manifest does not allow
   "magnitude", // B -- amount diverges from what the tool call declared
   "provenance", // C -- origin of the counterparty
+  "scope", // permitted effect, on an account the tool call never named
   "aggregate", // D -- sliding window, sequence
   "content", // E -- content classifier at ingestion
   "envelope", // tool or amount outside the authorized task scope

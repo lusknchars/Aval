@@ -71,11 +71,15 @@ export const TRANSFER_SOL: ToolManifest = {
  */
 export const TRANSFER_TOKEN: ToolManifest = {
   tool: "transfer_token",
-  version: "1",
+  version: "2",
   args: { from: "address", to: "address", mint: "mint", amount: "amount" },
   must: [
     {
       type: "BALANCE_DECREASE",
+      // The SENDER's balance, not any balance of this mint. `from` is the
+      // wallet; the token account under it is derived and appears in no
+      // tool call.
+      owner: "arg:from",
       mint: "arg:mint",
       maxAmount: "arg:amount",
       unit: "decimal",
@@ -110,11 +114,16 @@ export const TRANSFER_TOKEN: ToolManifest = {
  */
 export const SWAP: ToolManifest = {
   tool: "swap",
-  version: "1",
+  version: "2",
   args: { from: "address", to: "address", mint: "mint", amountIn: "amount" },
   must: [
     {
       type: "BALANCE_DECREASE",
+      // Constrained to the caller's own accounts. Without this the pattern
+      // also matches a pool losing the same mint halfway through a route,
+      // and since check B compares the SUM of what a pattern matched, the
+      // route's volume would be added to the user's spend.
+      owner: "arg:from",
       mint: "arg:mint",
       maxAmount: "arg:amountIn",
       unit: "decimal",
@@ -125,12 +134,23 @@ export const SWAP: ToolManifest = {
     { type: "BALANCE_INCREASE" },
     { type: "ACCOUNT_CREATE" },
     { type: "PROGRAM_INVOKE" },
-    { type: "BALANCE_DECREASE", mint: "SOL" },
+    // The route. A swap takes tokens out of pools by definition, from
+    // accounts chosen at call time that nobody can enumerate in advance.
+    // Measured against real mainnet traffic, leaving this out made every
+    // legitimate swap produce findings -- and a customer who sees findings
+    // on every call stops reading them.
+    { type: "BALANCE_DECREASE" },
   ],
   mustNot: ["DELEGATE_GRANT", "AUTHORITY_CHANGE", "OWNER_CHANGE"],
   // No program allowlist: the route is chosen at call time. Programs are
   // reported as invoked, and which ones are acceptable is customer policy.
-  accountScope: "args_plus_derived",
+  //
+  // `open`, and said plainly. A swap routes through program-derived accounts
+  // whose seeds live in those programs' source, so no account scope here
+  // could be enforced -- claiming one would be a rule that quietly fails
+  // open. What bounds a swap is the three effects it must never cause, the
+  // summed magnitude of what the caller spends, and who receives the output.
+  accountScope: "open",
 };
 
 /**

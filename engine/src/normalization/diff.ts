@@ -104,8 +104,13 @@ function tokenEffects(
     // Without this, a legitimate transfer to a wallet the user named would be
     // flagged as an unexplained address, and the real recipient would never
     // be checked at all.
+    //
+    // The owner is attached in BOTH directions, because the scope check has
+    // to answer "whose account lost this" as well as "who received it".
     effects.push(
-      delta > 0n ? { ...balance, counterparty: after.owner } : balance,
+      delta > 0n
+        ? { ...balance, counterparty: after.owner, owner: after.owner }
+        : { ...balance, owner: after.owner },
     );
   }
 
@@ -115,6 +120,7 @@ function tokenEffects(
     effects.push({
       type: "OWNER_CHANGE",
       account: address,
+      owner: before.owner,
       counterparty: after.owner,
     });
   }
@@ -128,6 +134,7 @@ function tokenEffects(
     effects.push({
       type: "DELEGATE_GRANT",
       account: address,
+      owner: after.owner,
       counterparty: after.delegate ?? "",
       mint: after.mint,
       amount: after.delegatedAmount,
@@ -141,6 +148,7 @@ function tokenEffects(
     effects.push({
       type: "AUTHORITY_CHANGE",
       account: address,
+      owner: after.owner,
       authorityKind: "close",
       counterparty: after.closeAuthority,
     });
@@ -209,6 +217,7 @@ function creationEffects(
         // Same reasoning: the wallet behind the account is the party
         // receiving value, and the one a human would recognise.
         counterparty: token.owner,
+        owner: token.owner,
       });
     }
     // A brand new account already carrying a delegate: the grant happened in
@@ -217,6 +226,7 @@ function creationEffects(
       effects.push({
         type: "DELEGATE_GRANT",
         account: address,
+        owner: token.owner,
         counterparty: token.delegate,
         mint: token.mint,
         amount: token.delegatedAmount,
@@ -244,13 +254,22 @@ function closureEffects(
   address: string,
   before: AccountState,
 ): readonly Effect[] {
-  const effects: Effect[] = [{ type: "ACCOUNT_CLOSE", account: address }];
+  // Read the owner off the LAST state in which the account still had one.
+  // After this transaction the bytes are zeroed, so if it is not taken here
+  // the scope check can never learn whose account was closed.
+  const token = tokenAccountOf(before);
+  const owner = token === null ? {} : { owner: token.owner };
+
+  const effects: Effect[] = [
+    { type: "ACCOUNT_CLOSE", account: address, ...owner },
+  ];
   if (before.lamports > 0n) {
     effects.push({
       type: "BALANCE_DECREASE",
       account: address,
       mint: NATIVE_MINT_LABEL,
       amount: before.lamports,
+      ...owner,
     });
   }
   return effects;

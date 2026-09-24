@@ -120,8 +120,15 @@ describe("magnitude", () => {
     slot: 1,
     baselineSlot: 1,
     fee: null,
+    feePayer: null,
     simulation: { status: "executed", unitsConsumed: 1 },
-    coverage: { referenced: [], observed: [], unobserved: [], blindSpots: [] },
+    coverage: {
+      referenced: [],
+      observed: [],
+      unobserved: [],
+      blindSpots: [],
+      tokenExtensions: [],
+    },
   };
   const manifest: ToolManifest = {
     tool: "transfer",
@@ -152,6 +159,140 @@ describe("magnitude", () => {
     expect(magnitude?.severity).toBe("high");
     expect(magnitude?.detail["observed"]).toBe("500");
     expect(magnitude?.detail["ceiling"]).toBe("100");
+  });
+
+  it("sums the legs instead of judging each one on its own", () => {
+    // The bypass this replaced: declared 400, drained 600 across two
+    // accounts, and neither leg on its own was above the ceiling. The
+    // declared amount bounds the operation, not each of its parts.
+    const split: EffectSet = {
+      ...set,
+      effects: [
+        { type: "BALANCE_DECREASE", account: "Acc", mint: "SOL", amount: 300n },
+        {
+          type: "BALANCE_DECREASE",
+          account: "Other",
+          mint: "SOL",
+          amount: 300n,
+        },
+      ],
+    };
+    const unconstrained: ToolManifest = {
+      ...manifest,
+      must: [
+        {
+          type: "BALANCE_DECREASE",
+          mint: "SOL",
+          maxAmount: "arg:amount",
+          unit: "raw",
+        },
+      ],
+      accountScope: "open",
+    };
+    const findings = manifestFindings({
+      effects: split,
+      manifest: unconstrained,
+      toolCall: { name: "transfer", args: { from: "Acc", amount: 400 } },
+    });
+    const magnitude = findings.find(
+      (f) => f.rule === "magnitude.above_declared",
+    );
+    expect(magnitude?.detail["observed"]).toBe("600");
+    expect(magnitude?.detail["legs"]).toBe(2);
+    // One finding for the operation, not one per leg.
+    expect(findings.filter((f) => f.check === "magnitude")).toHaveLength(1);
+  });
+
+  it("measures the caller's spend, not the route's volume", () => {
+    // A swap's `must` matches a balance decrease of the input mint. Without
+    // the owner constraint it also matches a pool losing the same mint
+    // halfway through the route -- and since check B sums what a pattern
+    // matched, the pool's volume would be added to the user's spend and the
+    // magnitude check would fire on every routed swap.
+    const routed: EffectSet = {
+      ...set,
+      effects: [
+        {
+          type: "BALANCE_DECREASE",
+          account: "UserAta",
+          owner: "UserWallet",
+          mint: "USDC",
+          amount: 100n,
+        },
+        {
+          type: "BALANCE_DECREASE",
+          account: "PoolVault",
+          owner: "PoolAuthority",
+          mint: "USDC",
+          amount: 9_000_000n,
+        },
+      ],
+    };
+    const swap: ToolManifest = {
+      ...manifest,
+      must: [
+        {
+          type: "BALANCE_DECREASE",
+          owner: "arg:from",
+          mint: "USDC",
+          maxAmount: "arg:amount",
+          unit: "raw",
+        },
+      ],
+      may: [{ type: "BALANCE_DECREASE" }],
+      accountScope: "open",
+    };
+    const findings = manifestFindings({
+      effects: routed,
+      manifest: swap,
+      toolCall: { name: "transfer", args: { from: "UserWallet", amount: 100 } },
+    });
+    expect(findings.filter((f) => f.check === "magnitude")).toEqual([]);
+  });
+
+  it("still sums two accounts belonging to the same caller", () => {
+    const split: EffectSet = {
+      ...set,
+      effects: [
+        {
+          type: "BALANCE_DECREASE",
+          account: "AtaOne",
+          owner: "UserWallet",
+          mint: "USDC",
+          amount: 80n,
+        },
+        {
+          type: "BALANCE_DECREASE",
+          account: "AtaTwo",
+          owner: "UserWallet",
+          mint: "USDC",
+          amount: 80n,
+        },
+      ],
+    };
+    const swap: ToolManifest = {
+      ...manifest,
+      must: [
+        {
+          type: "BALANCE_DECREASE",
+          owner: "arg:from",
+          mint: "USDC",
+          maxAmount: "arg:amount",
+          unit: "raw",
+        },
+      ],
+      may: [{ type: "BALANCE_DECREASE" }],
+      accountScope: "open",
+    };
+    const findings = manifestFindings({
+      effects: split,
+      manifest: swap,
+      toolCall: { name: "transfer", args: { from: "UserWallet", amount: 100 } },
+    });
+    expect(
+      findings.find((f) => f.rule === "magnitude.above_declared")
+        ?.detail["observed"],
+    ).toBe("160");
   });
 
   it("stays silent within the declared amount", () => {
@@ -265,6 +406,23 @@ describe("the seam between a manifest and the real tool", () => {
     );
     expect(unresolved?.severity).toBe("medium");
     expect(unresolved?.detail["reference"]).toBe("arg:from");
+  });
+
+  it("does not report declared effects as missing when nothing ran", async () => {
+    // A transaction that would fail causes nothing, so every `must` pattern
+    // is trivially unmatched. Two of those reach DENY, with a reason that is
+    // true and says nothing.
+    const effects = await effectSetOf("rent-failure");
+    expect(effects.simulation.status).toBe("failed");
+    const findings = manifestFindings({
+      effects,
+      manifest: SWAP,
+      toolCall: { name: "swap", args: { from: "Acc", to: "Other", amountIn: 1 } },
+    });
+    expect(findings.some((f) => f.rule.startsWith("must.missing."))).toBe(false);
+    expect(findings.some((f) => f.rule === "coverage.manifest_not_compared")).toBe(
+      true,
+    );
   });
 
   it("reports a tool with no manifest instead of passing it", async () => {

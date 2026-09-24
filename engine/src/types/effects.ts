@@ -71,6 +71,21 @@ export interface Effect {
   /** Who receives value or authority, base58. */
   readonly counterparty?: string;
 
+  /**
+   * The wallet that controls the account, when the account is a token
+   * account, base58.
+   *
+   * Deliberately NOT `counterparty`. A counterparty is a party that receives,
+   * and the provenance check exists to ask where it came from; the owner of an
+   * account that LOSES value receives nothing, and filing it as a counterparty
+   * would ask the captured context to explain the victim.
+   *
+   * It is here so the scope check can tell whose account was touched. A token
+   * account address appears in no prompt and on no page -- the wallet behind
+   * it does.
+   */
+  readonly owner?: string;
+
   /** Program involved, base58. */
   readonly program?: string;
 
@@ -123,6 +138,16 @@ export interface AccountCoverage {
    * which is how a customer learns to ignore the alert.
    */
   readonly blindSpots: readonly string[];
+  /**
+   * Observed accounts carrying Token-2022 extension bytes VETO does not
+   * decode.
+   *
+   * Separate from a blind spot: the account WAS read and its base layout is
+   * correct. What is unread is everything the extensions add -- a transfer
+   * hook, a permanent delegate, a confidential balance -- and none of those
+   * would show up as an effect.
+   */
+  readonly tokenExtensions: readonly string[];
 }
 
 /**
@@ -160,6 +185,16 @@ export interface EffectSet {
    * could not be estimated.
    */
   readonly fee: bigint | null;
+
+  /**
+   * The account that signs and pays, base58. null when it could not be
+   * determined.
+   *
+   * Carried because the evaluation layer has to treat it as inside every
+   * tool's account scope: every transaction charges its payer, so without
+   * this the fee would be reported as an out-of-scope loss on every call.
+   */
+  readonly feePayer: string | null;
 }
 
 export function coverageIsComplete(coverage: AccountCoverage): boolean {

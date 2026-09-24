@@ -64,6 +64,17 @@ export const MAX_TOLERANCE = 0.1;
 export const effectPatternSchema = z.object({
   type: effectTypeSchema,
   account: z.union([argRefSchema, z.string()]).optional(),
+  /**
+   * The wallet that controls the account.
+   *
+   * It exists because a token account address is derived and appears in no
+   * tool call, while the wallet behind it is exactly what the tool call
+   * names. Without it a pattern like "the sender's balance goes down" can
+   * only be written as "SOME account of this mint goes down", which also
+   * matches a liquidity pool halfway through a route -- and then the
+   * magnitude check is measuring the route instead of the user.
+   */
+  owner: z.union([argRefSchema, z.string()]).optional(),
   mint: z.union([argRefSchema, z.string()]).optional(),
   counterparty: z.union([argRefSchema, z.string()]).optional(),
   maxAmount: z.union([argRefSchema, z.bigint()]).optional(),
@@ -122,6 +133,7 @@ function patternReferences(
   const found: { field: string; ref: ArgRef }[] = [];
   const candidates: [string, unknown][] = [
     ["account", pattern.account],
+    ["owner", pattern.owner],
     ["mint", pattern.mint],
     ["counterparty", pattern.counterparty],
     ["maxAmount", pattern.maxAmount],
@@ -135,6 +147,7 @@ function patternReferences(
 
 const EXPECTED_ARG_TYPE: Readonly<Record<string, ArgType>> = {
   account: "address",
+  owner: "address",
   counterparty: "address",
   mint: "mint",
   maxAmount: "amount",

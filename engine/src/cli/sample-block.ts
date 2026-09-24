@@ -13,8 +13,6 @@
  * not any more. A failure here is information about the chain, not
  * necessarily about the normalizer.
  */
-import { VersionedTransaction, type VersionedMessage } from "@solana/web3.js";
-import { z } from "zod";
 import { counterparties } from "../types/effects.js";
 import { normalize } from "../normalization/normalize.js";
 import {
@@ -22,8 +20,7 @@ import {
   readRpcConfig,
   type Network,
 } from "../normalization/rpc.js";
-
-const VOTE_PROGRAM = "Vote111111111111111111111111111111111111111";
+import { recentSlot, transactionsInBlock } from "./blocks.js";
 
 interface Args {
   readonly limit: number;
@@ -67,43 +64,6 @@ function parseArgs(argv: readonly string[]): Args | string {
 }
 
 /**
- * The block is fetched as raw base64 rather than through the SDK's decoder.
- *
- * A version 1 transaction can be read but not re-serialized, so rebuilding one
- * from a decoded message makes it impossible to simulate. Keeping the original
- * bytes sidesteps that -- and those bytes are exactly what an agent hands over
- * in production.
- */
-const blockSchema = z.object({
-  result: z
-    .object({
-      transactions: z.array(
-        z.object({
-          transaction: z.tuple([z.string(), z.literal("base64")]),
-          meta: z.object({ err: z.unknown().nullable() }).nullable(),
-        }),
-      ),
-    })
-    .nullable(),
-  error: z.object({ message: z.string() }).optional(),
-});
-
-const slotSchema = z.object({ result: z.number() });
-
-async function rpcCall(
-  url: string,
-  method: string,
-  params: unknown[],
-): Promise<unknown> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-  });
-  return response.json();
-}
-
-/**
  * The effects VETO exists to catch. Counting how often they show up in traffic
  * nobody designed for us is the point of sampling at all: a detector that
  * never fires on real data is untested, and one that fires constantly is
@@ -115,13 +75,6 @@ const NOTABLE = new Set([
   "AUTHORITY_CHANGE",
   "ACCOUNT_CLOSE",
 ]);
-
-function isVote(message: VersionedMessage): boolean {
-  return message.compiledInstructions.every(
-    (ix) =>
-      message.staticAccountKeys[ix.programIdIndex]?.toBase58() === VOTE_PROGRAM,
-  );
-}
 
 async function main(): Promise<number> {
   const args = parseArgs(process.argv);
@@ -137,14 +90,11 @@ async function main(): Promise<number> {
   const rpc = createRpcClient(config.value);
   const url = config.value.rpcUrl;
 
-  const slotReply = slotSchema.safeParse(
-    await rpcCall(url, "getSlot", [{ commitment: "finalized" }]),
-  );
-  if (!slotReply.success) {
+  const firstSlot = await recentSlot(url);
+  if (firstSlot === null) {
     console.error("could not read the current slot");
     return 3;
   }
-  const firstSlot = slotReply.data.result - 40;
 
   const tally = {
     executed: 0,
@@ -167,46 +117,12 @@ async function main(): Promise<number> {
 
   for (let b = 0; b < args.blocks; b++) {
     const slot = firstSlot - b * 2;
-    const blockReply = blockSchema.safeParse(
-      await rpcCall(url, "getBlock", [
-        slot,
-        {
-          encoding: "base64",
-          transactionDetails: "full",
-          rewards: false,
-          commitment: config.value.commitment,
-          maxSupportedTransactionVersion: 1,
-        },
-      ]),
+    const candidates = await transactionsInBlock(
+      url,
+      slot,
+      args.limit,
+      config.value.commitment,
     );
-    if (
-      !blockReply.success ||
-      blockReply.data.error !== undefined ||
-      blockReply.data.result === null
-    ) {
-      console.error(`block ${slot}: unavailable, skipping`);
-      continue;
-    }
-
-    // Deserialize for the message, keep the base64 for the simulation.
-    const candidates: {
-      base64: string;
-      tx: VersionedTransaction;
-      version: string;
-    }[] = [];
-    for (const entry of blockReply.data.result.transactions) {
-      if (entry.meta?.err !== null) continue;
-      const base64 = entry.transaction[0];
-      let tx: VersionedTransaction;
-      try {
-        tx = VersionedTransaction.deserialize(Buffer.from(base64, "base64"));
-      } catch {
-        continue;
-      }
-      if (isVote(tx.message)) continue;
-      candidates.push({ base64, tx, version: String(tx.message.version) });
-      if (candidates.length >= args.limit) break;
-    }
     console.log(`block ${slot}: ${candidates.length} transactions`);
 
     for (const entry of candidates) {

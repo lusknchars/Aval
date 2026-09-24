@@ -22,6 +22,7 @@ import {
   type EffectPattern,
   type ToolManifest,
 } from "../types/manifest.js";
+import { scopeFindings } from "./scope.js";
 import type { Finding, Severity } from "../types/verdict.js";
 
 /**
@@ -46,6 +47,7 @@ const SEVERITY_BY_EFFECT: Readonly<Record<Effect["type"], Severity>> = {
 interface ResolvedPattern {
   readonly type: Effect["type"];
   readonly account: string | undefined;
+  readonly owner: string | undefined;
   readonly mint: string | undefined;
   readonly counterparty: string | undefined;
   readonly maxAmount: bigint | undefined;
@@ -125,11 +127,13 @@ function resolvePattern(
   decimals: DecimalsByMint,
 ): ResolvedPattern {
   const account = resolveText(pattern.account, args);
+  const owner = resolveText(pattern.owner, args);
   const mint = resolveText(pattern.mint, args);
   const counterparty = resolveText(pattern.counterparty, args);
   const amount = resolveAmount(pattern, args, mint.value, decimals);
   const unresolved = [
     account.unresolved,
+    owner.unresolved,
     mint.unresolved,
     counterparty.unresolved,
     amount.unresolved,
@@ -137,6 +141,7 @@ function resolvePattern(
   return {
     type: pattern.type,
     account: account.value,
+    owner: owner.value,
     mint: mint.value,
     counterparty: counterparty.value,
     maxAmount: amount.value,
@@ -148,6 +153,8 @@ function resolvePattern(
 function matches(effect: Effect, pattern: ResolvedPattern): boolean {
   if (effect.type !== pattern.type) return false;
   if (pattern.account !== undefined && effect.account !== pattern.account)
+    return false;
+  if (pattern.owner !== undefined && effect.owner !== pattern.owner)
     return false;
   if (pattern.mint !== undefined && effect.mint !== pattern.mint) return false;
   if (
@@ -218,6 +225,25 @@ export function manifestFindings(
     });
   }
 
+  // Nothing ran, so there are no effects to compare against. Reporting every
+  // declared effect as missing would be true and useless: it says the
+  // transaction did not do what it promised, when the fact is that it did not
+  // do anything at all. Coverage already carries that, at the severity it
+  // deserves -- low for a transaction that would fail, critical for a
+  // simulation that never happened.
+  if (input.effects.simulation.status !== "executed") {
+    findings.push({
+      check: "coverage",
+      severity: "low",
+      rule: "coverage.manifest_not_compared",
+      detail: {
+        tool: manifest.tool,
+        simulation: input.effects.simulation.status,
+      },
+    });
+    return findings;
+  }
+
   const decimals: DecimalsByMint = input.decimals ?? new Map();
   const args = input.toolCall.args;
   const must = manifest.must.map((p) => resolvePattern(p, args, decimals));
@@ -238,7 +264,24 @@ export function manifestFindings(
     }
   }
 
-  const matchedMust = new Set<number>();
+  /**
+   * What each `must` pattern actually matched.
+   *
+   * A TOTAL, not one comparison per effect. Checking each effect on its own
+   * lets a transaction split a drain across two accounts of the same mint:
+   * declared 100, two decreases of 100 each, both under the ceiling, and the
+   * magnitude check never fires. The declared amount bounds the operation,
+   * not each leg of it.
+   */
+  const matchedMust = new Map<
+    number,
+    { total: bigint; accounts: string[] }
+  >();
+  /**
+   * Effects the manifest allows. They still have to be on accounts this tool
+   * call authorised, which is what the scope check asks at the end.
+   */
+  const permitted: Effect[] = [];
 
   for (const effect of input.effects.effects) {
     if (forbidden.has(effect.type)) {
@@ -258,32 +301,18 @@ export function manifestFindings(
 
     const mustIndex = must.findIndex((pattern) => matches(effect, pattern));
     if (mustIndex >= 0) {
-      matchedMust.add(mustIndex);
-      const pattern = must[mustIndex];
-      const ceiling = pattern === undefined ? undefined : ceilingOf(pattern);
-      if (
-        ceiling !== undefined &&
-        effect.amount !== undefined &&
-        effect.amount > ceiling
-      ) {
-        findings.push({
-          check: "magnitude",
-          severity: "high",
-          rule: "magnitude.above_declared",
-          detail: {
-            tool: manifest.tool,
-            account: effect.account,
-            declared: (pattern?.maxAmount ?? 0n).toString(),
-            tolerance: pattern?.tolerance ?? 0,
-            ceiling: ceiling.toString(),
-            observed: effect.amount.toString(),
-          },
-        });
-      }
+      const seen = matchedMust.get(mustIndex) ?? { total: 0n, accounts: [] };
+      if (effect.amount !== undefined) seen.total += effect.amount;
+      seen.accounts.push(effect.account);
+      matchedMust.set(mustIndex, seen);
+      permitted.push(effect);
       continue;
     }
 
-    if (may.some((pattern) => matches(effect, pattern))) continue;
+    if (may.some((pattern) => matches(effect, pattern))) {
+      permitted.push(effect);
+      continue;
+    }
 
     if (effect.type === "PROGRAM_INVOKE") {
       const allowlist = manifest.programAllowlist;
@@ -317,6 +346,28 @@ export function manifestFindings(
     });
   }
 
+  // Check B, against the sum of everything the pattern matched.
+  for (const [index, seen] of matchedMust) {
+    const pattern = must[index];
+    if (pattern === undefined) continue;
+    const ceiling = ceilingOf(pattern);
+    if (ceiling === undefined || seen.total <= ceiling) continue;
+    findings.push({
+      check: "magnitude",
+      severity: "high",
+      rule: "magnitude.above_declared",
+      detail: {
+        tool: manifest.tool,
+        accounts: [...new Set(seen.accounts)],
+        legs: seen.accounts.length,
+        declared: (pattern.maxAmount ?? 0n).toString(),
+        tolerance: pattern.tolerance ?? 0,
+        ceiling: ceiling.toString(),
+        observed: seen.total.toString(),
+      },
+    });
+  }
+
   // The tool said it would do something and the transaction does not do it.
   must.forEach((pattern, index) => {
     if (matchedMust.has(index)) return;
@@ -331,6 +382,18 @@ export function manifestFindings(
       },
     });
   });
+
+  // Check on WHERE, after the checks on what. Only permitted effects are
+  // passed: anything else is already reported, with its account, as
+  // undeclared.
+  findings.push(
+    ...scopeFindings(
+      permitted,
+      manifest,
+      input.toolCall,
+      input.effects.feePayer ?? "",
+    ),
+  );
 
   return findings;
 }

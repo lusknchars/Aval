@@ -130,6 +130,23 @@ export function coverageFindings(set: EffectSet): readonly Finding[] {
   // An address the transaction uses and VETO cannot even name. This is the
   // one that matters: not observing a readonly account is normal, not knowing
   // an account exists is not.
+  // Bytes VETO does not read, on accounts it did read. A transfer hook or a
+  // permanent delegate lives there, and neither would ever become an effect.
+  // FLAG rather than DENY because most extensions are benign metadata --
+  // which is calibration, not a consequence of anything.
+  if (set.coverage.tokenExtensions.length > 0) {
+    findings.push({
+      check: "coverage",
+      severity: "medium",
+      rule: "coverage.token_extensions",
+      detail: {
+        accounts: set.coverage.tokenExtensions.length,
+        sample: set.coverage.tokenExtensions.slice(0, 3),
+        note: "Token-2022 extensions are not decoded: a transfer hook or permanent delegate here would be invisible",
+      },
+    });
+  }
+
   if (set.coverage.blindSpots.length > 0) {
     findings.push({
       check: "coverage",

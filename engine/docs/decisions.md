@@ -157,6 +157,92 @@ Implementation gaps per block live in `pending.md`.
 47. **Only `veto-construcao.md` gets translated** of the three specification
     documents. It is the architecture one, the one a technical reviewer would
     open. The other two stay in Portuguese.
+48. **Check B compares the SUM of what a pattern matched, not each effect.**
+    Judging each effect on its own let a transaction split a drain across two
+    accounts of the same mint: declared 100, two decreases of 100 each, both
+    under the ceiling, nothing fires. The declared amount bounds the
+    operation, not each of its legs.
+49. **`accountScope` is enforced, and only against effects the manifest
+    ALREADY permits.** `may` patterns have to be loose enough to cover the
+    mechanical noise of a real transaction, which makes them loose enough to
+    cover the same effect on an account nobody named. An effect no pattern
+    matched is already reported as undeclared, with its account, so checking
+    it here too would take two findings off one event -- enough on its own to
+    reach the deny threshold.
+50. **"Derived" means provably related to an argument**, by ATA derivation or
+    by the token account's own `owner` bytes. A third-party program's PDA is
+    not derivable, because the seeds live in that program's source. A tool
+    that genuinely routes through accounts nobody can enumerate has to
+    declare `open` and mean it, rather than claim a scope the code would have
+    to fail open on.
+51. **Scope reports only losses.** DELEGATE_GRANT, AUTHORITY_CHANGE,
+    OWNER_CHANGE, ACCOUNT_CLOSE, BALANCE_DECREASE. An account that gains value
+    or comes into existence outside the scope is not a loss to anyone, and
+    provenance already asks who the beneficiary is; reporting it here as well
+    would put a finding on every swap.
+52. **The fee payer is inside every tool's scope.** Every transaction charges
+    its payer, so excluding it would report the fee as an out-of-scope loss on
+    every single call.
+53. **A manifest is not compared when nothing executed.** On a failed or
+    unavailable simulation there are no effects, so every `must` pattern is
+    trivially unmatched -- two of those reach DENY on a transaction that would
+    have failed anyway, with a reason that is true and says nothing. Coverage
+    already carries the fact, at the severity it deserves.
+54. **`Effect.owner` is not `counterparty`.** A counterparty receives, and
+    provenance exists to ask where it came from; the owner of an account that
+    LOSES value receives nothing, and filing it as a counterparty would ask
+    the captured context to explain the victim.
+55. **An effect pattern can constrain by `owner`.** Without it "the sender's
+    balance goes down" can only be written as "SOME account of this mint goes
+    down", which also matches a liquidity pool halfway through a route. Since
+    check B sums what a pattern matched, the route's volume was being added to
+    the user's spend.
+56. **`swap` declares `accountScope: "open"` and permits the route's balance
+    decreases.** Measured on real mainnet traffic: without it every legitimate
+    swap produced findings, because a swap takes tokens out of pools by
+    definition. A swap routes through program-derived accounts whose seeds
+    live in those programs' source, so no account scope there could be
+    enforced -- claiming one would be a rule that quietly fails open. What
+    bounds a swap is `mustNot`, the summed magnitude of what the CALLER
+    spends, and who receives the output.
+57. **False positives are measured against an honest declaration derived from
+    the transaction's own effects** (`cli/sample-evaluate.ts`). Real
+    transactions carry no tool call, no goal and no manifest, so they cannot
+    be evaluated as they stand. Building the declaration a truthful agent
+    would have made means nothing sampled is an attack, so every finding is a
+    false positive by construction. It is a LOWER BOUND, deliberately: the
+    checks are handed the friendliest possible input, so anything that fires
+    there fires on the easy case.
+58. **The same run measures detection, by declaring dishonestly.** A sample
+    where everything is allowed proves nothing on its own -- it could equally
+    mean the checks are dead. Each transaction is re-evaluated with half the
+    amount declared, and with a goal that names nobody.
+59. **The sampler's classifier refuses to guess.** A first version labelled
+    any transaction that closed an account `close_account`, and the tally
+    filled with correct readings of a wrong label. A twenty-one-effect
+    arbitrage bundle is not a close, and no manifest should be asked to
+    pretend it is.
+60. **Token-2022 extensions are reported by NAME, from an allowlist of the
+    harmless ones** (`coverage.token_extensions`, medium). The base layout
+    decodes correctly, which is why the decoder accepts the longer buffer --
+    but a transfer hook runs an arbitrary program on every movement and a
+    permanent delegate lets a third party move the tokens forever, and
+    neither would ever become an effect. A first version reported any account
+    with extension bytes at all, and measured on real traffic that flagged
+    every legitimate transfer of a Token-2022 token. Only the TYPE ids are
+    read, never the values: enough to answer "could this move the tokens
+    without showing up as an effect", and a few lines of offset arithmetic
+    rather than a second decoder.
+60a. **An extension id this code does not know is opaque, not harmless.** New
+    types get added to the program over time, and assuming an unknown one is
+    benign is precisely how a detector goes quiet on the thing it was built
+    for. So the list is an allowlist of the harmless, never a blocklist of
+    the dangerous.
+61. **The sampling CLIs treat a rate limit as an answer, not an exception.** A
+    429 does not reply in JSON -- it replies `Too Many Requests` in plain text
+    -- and parsing that threw an unhandled rejection that took a whole
+    sampling run down mid-flight. The library never had this hole; the CLI
+    did, and sampling is exactly the workload that hits a rate limit.
 
 ---
 
