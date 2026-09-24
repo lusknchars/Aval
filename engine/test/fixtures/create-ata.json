@@ -2,14 +2,15 @@
   "name": "create-ata",
   "description": "Associated Token Account creation: CPIs into System and Token Program",
   "network": "devnet",
-  "recordedAt": "2026-09-24T14:03:33.563Z",
+  "recordedAt": "2026-09-24T17:10:49.602Z",
   "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
-  "txBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAFBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABN06HswyBBscEnTFRfMvREo0GIIosTRwuC53s7xTKByKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WbvYVsBRs8pXxbFPtGXgtzOoanPY/zpYp091rI2+A7XeBpuIV/6rgYT7aH9jRhjANdrEOdwa6ztVmKDwAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpDnVFZ/SLl2tZxF5IDJHnIXqSYyffVFGcHaxJFQU8vXMBAgYAAQMEBQYAAA==",
+  "txBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAFBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVlRIwy8vG2rt4l1k6zvNBsbaLgYBz9q7FNnuycKgHoiMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WYhAKAj+rWCadoNuYNV5iFYc9eIN2jxJ092BNLYm11k8BpuIV/6rgYT7aH9jRhjANdrEOdwa6ztVmKDwAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCp5MXZPDGDhd5dmEkd45qZsfCiLcPHarQHP53RoXxRyiwBAgYAAQMEBQYAAA==",
+  "fee": "5000",
   "before": {
-    "slot": 503501492,
+    "slot": 503569239,
     "addresses": [
       "11111111111111111111111111111112",
-      "4itso72D9z6qgGDrSkx1rBYdKEVYUusajBVNof1nyR8V",
+      "6ozbzro7jnab16xUGDpvUNXyufKpi4mkDnGq3DmYxCgX",
       "So11111111111111111111111111111111111111112"
     ],
     "accounts": [
@@ -33,31 +34,31 @@
     ]
   },
   "simulation": {
-    "slot": 503501493,
+    "slot": 503569240,
     "error": null,
-    "unitsConsumed": 13476,
+    "unitsConsumed": 16476,
     "logs": [
       "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [1]",
       "Program log: Create",
       "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 179 of 194609 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 179 of 191609 compute units",
       "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=",
       "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
       "Program 11111111111111111111111111111111 invoke [2]",
       "Program 11111111111111111111111111111111 success",
       "Program log: Initialize the associated token account",
       "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 37 of 189520 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 37 of 186520 compute units",
       "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
       "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
-      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 229 of 187057 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 229 of 184057 compute units",
       "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
-      "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 13476 of 200000 compute units",
+      "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 16476 of 200000 compute units",
       "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success"
     ],
     "requestedAccounts": [
       "11111111111111111111111111111112",
-      "4itso72D9z6qgGDrSkx1rBYdKEVYUusajBVNof1nyR8V",
+      "6ozbzro7jnab16xUGDpvUNXyufKpi4mkDnGq3DmYxCgX",
       "So11111111111111111111111111111111111111112"
     ],
     "accounts": [
@@ -70,12 +71,12 @@
         "dataBase64": ""
       },
       {
-        "address": "4itso72D9z6qgGDrSkx1rBYdKEVYUusajBVNof1nyR8V",
+        "address": "6ozbzro7jnab16xUGDpvUNXyufKpi4mkDnGq3DmYxCgX",
         "lamports": "1488440",
         "lamportsExact": true,
         "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
         "executable": false,
-        "dataBase64": "BpuIV/6rgYT7aH9jRhjANdrEOdwa6ztVmKDwAAAAAAG72FbAUbPKV8WxT7Rl4LczqGpz2P86WKdPdayNvgO13gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAAAA4thYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        "dataBase64": "BpuIV/6rgYT7aH9jRhjANdrEOdwa6ztVmKDwAAAAAAGIQCgI/q1gmnaDbmDVeYhWHPXiDdo8SdPdgTS2JtdZPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAAAA4thYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
       },
       {
         "address": "So11111111111111111111111111111111111111112",

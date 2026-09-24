@@ -242,6 +242,11 @@ async function record(
   // No .sign(): the signatures stay zeroed, and that is the point.
   const tx = new VersionedTransaction(message);
 
+  // Asked while the blockhash is still valid, which is the only moment it can
+  // be known for this transaction.
+  const fee = await rpc.feeFor(tx);
+  if (!fee.ok) throw new Error(`fee lookup failed: ${fee.failure.message}`);
+
   const before = await rpc.readAccounts(observe);
   if (!before.ok)
     throw new Error(`before read failed: ${before.failure.message}`);
@@ -275,6 +280,7 @@ async function record(
     recordedAt: new Date().toISOString(),
     genesis: GENESIS_BY_NETWORK.devnet,
     txBase64: Buffer.from(tx.serialize()).toString("base64"),
+    fee: fee.value === null ? null : fee.value.toString(),
     before: {
       slot: before.value.slot,
       addresses: observe,

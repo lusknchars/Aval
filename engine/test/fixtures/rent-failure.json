@@ -2,14 +2,15 @@
   "name": "rent-failure",
   "description": "1 lamport to a new account: the runtime refuses it for rent, so the simulation reports err",
   "network": "devnet",
-  "recordedAt": "2026-09-24T14:13:04.205Z",
+  "recordedAt": "2026-09-24T17:10:48.991Z",
   "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
-  "txBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQABAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB6En+JIcBznXKmxcXFLHobkXM4bL0PoEUz8+IgATac3YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOaZ8sl8nEe5G/dpMuW1kdlxeudxx+NTGVMxN2bJSeyqAQICAAEMAgAAAAEAAAAAAAAAAA==",
+  "txBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQABAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABdsQZVaEIw9VsNzPuHg8IWVM+47MBR4QotqeLeccxDnsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOTF2Twxg4XeXZhJHeOambHwoi3Dx2q0Bz+d0aF8UcosAQICAAEMAgAAAAEAAAAAAAAAAA==",
+  "fee": "5000",
   "before": {
-    "slot": 503504939,
+    "slot": 503569235,
     "addresses": [
       "11111111111111111111111111111112",
-      "Gdm2UaWLCsmMD3iZHr3ps1VArqceA7BH8sv9fZdKHnqb"
+      "8zcYH3ffGmiADVvNTQd8m54gjW2ewec8EFkrZ74dBkdQ"
     ],
     "accounts": [
       {
@@ -24,7 +25,7 @@
     ]
   },
   "simulation": {
-    "slot": 503504939,
+    "slot": 503569236,
     "error": "{\"InsufficientFundsForRent\":{\"account_index\":1}}",
     "unitsConsumed": 150,
     "logs": [
@@ -33,7 +34,7 @@
     ],
     "requestedAccounts": [
       "11111111111111111111111111111112",
-      "Gdm2UaWLCsmMD3iZHr3ps1VArqceA7BH8sv9fZdKHnqb"
+      "8zcYH3ffGmiADVvNTQd8m54gjW2ewec8EFkrZ74dBkdQ"
     ],
     "accounts": [null, null],
     "innerInstructions": []

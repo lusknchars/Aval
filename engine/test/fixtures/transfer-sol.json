@@ -2,14 +2,15 @@
   "name": "transfer-sol",
   "description": "SOL transfer that creates the destination account (rent-exempt)",
   "network": "devnet",
-  "recordedAt": "2026-09-24T14:03:33.084Z",
+  "recordedAt": "2026-09-24T17:10:48.386Z",
   "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
-  "txBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQABAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABZ06tRpDubaffqWwlRYOtx8+lN6mWZ0GOV+14DGsXFV8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA51RWf0i5drWcReSAyR5yF6kmMn31RRnB2sSRUFPL1zAQICAAEMAgAAAEBCDwAAAAAAAA==",
+  "txBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQABAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABTqlCOFLbrzDrT7LR/VQFjPL2hhtFwigXd2ALycV6XpUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOTF2Twxg4XeXZhJHeOambHwoi3Dx2q0Bz+d0aF8UcosAQICAAEMAgAAAEBCDwAAAAAAAA==",
+  "fee": "5000",
   "before": {
-    "slot": 503501488,
+    "slot": 503569231,
     "addresses": [
       "11111111111111111111111111111112",
-      "7xGaMaJA16tZc6pxd7ALKDKonmRe23uWMV6mPQN7ffXC"
+      "6J4VdebizAY9Dd7P8mvKsn6wwYFDrZJbTNDx7Voc3dKr"
     ],
     "accounts": [
       {
@@ -24,7 +25,7 @@
     ]
   },
   "simulation": {
-    "slot": 503501491,
+    "slot": 503569232,
     "error": null,
     "unitsConsumed": 150,
     "logs": [
@@ -33,7 +34,7 @@
     ],
     "requestedAccounts": [
       "11111111111111111111111111111112",
-      "7xGaMaJA16tZc6pxd7ALKDKonmRe23uWMV6mPQN7ffXC"
+      "6J4VdebizAY9Dd7P8mvKsn6wwYFDrZJbTNDx7Voc3dKr"
     ],
     "accounts": [
       {
@@ -45,7 +46,7 @@
         "dataBase64": ""
       },
       {
-        "address": "7xGaMaJA16tZc6pxd7ALKDKonmRe23uWMV6mPQN7ffXC",
+        "address": "6J4VdebizAY9Dd7P8mvKsn6wwYFDrZJbTNDx7Voc3dKr",
         "lamports": "1000000",
         "lamportsExact": true,
         "owner": "11111111111111111111111111111111",

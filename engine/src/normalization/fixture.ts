@@ -51,6 +51,14 @@ export const fixtureSchema = z.object({
 
   /** The unsigned transaction, serialized. */
   txBase64: z.string(),
+  /**
+   * The network fee at recording time, in lamports, as a decimal string.
+   *
+   * Recorded because the blockhash is still valid at that moment. Without it
+   * every replay would fold the fee into the payer's balance change, and a
+   * manifest checking magnitude would fire on legitimate transfers.
+   */
+  fee: z.union([decimalStringSchema, z.null()]),
 
   /** The BEFORE read. `addresses` and `accounts` line up by position. */
   before: z.object({
@@ -191,9 +199,8 @@ export class FixtureRpcClient implements RpcClient {
   }
 
   async feeFor(): Promise<RpcResult<bigint | null>> {
-    // Fixtures do not record a fee, so the recorded balance change still
-    // includes it. Stated rather than guessed at.
-    return { ok: true, value: null };
+    const recorded = this.#fixture.fee;
+    return { ok: true, value: recorded === null ? null : BigInt(recorded) };
   }
 
   async identifyNetwork(): Promise<RpcResult<string>> {

@@ -18,7 +18,12 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
+import {
+  manifestFor,
+  manifestVersions,
+} from "../evaluation/manifests/index.js";
 import { evaluate } from "../evaluation/verdict.js";
+import { DEFAULT_THRESHOLDS } from "../types/verdict.js";
 import { FixtureRpcClient, loadFixture } from "../normalization/fixture.js";
 import { normalize } from "../normalization/normalize.js";
 import { formatRawAmount } from "../normalization/spl.js";
@@ -267,7 +272,17 @@ async function main(): Promise<number> {
     timestamp: Date.now(),
   };
 
-  const verdict = evaluate({ effects: set, context });
+  const verdict = evaluate({
+    effects: set,
+    context,
+    manifest: manifestFor(args.toolCall),
+    policy: {
+      manifests: manifestVersions(),
+      thresholds: DEFAULT_THRESHOLDS,
+      sourcePatterns: [],
+      allowlist: [],
+    },
+  });
   printPanel(context, set, verdict);
   return exitFor(verdict);
 }

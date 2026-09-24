@@ -121,7 +121,7 @@ export interface EvaluationInput {
 export function evaluate(input: EvaluationInput): Verdict {
   const provenanceConfig = input.provenance ?? EMPTY_PROVENANCE_CONFIG;
   const findings: Finding[] = [
-    ...alwaysCriticalFindings(input.effects),
+    ...alwaysCriticalFindings(input.effects, input.manifest ?? null),
     ...coverageFindings(input.effects),
     ...manifestFindings({
       effects: input.effects,

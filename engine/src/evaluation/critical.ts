@@ -20,6 +20,7 @@ import {
   type Effect,
   type EffectSet,
 } from "../types/effects.js";
+import type { ToolManifest } from "../types/manifest.js";
 import type { Finding } from "../types/verdict.js";
 
 /** A delegate this large can move the whole balance, now and indefinitely. */
@@ -44,10 +45,23 @@ function finding(
  * Everything here is derived from the EffectSet alone, which is why it works
  * even when the rest of the evaluation cannot run.
  */
-export function alwaysCriticalFindings(set: EffectSet): readonly Finding[] {
+export function alwaysCriticalFindings(
+  set: EffectSet,
+  manifest: ToolManifest | null = null,
+): readonly Finding[] {
   const findings: Finding[] = [];
+  // A manifest that REQUIRES an effect authorises it. Without this, a tool
+  // whose entire purpose is granting a delegate could never be allowed, and
+  // the safety net would be indistinguishable from a blanket ban. What the
+  // manifest does not lift is the bound: the magnitude check still compares
+  // the allowance against what the tool call declared, and provenance still
+  // asks who the delegate is.
+  const authorised = new Set(
+    (manifest?.must ?? []).map((pattern) => pattern.type),
+  );
 
   for (const effect of set.effects) {
+    if (authorised.has(effect.type)) continue;
     if (isUnlimitedDelegate(effect)) {
       findings.push(
         finding("always_critical.unlimited_delegate", {

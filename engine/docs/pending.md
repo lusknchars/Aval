@@ -20,7 +20,7 @@ with provenance, `ToolManifest` with reference validation, `Verdict`.
 | 1.4 | ~~bigint serialization~~ — **resolved in block 2**: decimal strings in fixtures. | done |
 | 1.5 | ~~policyVersion~~ — derived from a hash of manifests, thresholds and customer configuration. Former text: **composition** — today it is a free string. It must be derived from manifest versions + thresholds + classifier version. | **D** |
 | 1.6 | `MAX_TOLERANCE = 0.10` is arbitrary calibration, chosen with no data. Measure the p99 slippage of a legitimate swap. | **D** |
-| 1.7 | A severity of its own for **extreme slippage** — the spec asks for it; today tolerance is binary (inside passes, outside is a finding). | **D** |
+| 1.7 | A severity of its own for **extreme slippage** (manifests now carry tolerance; passing far inside it is still not a signal) — the spec asks for it; today tolerance is binary (inside passes, outside is a finding). | **D** |
 | 1.8 | An explicit exception for a tool that legitimately needs more slack than the cap. | **D** |
 
 ---
@@ -115,7 +115,7 @@ Read `amount`, `owner`, `delegate`, `delegatedAmount`, `state` and
 
 | # | Item | Urgency |
 |---|---|---|
-| T.1 | **Customer configuration has no validation at all.** It is the only place where a mistake *switches off a whole detector without saying so* (an over-broad `SourceTrust` pattern). Defence: require a full hostname, plus a **preview** of what the pattern would match against real traffic. | **P** |
+| T.1 | PARTLY DONE — source patterns now match on label boundaries and `validateSourceTrust` rejects shapes that would silently widen trust. Still missing: the preview showing what a pattern would match against real traffic. Former text: **no validation.** It is the only place where a mistake *switches off a whole detector without saying so* (an over-broad `SourceTrust` pattern). Defence: require a full hostname, plus a **preview** of what the pattern would match against real traffic. | **P** |
 | T.2 | ~~The manifest/tool seam~~ — an unresolved reference now produces `coverage.unresolved_reference`. Former text: **the seam.** Nobody types anything wrong and it still fails to line up. An unresolved reference must become a `coverage` finding. | **P** |
 | T.3 | **Allowlisted addresses are never checked on-chain.** A mistyped address almost never exists — that is detectable at input time. | **D** |
 | T.4 | **No performance measurement anywhere.** | **P** |
