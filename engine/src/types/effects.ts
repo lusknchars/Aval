@@ -127,6 +127,16 @@ export interface EffectSet {
   readonly slot: number | null;
   readonly simulation: SimulationOutcome;
   readonly coverage: AccountCoverage;
+  /**
+   * The network fee, in lamports, reported separately from the effects.
+   *
+   * The fee is a protocol cost, not something the user asked for. Folding it
+   * into the fee payer's BALANCE_DECREASE would make every legitimate
+   * transaction look like it moved slightly more value than the tool call
+   * declared. Kept visible, just not conflated with intent. null when the fee
+   * could not be estimated.
+   */
+  readonly fee: bigint | null;
 }
 
 export function coverageIsComplete(coverage: AccountCoverage): boolean {

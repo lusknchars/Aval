@@ -58,6 +58,26 @@ export interface AccountsRead {
   readonly accounts: readonly (AccountState | null)[];
 }
 
+/**
+ * One inner instruction, reduced to what the effect vocabulary needs: which
+ * program was called, and from which outer instruction.
+ *
+ * The RPC returns two different shapes. `jsonParsed` when it recognises the
+ * program, carrying the program id directly; the compiled form otherwise,
+ * carrying an INDEX into the account list. Both are handled, because a program
+ * VETO cares about may well be one the RPC cannot parse.
+ */
+export interface InnerInstructionRef {
+  readonly outerIndex: number;
+  readonly position: number;
+  /** Set when the RPC gave a program id directly. */
+  readonly program: string | null;
+  /** Set when the RPC gave an index that still has to be resolved. */
+  readonly programIndex: number | null;
+  /** Depth of the call. Not typed by the SDK, so it is read defensively. */
+  readonly stackHeight: number | null;
+}
+
 export interface SimulationResponse {
   readonly slot: number;
   /** null = the transaction would pass. Set = it ran and would fail. */
@@ -67,6 +87,8 @@ export interface SimulationResponse {
   /** Requested addresses, in order. The response associates them by position only. */
   readonly requestedAccounts: readonly string[];
   readonly accounts: readonly (AccountState | null)[];
+  /** null when not requested, or when the RPC did not return them. */
+  readonly innerInstructions: readonly InnerInstructionRef[] | null;
 }
 
 /** Contents of an Address Lookup Table, resolved before signing. */
@@ -95,6 +117,8 @@ export interface SimulationOptions {
   /** Accounts whose post-state must come back. The RPC performs no discovery. */
   readonly accounts: readonly string[];
   readonly minContextSlot?: number;
+  /** Ask for the CPIs. Needed for PROGRAM_INVOKE beyond the outer instructions. */
+  readonly innerInstructions?: boolean;
 }
 
 /**
@@ -264,6 +288,56 @@ export function simulatedState(
 
 // ---------------------------------------------------------------- web3.js
 
+/**
+ * Reduces the RPC's inner instructions to program references.
+ *
+ * The SDK types these as parsed or partially decoded, but the RPC also emits a
+ * compiled form with numeric indexes when it cannot parse the program. The
+ * shape is narrowed at runtime rather than trusted, and an unrecognised shape
+ * is skipped instead of guessed at.
+ */
+export function normaliseInnerInstructions(
+  groups:
+    | readonly { index: number; instructions: readonly object[] }[]
+    | null
+    | undefined,
+): readonly InnerInstructionRef[] | null {
+  if (groups === undefined || groups === null) return null;
+  const refs: InnerInstructionRef[] = [];
+  for (const group of groups) {
+    group.instructions.forEach((instruction, position) => {
+      const stackHeightRaw: unknown =
+        "stackHeight" in instruction ? instruction.stackHeight : undefined;
+      const stackHeight =
+        typeof stackHeightRaw === "number" ? stackHeightRaw : null;
+
+      if ("programId" in instruction) {
+        refs.push({
+          outerIndex: group.index,
+          position,
+          program: String(instruction.programId),
+          programIndex: null,
+          stackHeight,
+        });
+        return;
+      }
+      if ("programIdIndex" in instruction) {
+        const index: unknown = instruction.programIdIndex;
+        if (typeof index === "number") {
+          refs.push({
+            outerIndex: group.index,
+            position,
+            program: null,
+            programIndex: index,
+            stackHeight,
+          });
+        }
+      }
+    });
+  }
+  return refs;
+}
+
 /** Implementation over @solana/web3.js. The only place that talks to the network. */
 export class Web3RpcClient implements RpcClient {
   readonly #connection: Connection;
@@ -338,6 +412,7 @@ export class Web3RpcClient implements RpcClient {
       };
       if (options.minContextSlot !== undefined)
         config.minContextSlot = options.minContextSlot;
+      if (options.innerInstructions === true) config.innerInstructions = true;
       const response = await this.#connection.simulateTransaction(tx, config);
 
       const raw = response.value.accounts;
@@ -370,6 +445,9 @@ export class Web3RpcClient implements RpcClient {
           logs: response.value.logs,
           requestedAccounts: requested,
           accounts,
+          innerInstructions: normaliseInnerInstructions(
+            response.value.innerInstructions,
+          ),
         },
       };
     } catch (error) {

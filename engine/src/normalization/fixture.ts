@@ -67,6 +67,17 @@ export const fixtureSchema = z.object({
     logs: z.union([z.array(z.string()), z.null()]),
     requestedAccounts: z.array(z.string()),
     accounts: z.array(z.union([recordedAccountSchema, z.null()])),
+    innerInstructions: z
+      .array(
+        z.object({
+          outerIndex: z.number().int().nonnegative(),
+          position: z.number().int().nonnegative(),
+          program: z.union([z.string(), z.null()]),
+          programIndex: z.union([z.number().int(), z.null()]),
+          stackHeight: z.union([z.number().int(), z.null()]),
+        }),
+      )
+      .nullable(),
   }),
 
   /** Contents of any referenced Address Lookup Tables. */
@@ -219,7 +230,8 @@ export class FixtureRpcClient implements RpcClient {
       }
       accounts.push(this.#after.get(address) ?? null);
     }
-    const { slot, error, unitsConsumed, logs } = this.#fixture.simulation;
+    const { slot, error, unitsConsumed, logs, innerInstructions } =
+      this.#fixture.simulation;
     return {
       ok: true,
       value: {
@@ -229,6 +241,7 @@ export class FixtureRpcClient implements RpcClient {
         logs,
         requestedAccounts: [...options.accounts],
         accounts,
+        innerInstructions,
       },
     };
   }

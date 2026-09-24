@@ -155,6 +155,7 @@ async function record(
   const simulation = await rpc.simulate(tx, {
     accounts: observe,
     minContextSlot: before.value.slot,
+    innerInstructions: true,
   });
   if (!simulation.ok)
     throw new Error(`simulation failed: ${simulation.failure.message}`);
@@ -192,6 +193,10 @@ async function record(
       logs: simulation.value.logs === null ? null : [...simulation.value.logs],
       requestedAccounts: [...simulation.value.requestedAccounts],
       accounts: simulation.value.accounts.map(recordAccount),
+      innerInstructions:
+        simulation.value.innerInstructions === null
+          ? null
+          : simulation.value.innerInstructions.map((i) => ({ ...i })),
     },
     lookupTables,
   };
