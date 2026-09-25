@@ -79,9 +79,13 @@ describe("every shipped manifest is structurally sound", () => {
       expect({
         tool: manifest.tool,
         owner: manifest.mustNot.includes("OWNER_CHANGE"),
+        // A freeze moves no tokens, so no amount check in any of these would
+        // ever see it. None of these primitives has any business freezing.
+        freeze: manifest.mustNot.includes("ACCOUNT_FREEZE"),
       }).toEqual({
         tool: manifest.tool,
         owner: true,
+        freeze: true,
       });
       const grantsDelegate = manifest.must.some(
         (p) => p.type === "DELEGATE_GRANT",

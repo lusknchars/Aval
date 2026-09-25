@@ -72,6 +72,7 @@ describe("finding and verdict", () => {
   it("traces every finding back to a named rule", () => {
     const verdict: Verdict = {
       actionId: "action-1",
+      messageDigest: null,
       decision: "deny",
       findings: [
         finding,

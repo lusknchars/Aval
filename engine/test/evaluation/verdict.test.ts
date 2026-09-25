@@ -110,12 +110,13 @@ describe("the severity ceiling", () => {
     // A customer that wants a single high finding to block says so, and the
     // verdict records which policy was in force.
     expect(
-      decide([finding("high")], { highsForDeny: 1, mediumsForFlag: 1 }),
+      decide([finding("high")], { highsForDeny: 1, mediumsForFlag: 1, maxFeeLamports: 10_000_000n }),
     ).toBe("deny");
     expect(
       decide([finding("medium"), finding("medium")], {
         highsForDeny: 2,
         mediumsForFlag: 3,
+        maxFeeLamports: 10_000_000n,
       }),
     ).toBe("allow");
   });
@@ -135,7 +136,7 @@ describe("policy version", () => {
         { tool: "swap", version: "2" },
         { tool: "transfer", version: "1" },
       ],
-      thresholds: { highsForDeny: 2, mediumsForFlag: 1 },
+      thresholds: { highsForDeny: 2, mediumsForFlag: 1, maxFeeLamports: 10_000_000n },
       sourcePatterns: ["b", "a"],
       allowlist: ["Y", "X"],
     });
@@ -144,7 +145,7 @@ describe("policy version", () => {
         { tool: "transfer", version: "1" },
         { tool: "swap", version: "2" },
       ],
-      thresholds: { highsForDeny: 2, mediumsForFlag: 1 },
+      thresholds: { highsForDeny: 2, mediumsForFlag: 1, maxFeeLamports: 10_000_000n },
       sourcePatterns: ["a", "b"],
       allowlist: ["X", "Y"],
     });
@@ -161,7 +162,7 @@ describe("policy version", () => {
     expect(
       policyVersion({
         ...EMPTY_POLICY,
-        thresholds: { highsForDeny: 1, mediumsForFlag: 1 },
+        thresholds: { highsForDeny: 1, mediumsForFlag: 1, maxFeeLamports: 10_000_000n },
       }),
     ).not.toBe(base);
     expect(

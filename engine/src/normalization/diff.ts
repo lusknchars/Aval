@@ -11,19 +11,25 @@
  * effect of intent, and an account that was never observed is never assumed
  * to be unchanged.
  */
-import type { Effect } from "../types/effects.js";
+import { NATIVE_MINT, type Effect } from "../types/effects.js";
 import type { ResolvedAccount } from "./accounts.js";
 import type { AccountState } from "./rpc.js";
 import {
   decodeMint,
   decodeTokenAccount,
+  extendedAccountType,
   isTokenProgram,
   MINT_SIZE,
   type TokenAccount,
 } from "./spl.js";
 
-/** The native asset, in the mint position. */
-export const NATIVE_MINT_LABEL = "SOL";
+/**
+ * The native asset, in the mint position.
+ *
+ * One literal, shared with the shape contract that validates it: two copies of
+ * "SOL" is two places for them to stop agreeing.
+ */
+export const NATIVE_MINT_LABEL = NATIVE_MINT;
 
 export interface DiffInput {
   readonly accounts: readonly ResolvedAccount[];
@@ -44,7 +50,15 @@ function tokenAccountOf(state: AccountState): TokenAccount | null {
 }
 
 function isMintAccount(state: AccountState): boolean {
-  return isTokenProgram(state.owner) && state.data.length === MINT_SIZE;
+  if (!isTokenProgram(state.owner)) return false;
+  // Either the bare layout, or the padded Token-2022 one that says so in its
+  // discriminator byte. Without the second half, a mint with extensions was
+  // recognised as neither a mint nor a token account, and an authority handed
+  // over on it produced no effect at all.
+  return (
+    state.data.length === MINT_SIZE ||
+    extendedAccountType(state.data) === "mint"
+  );
 }
 
 function balanceEffect(
@@ -138,6 +152,18 @@ function tokenEffects(
       counterparty: after.delegate ?? "",
       mint: after.mint,
       amount: after.delegatedAmount,
+    });
+  }
+
+  // Frozen: no token moved, so every amount comparison passes, and the
+  // owner can no longer move anything at all. Only this direction -- thawing
+  // hands control back, and losing it is what the vocabulary is about.
+  if (before.state !== "frozen" && after.state === "frozen") {
+    effects.push({
+      type: "ACCOUNT_FREEZE",
+      account: address,
+      owner: after.owner,
+      mint: after.mint,
     });
   }
 

@@ -149,7 +149,16 @@ export interface RpcClient {
    * message, which this SDK cannot serialize. A null fee is not zero: it means
    * the fee stays folded into the fee payer's balance change.
    */
-  feeFor(tx: VersionedTransaction): Promise<RpcResult<bigint | null>>;
+  /**
+   * Network fee for this message, or null when it cannot be determined.
+   *
+   * `messageBase64` lets the caller supply bytes it already has, which is the
+   * only way to get a fee for a version 1 transaction.
+   */
+  feeFor(
+    tx: VersionedTransaction,
+    messageBase64?: string,
+  ): Promise<RpcResult<bigint | null>>;
   /** Genesis hash, to confirm the endpoint is the network we expect. */
   identifyNetwork(): Promise<RpcResult<string>>;
 }
@@ -167,11 +176,46 @@ export const GENESIS_BY_NETWORK: Readonly<Record<Network, string>> = {
   devnet: "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
 };
 
+/**
+ * The most addresses `simulateTransaction` will return post-state for.
+ *
+ * Measured, not assumed: asking for 100 returns
+ * `-32602 Too many accounts provided; max 64`. Real traffic in the same
+ * sample had a median of 6 writable accounts, p90 of 12 and a maximum of 41,
+ * so the cap bites only on a heavy DeFi transaction -- and when it does, going
+ * blind on the whole transaction would be the wrong answer.
+ */
+export const MAX_SIMULATION_ACCOUNTS = 64;
+
 export interface RpcConfig {
   readonly rpcUrl: string;
   readonly commitment: Commitment;
   readonly network: Network;
+  /** Deadlines in milliseconds. See DEFAULT_DEADLINES. */
+  readonly deadlines?: Deadlines;
 }
+
+export interface Deadlines {
+  /** Reading account state, fees, genesis and lookup tables. */
+  readonly read: number;
+  /** Simulating, which does real work on the validator. */
+  readonly simulate: number;
+}
+
+/**
+ * How long a call may take before it is a failure.
+ *
+ * Without a deadline a hung connection hangs the DECISION, and a decision
+ * that never arrives is the one outcome worse than a wrong one: the agent is
+ * left holding an unsigned transaction and no answer. Reaching one of these
+ * degrades to `unavailable`, which is a critical coverage finding and
+ * therefore a deny -- never a pass.
+ *
+ * The numbers are a product choice, not a measurement: a wallet-level gate
+ * has to answer while a human is still looking at the screen. Simulation gets
+ * twice as long because it executes the transaction on the validator.
+ */
+export const DEFAULT_DEADLINES: Deadlines = { read: 1_500, simulate: 3_000 };
 
 const rpcUrlSchema = z.url({ protocol: /^https?$/ });
 const ENV_VAR_BY_NETWORK: Readonly<Record<Network, string>> = {
@@ -264,6 +308,7 @@ export function simulatedState(
     owner: string;
     executable: boolean;
     data: string[];
+    space?: number | undefined;
   } | null,
 ): RpcResult<AccountState | null> {
   if (info === null) return { ok: true, value: null };
@@ -288,6 +333,21 @@ export function simulatedState(
       },
     };
   }
+  // The response says how big the account really is. A buffer shorter than
+  // that is a partial account, and diffing one invents changes where the cut
+  // lands and hides every change past it. Loud rather than silent: this has
+  // not been seen on mainnet, and if it starts happening the message says so
+  // instead of the effects quietly becoming fiction.
+  if (info.space !== undefined && data.length !== info.space) {
+    return {
+      ok: false,
+      failure: {
+        step: "simulate",
+        message: `post-state of ${address} is truncated: ${data.length} bytes of ${info.space}`,
+      },
+    };
+  }
+
   const { lamports, exact } = toLamports(info.lamports);
   return {
     ok: true,
@@ -376,6 +436,15 @@ const simulateResponseSchema = z.object({
             owner: z.string(),
             executable: z.boolean(),
             data: z.array(z.string()),
+            /**
+             * The account's real size on chain.
+             *
+             * Present in the response, and the only way to know whether the
+             * data we were handed is the whole account. Diffing a truncated
+             * buffer invents changes where the cut lands and hides the ones
+             * past it.
+             */
+            space: z.number().optional(),
           })
           .nullable(),
       )
@@ -403,15 +472,47 @@ const jsonRpcSchema = z.object({
   error: z.object({ code: z.number(), message: z.string() }).optional(),
 });
 
+/**
+ * Races a call against its deadline.
+ *
+ * The timer is always cleared, including on the happy path: a pending timer
+ * keeps the Node process alive, which in a CLI means a command that has
+ * printed its answer and refuses to exit.
+ */
+export async function withDeadline<T>(
+  work: Promise<T>,
+  ms: number,
+  step: string,
+): Promise<{ ok: true; value: T } | { ok: false; failure: RpcFailure }> {
+  let timer: NodeJS.Timeout | undefined;
+  const deadline = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), ms);
+  });
+  try {
+    const result = await Promise.race([work, deadline]);
+    if (result === "timeout") {
+      return {
+        ok: false,
+        failure: { step, message: `timed out after ${ms} ms` },
+      };
+    }
+    return { ok: true, value: result };
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 /** Implementation over @solana/web3.js. The only place that talks to the network. */
 export class Web3RpcClient implements RpcClient {
   readonly #connection: Connection;
   readonly #url: string;
   readonly #commitment: Commitment;
+  readonly #deadlines: Deadlines;
 
   constructor(config: RpcConfig) {
     this.#url = config.rpcUrl;
     this.#commitment = config.commitment;
+    this.#deadlines = config.deadlines ?? DEFAULT_DEADLINES;
     // No silent retry on 429: the error must surface, not stall the loop.
     this.#connection = new Connection(config.rpcUrl, {
       commitment: config.commitment,
@@ -426,33 +527,55 @@ export class Web3RpcClient implements RpcClient {
 
   async identifyNetwork(): Promise<RpcResult<string>> {
     try {
-      return { ok: true, value: await this.#connection.getGenesisHash() };
+      return await withDeadline(
+        this.#connection.getGenesisHash(),
+        this.#deadlines.read,
+        "identifyNetwork",
+      );
     } catch (error) {
       return this.#fail("identifyNetwork", error);
     }
   }
 
-  async feeFor(tx: VersionedTransaction): Promise<RpcResult<bigint | null>> {
+  async feeFor(
+    tx: VersionedTransaction,
+    messageBase64?: string,
+  ): Promise<RpcResult<bigint | null>> {
+    // The caller can hand over message bytes it already has. That is what
+    // makes this work for a version 1 transaction, whose message this SDK
+    // reads but will not serialize -- roughly a third of real traffic, which
+    // until now had no fee at all. No fee means the fee stays inside the
+    // payer's balance change, so every legitimate transfer looked larger than
+    // the tool call declared, AND the fee ceiling had nothing to check.
     let encoded: string;
-    try {
-      encoded = Buffer.from(tx.message.serialize()).toString("base64");
-    } catch {
-      // A version 1 message cannot be serialized by this SDK. Reported as
-      // unknown rather than as a failure: the evaluation still runs, and the
-      // fee simply stays inside the payer's balance change.
-      return { ok: true, value: null };
+    if (messageBase64 !== undefined) {
+      encoded = messageBase64;
+    } else {
+      try {
+        encoded = Buffer.from(tx.message.serialize()).toString("base64");
+      } catch {
+        return { ok: true, value: null };
+      }
     }
     try {
-      const response = await fetch(this.#url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getFeeForMessage",
-          params: [encoded, { commitment: this.#commitment }],
+      const attempt = await withDeadline(
+        fetch(this.#url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getFeeForMessage",
+            params: [encoded, { commitment: this.#commitment }],
+          }),
         }),
-      });
+        this.#deadlines.read,
+        "feeFor",
+      );
+      // The fee is an optimisation, never a blocker: not knowing it only
+      // leaves the fee inside the payer's balance change.
+      if (!attempt.ok) return { ok: true, value: null };
+      const response = attempt.value;
       const parsed = feeResponseSchema.safeParse(await response.json());
       const value = parsed.success ? (parsed.data.result?.value ?? null) : null;
       return { ok: true, value: value === null ? null : BigInt(value) };
@@ -468,12 +591,15 @@ export class Web3RpcClient implements RpcClient {
       return { ok: true, value: { slot: 0, accounts: [] } };
     try {
       const keys = addresses.map((a) => new PublicKey(a));
-      const response = await this.#connection.getMultipleAccountsInfoAndContext(
-        keys,
-        {
+      const attempt = await withDeadline(
+        this.#connection.getMultipleAccountsInfoAndContext(keys, {
           commitment: this.#commitment,
-        },
+        }),
+        this.#deadlines.read,
+        "readAccounts",
       );
+      if (!attempt.ok) return attempt;
+      const response = attempt.value;
       if (response.value.length !== addresses.length) {
         return {
           ok: false,
@@ -530,16 +656,22 @@ export class Web3RpcClient implements RpcClient {
 
     let payload: unknown;
     try {
-      const response = await fetch(this.#url, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "simulateTransaction",
-          params: [encoded, config],
+      const attempt = await withDeadline(
+        fetch(this.#url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "simulateTransaction",
+            params: [encoded, config],
+          }),
         }),
-      });
+        this.#deadlines.simulate,
+        "simulate",
+      );
+      if (!attempt.ok) return attempt;
+      const response = attempt.value;
       if (!response.ok) {
         return {
           ok: false,
@@ -602,6 +734,22 @@ export class Web3RpcClient implements RpcClient {
         if (!converted.ok) return converted;
         accounts.push(converted.value);
       }
+    } else if (
+      requested.length > 0 &&
+      (value.err === null || value.err === undefined)
+    ) {
+      // A simulation that ran, was asked for post-state, and carries none.
+      // Returning ok here handed the caller an empty list to zip against its
+      // requested addresses, which made every entry null -- and a null
+      // post-state for an account that existed reads as "the account is
+      // gone". The result was a phantom closure for every account.
+      return {
+        ok: false,
+        failure: {
+          step: "simulate",
+          message: `simulation returned no post-state for ${requested.length} requested accounts`,
+        },
+      };
     }
 
     return {
@@ -633,12 +781,15 @@ export class Web3RpcClient implements RpcClient {
     const results = await Promise.all(
       addresses.map(async (address): Promise<RpcResult<LookupTable>> => {
         try {
-          const response = await this.#connection.getAddressLookupTable(
-            new PublicKey(address),
-            {
+          const attempt = await withDeadline(
+            this.#connection.getAddressLookupTable(new PublicKey(address), {
               commitment: this.#commitment,
-            },
+            }),
+            this.#deadlines.read,
+            "readLookupTables",
           );
+          if (!attempt.ok) return attempt;
+          const response = attempt.value;
           if (response.value === null) {
             return {
               ok: false,

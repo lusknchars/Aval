@@ -13,7 +13,9 @@
  * not any more. A failure here is information about the chain, not
  * necessarily about the normalizer.
  */
-import { counterparties } from "../types/effects.js";
+import { counterparties, effectShapeProblems } from "../types/effects.js";
+import { resolveAccounts } from "../normalization/accounts.js";
+import { declaredFeeOf } from "../normalization/fee.js";
 import { normalize } from "../normalization/normalize.js";
 import {
   createRpcClient,
@@ -74,6 +76,7 @@ const NOTABLE = new Set([
   "OWNER_CHANGE",
   "AUTHORITY_CHANGE",
   "ACCOUNT_CLOSE",
+  "ACCOUNT_FREEZE",
 ]);
 
 async function main(): Promise<number> {
@@ -106,6 +109,22 @@ async function main(): Promise<number> {
     sampled: 0,
   };
   const effectCounts = new Map<string, number>();
+  /**
+   * Every effect from real traffic, against the shape contract for its type.
+   *
+   * The contract is worth nothing if it is only checked against the cases
+   * somebody remembered to write down. This is where it earns its keep: the
+   * same function the tests use, applied to transactions nobody designed for
+   * it.
+   */
+  const shapeViolations: string[] = [];
+  /**
+   * The fee read out of the bytes, against the fee the network actually
+   * charged. The parser exists because `getFeeForMessage` needs a live
+   * blockhash and therefore prices no historical transaction, and the fee is
+   * the one amount no manifest bounds -- so it has to be right.
+   */
+  const feeCheck = { compared: 0, agreed: 0, unknown: 0, wrong: [] as string[] };
   const notable: string[] = [];
   /**
    * How many addresses the provenance check would have to explain per
@@ -135,6 +154,25 @@ async function main(): Promise<number> {
       });
       await new Promise((resolve) => setTimeout(resolve, args.delayMs));
 
+      // Pure, no network: the accounts are already resolved for the diff.
+      const resolvedForFee = await resolveAccounts(entry.tx.message, rpc);
+      if (resolvedForFee.ok && entry.actualFee !== null) {
+        const declared = declaredFeeOf(
+          entry.tx.message,
+          resolvedForFee.value.accounts,
+        ).total;
+        if (declared === null) {
+          feeCheck.unknown++;
+        } else {
+          feeCheck.compared++;
+          if (declared === entry.actualFee) feeCheck.agreed++;
+          else
+            feeCheck.wrong.push(
+              `slot ${slot}: declared ${declared}, charged ${entry.actualFee}`,
+            );
+        }
+      }
+
       tally.sampled++;
       tally[set.simulation.status]++;
       if (entry.version === "1") tally.v1++;
@@ -147,6 +185,11 @@ async function main(): Promise<number> {
 
       for (const effect of set.effects) {
         effectCounts.set(effect.type, (effectCounts.get(effect.type) ?? 0) + 1);
+        const problems = effectShapeProblems(effect);
+        if (problems.length > 0)
+          shapeViolations.push(
+            `slot ${slot} ${effect.type}: ${problems.join(", ")}`,
+          );
         if (NOTABLE.has(effect.type)) {
           const unlimited =
             effect.type === "DELEGATE_GRANT" &&
@@ -169,6 +212,21 @@ async function main(): Promise<number> {
       `\n  executed ${tally.executed} (${rate(tally.executed)}) · would fail ${tally.failed} · unavailable ${tally.unavailable}` +
       `\n  version 1 ${tally.v1} · used lookup tables ${tally.withLookups} · slot-aligned ${tally.aligned}`,
   );
+
+  if (feeCheck.compared + feeCheck.unknown > 0) {
+    console.log(
+      `\nfee read from the bytes, against what the network charged` +
+        `\n  agreed ${feeCheck.agreed} of ${feeCheck.compared}` +
+        `\n  not computable (price set with no limit): ${feeCheck.unknown}`,
+    );
+    for (const line of feeCheck.wrong.slice(0, 8)) console.log(`  ${line}`);
+  }
+
+  const totalEffects = [...effectCounts.values()].reduce((a, b) => a + b, 0);
+  console.log(
+    `\nshape contract: ${totalEffects - shapeViolations.length} of ${totalEffects} effects conform`,
+  );
+  for (const line of shapeViolations.slice(0, 10)) console.log(`  ${line}`);
 
   console.log("\neffects observed:");
   if (effectCounts.size === 0) console.log("  none");

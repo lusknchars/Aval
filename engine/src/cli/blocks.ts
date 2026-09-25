@@ -18,7 +18,13 @@ const blockSchema = z.object({
       transactions: z.array(
         z.object({
           transaction: z.tuple([z.string(), z.literal("base64")]),
-          meta: z.object({ err: z.unknown().nullable() }).nullable(),
+          meta: z
+            .object({
+              err: z.unknown().nullable(),
+              /** What the network actually charged. Ground truth for the fee. */
+              fee: z.number().optional(),
+            })
+            .nullable(),
         }),
       ),
     })
@@ -77,6 +83,8 @@ export interface SampledTransaction {
   readonly base64: string;
   readonly tx: VersionedTransaction;
   readonly version: string;
+  /** Lamports the network actually charged, when the block reports it. */
+  readonly actualFee: bigint | null;
 }
 
 function isVote(message: VersionedMessage): boolean {
@@ -131,7 +139,14 @@ export async function transactionsInBlock(
       continue;
     }
     if (isVote(tx.message)) continue;
-    sampled.push({ slot, base64, tx, version: String(tx.message.version) });
+    sampled.push({
+      slot,
+      base64,
+      tx,
+      version: String(tx.message.version),
+      actualFee:
+        entry.meta?.fee === undefined ? null : BigInt(entry.meta.fee),
+    });
     if (sampled.length >= limit) break;
   }
   return sampled;

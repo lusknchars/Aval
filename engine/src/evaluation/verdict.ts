@@ -11,7 +11,11 @@
  * which is exactly where manual versioning breaks.
  */
 import { createHash } from "node:crypto";
-import { alwaysCriticalFindings, coverageFindings } from "./critical.js";
+import {
+  alwaysCriticalFindings,
+  coverageFindings,
+  feeFindings,
+} from "./critical.js";
 import { manifestFindings } from "./manifest.js";
 import {
   provenanceFindings,
@@ -89,7 +93,12 @@ export function policyVersion(policy: PolicyIdentity): string {
     manifests: [...policy.manifests]
       .map((m) => `${m.tool}@${m.version}`)
       .sort((a, b) => a.localeCompare(b)),
-    thresholds: policy.thresholds,
+    // JSON.stringify throws on bigint, so the one bigint in the thresholds
+    // becomes a decimal string -- the same convention the fixtures use.
+    thresholds: {
+      ...policy.thresholds,
+      maxFeeLamports: policy.thresholds.maxFeeLamports.toString(),
+    },
     sourcePatterns: [...policy.sourcePatterns].sort((a, b) =>
       a.localeCompare(b),
     ),
@@ -120,9 +129,11 @@ export interface EvaluationInput {
  */
 export function evaluate(input: EvaluationInput): Verdict {
   const provenanceConfig = input.provenance ?? EMPTY_PROVENANCE_CONFIG;
+  const thresholds = input.thresholds ?? DEFAULT_THRESHOLDS;
   const findings: Finding[] = [
     ...alwaysCriticalFindings(input.effects, input.manifest ?? null),
     ...coverageFindings(input.effects),
+    ...feeFindings(input.effects, thresholds),
     ...manifestFindings({
       effects: input.effects,
       manifest: input.manifest ?? null,
@@ -134,7 +145,8 @@ export function evaluate(input: EvaluationInput): Verdict {
 
   return {
     actionId: input.context.actionId,
-    decision: decide(findings, input.thresholds ?? DEFAULT_THRESHOLDS),
+    messageDigest: input.effects.messageDigest,
+    decision: decide(findings, thresholds),
     findings,
     evaluatedAt: Date.now(),
     policyVersion: policyVersion(input.policy ?? EMPTY_POLICY),

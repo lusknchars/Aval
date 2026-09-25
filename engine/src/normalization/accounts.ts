@@ -108,6 +108,10 @@ export async function resolveAccounts(
     for (const u of read.value.unresolved)
       unresolvedTables.push({ table: u.table, reason: u.reason });
 
+    // Every index that could not be turned into an address. The list below
+    // must never be handed back with one of these missing.
+    const missing: string[] = [];
+
     // Runtime order: all writable entries first, then all readonly ones.
     const collect = (writable: boolean): void => {
       for (const lookup of lookups) {
@@ -120,18 +124,14 @@ export async function resolveAccounts(
           if (contents === undefined) {
             // The table failed to read: the account exists in the transaction
             // but its address is unknown. Recorded, not invented.
-            unresolvedTables.push({
-              table,
-              reason: `index ${indexInTable} could not be resolved`,
-            });
+            missing.push(`${table} index ${indexInTable}: table unreadable`);
             continue;
           }
           const address = contents[indexInTable];
           if (address === undefined) {
-            unresolvedTables.push({
-              table,
-              reason: `index ${indexInTable} is out of range for a table with ${contents.length} entries`,
-            });
+            missing.push(
+              `${table} index ${indexInTable}: out of range for a table with ${contents.length} entries`,
+            );
             continue;
           }
           accounts.push({
@@ -147,6 +147,46 @@ export async function resolveAccounts(
     };
     collect(true);
     collect(false);
+
+    // Refusing, rather than returning a shorter list.
+    //
+    // Skipping an unresolvable entry moved every later index down by one, and
+    // instruction account indexes point into this list -- so the effects that
+    // WERE produced came out attributed to the wrong addresses. Confidently
+    // wrong, which is worse than nothing. If one address is unknown, the
+    // positions are unknown, and there is no partial answer to give.
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        failure: {
+          step: "resolveAccounts",
+          message: `${missing.length} account(s) could not be resolved, so every later index would shift: ${missing.slice(0, 3).join("; ")}`,
+        },
+      };
+    }
+  }
+
+  // Every index an instruction uses has to exist in the list.
+  //
+  // Out of range, nothing resolves it, and the consumers each swallowed that
+  // differently: an unresolvable program simply vanished from the invoked
+  // programs, so a program allowlist had nothing to reject. Checking it once
+  // here removes the whole class instead of asking every caller to remember.
+  for (const [i, instruction] of message.compiledInstructions.entries()) {
+    const indexes = [
+      instruction.programIdIndex,
+      ...instruction.accountKeyIndexes,
+    ];
+    for (const index of indexes) {
+      if (index >= 0 && index < accounts.length) continue;
+      return {
+        ok: false,
+        failure: {
+          step: "resolveAccounts",
+          message: `instruction ${i} refers to account index ${index}, and the list has ${accounts.length}`,
+        },
+      };
+    }
   }
 
   const toObserve = [

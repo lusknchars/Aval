@@ -61,6 +61,8 @@ function describeEffect(effect: Effect): string {
       return `owner → ${short(effect.counterparty ?? "?")}`;
     case "ACCOUNT_CREATE":
       return `account created ${short(effect.account)}`;
+    case "ACCOUNT_FREEZE":
+      return `account frozen ${short(effect.account)}  owner can no longer move it`;
     case "ACCOUNT_CLOSE":
       return `account closed ${short(effect.account)}`;
     case "PROGRAM_INVOKE":
@@ -101,7 +103,9 @@ function report(set: EffectSet, verdict: Verdict): void {
       `    ${finding.severity.toUpperCase().padEnd(9)} ${finding.rule}`,
     );
   }
-  console.log(`\n  policy ${verdict.policyVersion}\n`);
+  console.log(`\n  policy ${verdict.policyVersion}`);
+  // The verdict is about these bytes and no others.
+  console.log(`  message ${verdict.messageDigest ?? "could not be hashed"}\n`);
 }
 
 function contextOf(

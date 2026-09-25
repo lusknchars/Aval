@@ -224,7 +224,14 @@ describe("a message that uses lookup tables", () => {
     );
   });
 
-  it("records an unreadable table instead of pretending the accounts do not exist", async () => {
+  it("refuses to resolve at all when a table cannot be read", async () => {
+    // This used to return the static accounts and name the gap, which read
+    // like honest partial blindness and was not: skipping the lookup entries
+    // shortened the list, and instruction account indexes point INTO that
+    // list. Every index past the gap moved down, so the effects that were
+    // still produced came out attributed to the wrong addresses -- confident
+    // and wrong, which is worse than no answer. If one address is unknown,
+    // the positions are unknown.
     const message = messageWithLookup();
     const rpc = lookupOnlyRpc({
       ok: true,
@@ -236,19 +243,13 @@ describe("a message that uses lookup tables", () => {
       },
     });
     const resolved = await resolveAccounts(message, rpc);
-    expect(resolved.ok).toBe(true);
-    if (!resolved.ok) return;
-
-    // Partial blindness is reported, not swallowed: the static accounts are
-    // still there, and the gap is named.
-    expect(resolved.value.accounts.every((a) => a.source === "static")).toBe(
-      true,
-    );
-    expect(resolved.value.unresolvedTables.length).toBeGreaterThan(0);
-    expect(resolved.value.unresolvedTables[0]?.table).toBe(tableKey.toBase58());
+    expect(resolved.ok).toBe(false);
+    if (resolved.ok) return;
+    expect(resolved.failure.message).toContain("index would shift");
+    expect(resolved.failure.message).toContain(tableKey.toBase58());
   });
 
-  it("records an index that falls outside the table", async () => {
+  it("refuses an index that falls outside the table", async () => {
     const message = messageWithLookup();
     const rpc = lookupOnlyRpc({
       ok: true,
@@ -259,12 +260,9 @@ describe("a message that uses lookup tables", () => {
       },
     });
     const resolved = await resolveAccounts(message, rpc);
-    if (!resolved.ok) return;
-    expect(
-      resolved.value.unresolvedTables.some((u) =>
-        u.reason.includes("out of range"),
-      ),
-    ).toBe(true);
+    expect(resolved.ok).toBe(false);
+    if (resolved.ok) return;
+    expect(resolved.failure.message).toContain("out of range");
   });
 
   it("propagates a transport failure instead of reporting empty coverage", async () => {

@@ -121,6 +121,7 @@ describe("magnitude", () => {
     baselineSlot: 1,
     fee: null,
     feePayer: null,
+    messageDigest: null,
     simulation: { status: "executed", unitsConsumed: 1 },
     coverage: {
       referenced: [],
@@ -128,6 +129,10 @@ describe("magnitude", () => {
       unobserved: [],
       blindSpots: [],
       tokenExtensions: [],
+      opaqueChanges: [],
+      inexactAmounts: [],
+      undecodable: [],
+      overSimulationLimit: [],
     },
   };
   const manifest: ToolManifest = {

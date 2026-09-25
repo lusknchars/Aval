@@ -21,7 +21,7 @@ import {
   type EffectSet,
 } from "../types/effects.js";
 import type { ToolManifest } from "../types/manifest.js";
-import type { Finding } from "../types/verdict.js";
+import type { Finding, Severity, Thresholds } from "../types/verdict.js";
 
 /** A delegate this large can move the whole balance, now and indefinitely. */
 export function isUnlimitedDelegate(effect: Effect): boolean {
@@ -35,8 +35,9 @@ export function isUnlimitedDelegate(effect: Effect): boolean {
 function finding(
   rule: string,
   detail: Readonly<Record<string, unknown>>,
+  severity: Severity = "critical",
 ): Finding {
-  return { check: "undeclared", severity: "critical", rule, detail };
+  return { check: "undeclared", severity, rule, detail };
 }
 
 /**
@@ -84,6 +85,24 @@ export function alwaysCriticalFindings(
       );
       continue;
     }
+    // High rather than critical: a freeze DENIES access, it does not hand
+    // control to anybody, and a token issuer's agent freezes legitimately --
+    // which its manifest is then what authorises.
+    if (effect.type === "ACCOUNT_FREEZE") {
+      findings.push(
+        finding(
+          "always_critical.account_frozen",
+          {
+            account: effect.account,
+            owner: effect.owner ?? null,
+            mint: effect.mint ?? null,
+            note: "the owner can no longer move anything in this account, and no token moved so no amount check sees it",
+          },
+          "high",
+        ),
+      );
+      continue;
+    }
     if (effect.type === "OWNER_CHANGE") {
       findings.push(
         finding("always_critical.owner_change", {
@@ -95,6 +114,37 @@ export function alwaysCriticalFindings(
   }
 
   return findings;
+}
+
+/**
+ * The fee, which no manifest ever looks at.
+ *
+ * The diff takes the fee out of the payer's balance change on purpose: it is
+ * the cost of asking, not part of what was asked for, and leaving it in made
+ * every legitimate transfer look slightly larger than the tool call declared.
+ * The consequence is that the fee is then bounded by nothing at all, and a
+ * priority fee is an arbitrary amount of SOL leaving the wallet. It does not
+ * matter that it goes to validators rather than to an attacker -- the wallet
+ * is empty either way.
+ */
+export function feeFindings(
+  set: EffectSet,
+  thresholds: Thresholds,
+): readonly Finding[] {
+  if (set.fee === null || set.fee <= thresholds.maxFeeLamports) return [];
+  return [
+    {
+      check: "magnitude",
+      severity: "high",
+      rule: "magnitude.fee_above_ceiling",
+      detail: {
+        fee: set.fee.toString(),
+        ceiling: thresholds.maxFeeLamports.toString(),
+        payer: set.feePayer,
+        note: "the fee is excluded from the effects by design, so nothing else bounds it",
+      },
+    },
+  ];
 }
 
 /**
@@ -143,6 +193,70 @@ export function coverageFindings(set: EffectSet): readonly Finding[] {
         accounts: set.coverage.tokenExtensions.length,
         sample: set.coverage.tokenExtensions.slice(0, 3),
         note: "Token-2022 extensions are not decoded: a transfer hook or permanent delegate here would be invisible",
+      },
+    });
+  }
+
+  // Bytes that changed and that nothing here reads. The diff producing no
+  // effect for an account is not evidence that nothing happened to it.
+  // `high` rather than `critical` because a stake account's data also
+  // changes on an ordinary delegate or deactivate -- calibration, and it
+  // has not been measured against real stake traffic.
+  if (set.coverage.opaqueChanges.length > 0) {
+    findings.push({
+      check: "coverage",
+      severity: "high",
+      rule: "coverage.undecoded_authority_account",
+      detail: {
+        accounts: set.coverage.opaqueChanges.length,
+        sample: set.coverage.opaqueChanges.slice(0, 3),
+        note: "state changed in a program that holds authority and that VETO does not decode: a staker, withdrawer or upgrade authority could have moved unseen",
+      },
+    });
+  }
+
+  // A value that arrived already rounded. Small in relative terms -- it takes
+  // more than nine million SOL to reach it -- but every amount in this system
+  // is bigint precisely so that rounding never happens silently.
+  if (set.coverage.inexactAmounts.length > 0) {
+    findings.push({
+      check: "coverage",
+      severity: "low",
+      rule: "coverage.inexact_lamports",
+      detail: {
+        accounts: set.coverage.inexactAmounts.length,
+        sample: set.coverage.inexactAmounts.slice(0, 3),
+        note: "lamports above 2^53-1 arrived rounded from the RPC: amounts derived from them are approximate",
+      },
+    });
+  }
+
+  // Bytes a token program owns that we could not read. High, because this is
+  // the one gap where the missing information is the value itself.
+  if (set.coverage.undecodable.length > 0) {
+    findings.push({
+      check: "coverage",
+      severity: "high",
+      rule: "coverage.undecodable_token_account",
+      detail: {
+        accounts: set.coverage.undecodable.length,
+        sample: set.coverage.undecodable.slice(0, 3),
+        note: "a token program owns this account and its contents could not be decoded: any balance, delegate or owner change in it is invisible",
+      },
+    });
+  }
+
+  // Writable accounts nobody looked at because the simulation would not
+  // return that many. Anything they did is invisible.
+  if (set.coverage.overSimulationLimit.length > 0) {
+    findings.push({
+      check: "coverage",
+      severity: "high",
+      rule: "coverage.account_limit_exceeded",
+      detail: {
+        unobserved: set.coverage.overSimulationLimit.length,
+        sample: set.coverage.overSimulationLimit.slice(0, 3),
+        note: "more writable accounts than one simulation returns post-state for: effects in these are invisible",
       },
     });
   }

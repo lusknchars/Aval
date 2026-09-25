@@ -109,11 +109,23 @@ describe("token account decoding, against recorded bytes", () => {
     if (!decoded.ok) expect(decoded.reason).toContain("165 bytes, got 100");
   });
 
+  it("refuses a buffer whose type byte says it is a mint", () => {
+    // A mint with extensions is padded to the size of an account, so the base
+    // offsets would "decode" it into a plausible token account -- reading its
+    // supply as an owner.
+    const mintShaped = Buffer.alloc(TOKEN_ACCOUNT_SIZE + 40);
+    mintShaped.writeUInt8(2, TOKEN_ACCOUNT_SIZE); // account type = Mint
+    const decoded = decodeTokenAccount(mintShaped, TOKEN_2022_PROGRAM_ID);
+    expect(decoded.ok).toBe(false);
+    if (!decoded.ok) expect(decoded.reason).toContain("mint");
+  });
+
   it("flags Token-2022 extensions as present rather than decoding them", () => {
     // Base layout plus an extension area: the base fields stay valid, the
     // extensions do not get decoded, and the caller has to say so.
     const withExtensions = Buffer.alloc(TOKEN_ACCOUNT_SIZE + 40);
     withExtensions.writeUInt8(1, 108); // state = initialized
+    withExtensions.writeUInt8(1, TOKEN_ACCOUNT_SIZE); // account type = Account
     const decoded = decodeTokenAccount(withExtensions, TOKEN_2022_PROGRAM_ID);
     expect(decoded.ok).toBe(true);
     if (!decoded.ok) return;

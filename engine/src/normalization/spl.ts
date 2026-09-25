@@ -10,6 +10,7 @@
  * Everything here is PURE: bytes in, values out, no network, no exceptions.
  * A wrong size is a result, not a throw.
  */
+import { ExtensionType } from "@solana/spl-token";
 import bs58 from "bs58";
 
 /** Token account layout, in bytes. Same base for Token and Token-2022. */
@@ -146,42 +147,75 @@ const ACCOUNT_TYPE_OFFSET = TOKEN_ACCOUNT_SIZE;
 const TLV_START = ACCOUNT_TYPE_OFFSET + 1;
 
 /**
- * Extensions that cannot hide movement of the tokens.
+ * Extension ids and their names, taken from the token program's own enum.
  *
- * A transfer fee is in here because both sides of it are observed: the payer
- * loses and the recipient gains, and the gap between them is already in the
- * diff. Metadata, groups and the CPI guard change nothing about who can move
- * what. Interest accrues into the balance, which is read.
+ * Not a hand-written table. The first version transcribed the numbers, and a
+ * real mainnet account came back carrying id 27, which that table did not
+ * have -- it is `PausableAccount`. Numbers copied by hand go stale the moment
+ * the program adds one, and this is a dependency already installed.
  */
-const BENIGN_EXTENSIONS: ReadonlyMap<number, string> = new Map([
-  [1, "transfer_fee_config"],
-  [2, "transfer_fee_amount"],
-  [7, "immutable_owner"],
-  [8, "memo_transfer"],
-  [10, "interest_bearing"],
-  [11, "cpi_guard"],
-  [18, "metadata_pointer"],
-  [19, "token_metadata"],
-  [20, "group_pointer"],
-  [21, "token_group"],
-  [22, "group_member_pointer"],
-  [23, "token_group_member"],
+const NAME_BY_ID: ReadonlyMap<number, string> = new Map(
+  Object.entries(ExtensionType)
+    .filter((entry): entry is [string, number] => typeof entry[1] === "number")
+    .map(([name, id]) => [id, name]),
+);
+
+/**
+ * Extensions that cannot hide anything VETO needs.
+ *
+ * An ALLOWLIST, never a blocklist of the dangerous: new types get added to
+ * the program over time, and assuming an unknown one is harmless is precisely
+ * how a detector goes quiet on the thing it was built for.
+ *
+ * Two questions decide membership. Can it let somebody move or freeze the
+ * tokens? And does it change the relationship between the RAW amount, which
+ * is what the diff reads, and the displayed amount, which is what a human
+ * types into a tool call? A yes to either keeps it out.
+ *
+ * That second question is why `InterestBearingConfig` and
+ * `ScaledUiAmountConfig` are absent despite being harmless in every other
+ * sense: the magnitude check converts "100" into raw units using the mint's
+ * decimals, and under either of those the conversion is silently wrong.
+ *
+ * A transfer fee stays in, because both sides of it are observed -- the payer
+ * loses and the recipient gains, and the gap is already in the diff.
+ */
+const BENIGN_EXTENSIONS: ReadonlySet<string> = new Set([
+  "TransferFeeConfig",
+  "TransferFeeAmount",
+  "ImmutableOwner",
+  "MemoTransfer",
+  "CpiGuard",
+  "MetadataPointer",
+  "TokenMetadata",
+  "GroupPointer",
+  "TokenGroup",
+  "GroupMemberPointer",
+  "TokenGroupMember",
 ]);
 
-/** Names for the ones worth reporting, so the finding says something. */
-const EXTENSION_NAMES: ReadonlyMap<number, string> = new Map([
-  [3, "mint_close_authority"],
-  [4, "confidential_transfer_mint"],
-  [5, "confidential_transfer_account"],
-  [6, "default_account_state"],
-  [9, "non_transferable"],
-  [12, "permanent_delegate"],
-  [13, "non_transferable_account"],
-  [14, "transfer_hook"],
-  [15, "transfer_hook_account"],
-  [16, "confidential_transfer_fee_config"],
-  [17, "confidential_transfer_fee_amount"],
-]);
+/**
+ * Which of the two layouts an extended Token-2022 account holds.
+ *
+ * A mint with extensions is PADDED to the size of a token account before its
+ * extension list starts, so length alone cannot tell the two apart. Reading a
+ * mint through the token layout takes its supply for an owner and its
+ * authority bytes for a delegate -- and since a supply change alters bytes
+ * inside the token layout's owner field, minting produced a phantom
+ * OWNER_CHANGE with a fabricated address, reported as critical. A wrong
+ * confident answer, which is worse than no answer.
+ *
+ * null means there is no discriminator, so the buffer is a plain base layout.
+ */
+export function extendedAccountType(
+  data: Buffer,
+): "account" | "mint" | "unknown" | null {
+  if (data.length <= TOKEN_ACCOUNT_SIZE) return null;
+  const byte = data.readUInt8(ACCOUNT_TYPE_OFFSET);
+  if (byte === 1) return "account";
+  if (byte === 2) return "mint";
+  return "unknown";
+}
 
 /**
  * Extensions on this account that VETO cannot see through, by name.
@@ -213,10 +247,39 @@ export function opaqueExtensionsOf(
       break;
     }
     offset = next;
-    if (BENIGN_EXTENSIONS.has(type)) continue;
-    found.push(EXTENSION_NAMES.get(type) ?? `unknown_extension_${type}`);
+    const name = NAME_BY_ID.get(type);
+    if (name !== undefined && BENIGN_EXTENSIONS.has(name)) continue;
+    found.push(name ?? `unknown_extension_${type}`);
   }
   return [...new Set(found)];
+}
+
+/**
+ * Native programs whose account data carries AUTHORITY, and which VETO does
+ * not decode.
+ *
+ * The account model is the reason this list has to exist at all. The diff
+ * reports what it can read: lamports, and the fixed layout of a token account
+ * or a mint. An account owned by anything else changes its bytes and produces
+ * NO effect -- which reads, downstream, as "this transaction does nothing".
+ *
+ * For an AMM pool or an order book that is fine: the user's assets live in
+ * token accounts, which are read. For these four it is not. A stake account
+ * holds the staker and withdrawer authorities; the upgradeable loader holds
+ * the authority that can replace a program's code outright. Handing either of
+ * those away is exactly AUTHORITY_CHANGE, and none of it is visible in any
+ * byte this project parses.
+ */
+const AUTHORITY_BEARING_PROGRAMS: ReadonlyMap<string, string> = new Map([
+  ["Stake11111111111111111111111111111111111111", "stake"],
+  ["Vote111111111111111111111111111111111111111", "vote"],
+  ["BPFLoaderUpgradeab1e11111111111111111111111", "upgradeable_loader"],
+  ["Config1111111111111111111111111111111111111", "config"],
+]);
+
+/** The program's short name when its state carries authority, else null. */
+export function authorityBearingProgram(owner: string): string | null {
+  return AUTHORITY_BEARING_PROGRAMS.get(owner) ?? null;
 }
 
 export function isTokenProgram(owner: string): boolean {
@@ -249,6 +312,16 @@ export function decodeTokenAccount(
     return {
       ok: false,
       reason: `token account needs ${TOKEN_ACCOUNT_SIZE} bytes, got ${data.length}`,
+    };
+  }
+  // A longer buffer says which layout it holds. Refusing anything that is not
+  // an account is the whole point: the base offsets would otherwise "decode"
+  // a mint into a plausible-looking token account.
+  const extended = extendedAccountType(data);
+  if (extended !== null && extended !== "account") {
+    return {
+      ok: false,
+      reason: `account type byte says "${extended}", not a token account`,
     };
   }
 

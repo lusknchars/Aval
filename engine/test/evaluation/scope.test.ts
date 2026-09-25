@@ -20,6 +20,7 @@ function setOf(effects: readonly Effect[], feePayer: string | null): EffectSet {
     baselineSlot: 1,
     fee: null,
     feePayer,
+    messageDigest: null,
     simulation: { status: "executed", unitsConsumed: 1 },
     coverage: {
       referenced: [],
@@ -27,6 +28,10 @@ function setOf(effects: readonly Effect[], feePayer: string | null): EffectSet {
       unobserved: [],
       blindSpots: [],
       tokenExtensions: [],
+      opaqueChanges: [],
+      inexactAmounts: [],
+      undecodable: [],
+      overSimulationLimit: [],
     },
   };
 }

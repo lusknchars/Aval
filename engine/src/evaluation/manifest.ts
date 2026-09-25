@@ -37,6 +37,9 @@ const SEVERITY_BY_EFFECT: Readonly<Record<Effect["type"], Severity>> = {
   AUTHORITY_CHANGE: "critical",
   OWNER_CHANGE: "critical",
   ACCOUNT_CLOSE: "high",
+  // A freeze moves nothing, so no amount check catches it. What it does is
+  // take the owner's access away.
+  ACCOUNT_FREEZE: "high",
   BALANCE_DECREASE: "medium",
   BALANCE_INCREASE: "low",
   ACCOUNT_CREATE: "low",

@@ -28,6 +28,20 @@ export const effectTypeSchema = z.enum([
   "OWNER_CHANGE", // account owner changed
   "ACCOUNT_CREATE",
   "ACCOUNT_CLOSE",
+  /**
+   * A token account frozen: its owner can no longer move anything in it.
+   *
+   * The ninth type, added deliberately. A token account has THREE answers to
+   * "who can move these tokens" -- the owner, the delegate, and whether it is
+   * frozen at all -- and the first two had types while the third was a byte
+   * this project decoded and then ignored. A freeze moves no tokens, so every
+   * amount comparison passed and the transaction read as doing nothing.
+   *
+   * Emitted on freezing only. Thawing gives control BACK, and the vocabulary
+   * is about losing it -- the same asymmetry that makes a delegate grant an
+   * effect and a revoke none.
+   */
+  "ACCOUNT_FREEZE",
   "PROGRAM_INVOKE", // program called, including through CPI
 ]);
 
@@ -93,6 +107,133 @@ export interface Effect {
   readonly authorityKind?: AuthorityKind;
 }
 
+// ------------------------------------------------------- the shape contract
+
+/**
+ * Which fields each type must carry, and which it must not.
+ *
+ * The vocabulary being closed is only half of what makes it useful. The other
+ * half is that an effect of a given type always looks the SAME -- otherwise
+ * every consumer has to defend itself against a DELEGATE_GRANT with no
+ * delegate, or a BALANCE_DECREASE with no amount, and the checks quietly grow
+ * the shape of whatever the normalizer happened to emit.
+ *
+ * `required` means the field must be present. `forbidden` means its presence is
+ * a bug in whoever built the effect: an amount on an ACCOUNT_CREATE is not
+ * extra information, it is a sign the builder confused two things.
+ *
+ * `owner` is absent from both lists on purpose: it exists only for accounts
+ * that have one, so it is optional everywhere.
+ */
+const SHAPE: Readonly<
+  Record<
+    EffectType,
+    {
+      readonly required: readonly (keyof Effect)[];
+      readonly forbidden: readonly (keyof Effect)[];
+    }
+  >
+> = {
+  BALANCE_DECREASE: {
+    required: ["account", "mint", "amount"],
+    // Only an increase names who received. A decrease naming a counterparty
+    // would ask the provenance check to explain the victim.
+    forbidden: ["counterparty", "program", "authorityKind"],
+  },
+  BALANCE_INCREASE: {
+    required: ["account", "mint", "amount"],
+    forbidden: ["program", "authorityKind"],
+  },
+  DELEGATE_GRANT: {
+    required: ["account", "mint", "amount", "counterparty"],
+    forbidden: ["program", "authorityKind"],
+  },
+  AUTHORITY_CHANGE: {
+    // No counterparty: renouncing an authority sets it to nobody, which is a
+    // real and deliberate operation.
+    required: ["account", "authorityKind"],
+    forbidden: ["amount", "program"],
+  },
+  OWNER_CHANGE: {
+    required: ["account", "counterparty"],
+    forbidden: ["amount", "program", "authorityKind"],
+  },
+  ACCOUNT_CREATE: {
+    required: ["account"],
+    forbidden: ["amount", "mint", "counterparty", "program", "authorityKind"],
+  },
+  ACCOUNT_CLOSE: {
+    required: ["account"],
+    forbidden: ["amount", "mint", "counterparty", "program", "authorityKind"],
+  },
+  ACCOUNT_FREEZE: {
+    required: ["account", "mint"],
+    forbidden: ["amount", "counterparty", "program", "authorityKind"],
+  },
+  PROGRAM_INVOKE: {
+    required: ["account", "program"],
+    forbidden: ["amount", "mint", "counterparty", "authorityKind"],
+  },
+};
+
+/** base58 has no 0, O, I or l. Enough to catch an empty or mangled address. */
+const BASE58_KEY = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+function addressProblem(field: string, value: string): string | null {
+  if (value === "") return `${field} is empty`;
+  return BASE58_KEY.test(value) ? null : `${field} is not a base58 key`;
+}
+
+/**
+ * Everything wrong with one effect's shape. Empty means it conforms.
+ *
+ * Pure, and cheap enough to run over every effect of every transaction in a
+ * sampling run -- which is the point: the contract is worth nothing if it is
+ * only checked against the cases somebody remembered to write down.
+ */
+export function effectShapeProblems(effect: Effect): readonly string[] {
+  const problems: string[] = [];
+  const shape = SHAPE[effect.type];
+  if (shape === undefined) return [`unknown effect type ${effect.type}`];
+
+  for (const field of shape.required) {
+    if (effect[field] === undefined) problems.push(`${field} is missing`);
+  }
+  for (const field of shape.forbidden) {
+    if (effect[field] !== undefined) problems.push(`${field} must not be set`);
+  }
+
+  const account = addressProblem("account", effect.account);
+  if (account !== null) problems.push(account);
+
+  // "SOL" stands for the native asset in the mint position; anything else has
+  // to be a real mint address.
+  if (effect.mint !== undefined && effect.mint !== NATIVE_MINT) {
+    const mint = addressProblem("mint", effect.mint);
+    if (mint !== null) problems.push(mint);
+  }
+  for (const field of ["counterparty", "program", "owner"] as const) {
+    const value = effect[field];
+    if (value === undefined) continue;
+    const problem = addressProblem(field, value);
+    if (problem !== null) problems.push(problem);
+  }
+
+  // A program invocation names the same address twice, and they have to agree.
+  if (
+    effect.type === "PROGRAM_INVOKE" &&
+    effect.program !== undefined &&
+    effect.program !== effect.account
+  ) {
+    problems.push("program and account disagree");
+  }
+
+  return problems;
+}
+
+/** The native asset in the mint position. */
+export const NATIVE_MINT = "SOL";
+
 // ---------------------------------------------------------------- EffectSet
 
 /**
@@ -148,6 +289,48 @@ export interface AccountCoverage {
    * would show up as an effect.
    */
   readonly tokenExtensions: readonly string[];
+  /**
+   * Observed accounts whose bytes changed, owned by a program that holds
+   * AUTHORITY and that VETO does not decode.
+   *
+   * The diff can only report what it reads. An account outside the token
+   * layouts changes and produces no effect at all -- which downstream is
+   * indistinguishable from "this transaction does nothing". For an AMM pool
+   * that is correct, because the user's assets are in token accounts. For a
+   * stake account or an upgradeable program it is a silent pass on giving
+   * away control.
+   */
+  readonly opaqueChanges: readonly string[];
+  /**
+   * Observed accounts whose lamport balance arrived already rounded.
+   *
+   * Lamports come out of JSON.parse as a number, and above 2^53-1 the
+   * original value is not recoverable. Every amount in this system is bigint
+   * to avoid exactly that, so where the loss happened before our boundary it
+   * is reported rather than quietly carried into an effect a magnitude check
+   * then compares against a declared number.
+   */
+  readonly inexactAmounts: readonly string[];
+  /**
+   * Observed accounts owned by a token program whose contents could not be
+   * decoded.
+   *
+   * Truncated data, a discriminator this code does not recognise, a layout
+   * that changed under us. The diff produces nothing for such an account, and
+   * nothing is exactly what a drain hidden there would look like. An error is
+   * never swallowed: a failure to decode is a result, and it belongs here.
+   */
+  readonly undecodable: readonly string[];
+  /**
+   * Writable accounts left unobserved because the simulation will only return
+   * post-state for a limited number of them.
+   *
+   * The RPC caps it at 64, measured. Going blind on the whole transaction
+   * would be the wrong answer, so the first 64 are observed IN MESSAGE ORDER
+   * -- which puts the signers and the fee payer first, so the caller's own
+   * accounts are never the ones dropped -- and whatever is left is named here.
+   */
+  readonly overSimulationLimit: readonly string[];
 }
 
 /**
@@ -195,6 +378,21 @@ export interface EffectSet {
    * this the fee would be reported as an out-of-scope loss on every call.
    */
   readonly feePayer: string | null;
+
+  /**
+   * sha256 of the SIGNABLE MESSAGE bytes, hex. null when they could not be
+   * obtained.
+   *
+   * A verdict with nothing tying it to a specific transaction is a verdict
+   * about nothing in particular: an agent can be handed "allow" for one
+   * transaction and put its signature on another. The caller is expected to
+   * check that what it signs hashes to this.
+   *
+   * The MESSAGE, not the transaction. Signatures are part of a serialized
+   * transaction, so hashing the whole thing would produce a digest that
+   * changes at the moment of signing -- useless for binding the two.
+   */
+  readonly messageDigest: string | null;
 }
 
 export function coverageIsComplete(coverage: AccountCoverage): boolean {

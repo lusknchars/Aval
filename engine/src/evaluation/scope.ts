@@ -52,6 +52,7 @@ const SEVERITY_OUTSIDE_SCOPE: Partial<Readonly<Record<EffectType, Severity>>> = 
   AUTHORITY_CHANGE: "critical",
   OWNER_CHANGE: "critical",
   ACCOUNT_CLOSE: "high",
+  ACCOUNT_FREEZE: "high",
   BALANCE_DECREASE: "high",
 };
 

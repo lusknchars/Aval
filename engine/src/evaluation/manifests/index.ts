@@ -38,7 +38,7 @@ const TOKEN_PROGRAMS = [
 /** Moving the native asset. The simplest thing an agent can do. */
 export const TRANSFER_SOL: ToolManifest = {
   tool: "transfer_sol",
-  version: "1",
+  version: "2",
   args: { from: "address", to: "address", amount: "amount" },
   must: [
     {
@@ -57,6 +57,7 @@ export const TRANSFER_SOL: ToolManifest = {
     "AUTHORITY_CHANGE",
     "OWNER_CHANGE",
     "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE",
   ],
   accountScope: "args_plus_derived",
   programAllowlist: [SYSTEM_PROGRAM, COMPUTE_BUDGET_PROGRAM],
@@ -71,7 +72,7 @@ export const TRANSFER_SOL: ToolManifest = {
  */
 export const TRANSFER_TOKEN: ToolManifest = {
   tool: "transfer_token",
-  version: "2",
+  version: "3",
   args: { from: "address", to: "address", mint: "mint", amount: "amount" },
   must: [
     {
@@ -97,6 +98,7 @@ export const TRANSFER_TOKEN: ToolManifest = {
     "AUTHORITY_CHANGE",
     "OWNER_CHANGE",
     "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE",
   ],
   accountScope: "args_plus_derived",
   programAllowlist: TOKEN_PROGRAMS,
@@ -114,7 +116,7 @@ export const TRANSFER_TOKEN: ToolManifest = {
  */
 export const SWAP: ToolManifest = {
   tool: "swap",
-  version: "2",
+  version: "3",
   args: { from: "address", to: "address", mint: "mint", amountIn: "amount" },
   must: [
     {
@@ -141,7 +143,7 @@ export const SWAP: ToolManifest = {
     // on every call stops reading them.
     { type: "BALANCE_DECREASE" },
   ],
-  mustNot: ["DELEGATE_GRANT", "AUTHORITY_CHANGE", "OWNER_CHANGE"],
+  mustNot: ["DELEGATE_GRANT", "AUTHORITY_CHANGE", "OWNER_CHANGE", "ACCOUNT_FREEZE"],
   // No program allowlist: the route is chosen at call time. Programs are
   // reported as invoked, and which ones are acceptable is customer policy.
   //
@@ -165,7 +167,7 @@ export const SWAP: ToolManifest = {
  */
 export const APPROVE: ToolManifest = {
   tool: "approve",
-  version: "1",
+  version: "2",
   args: {
     account: "address",
     delegate: "address",
@@ -190,7 +192,12 @@ export const APPROVE: ToolManifest = {
     // listed, so it is reported as undeclared rather than silently accepted.
     { type: "BALANCE_DECREASE", mint: "SOL" },
   ],
-  mustNot: ["AUTHORITY_CHANGE", "OWNER_CHANGE", "ACCOUNT_CLOSE"],
+  mustNot: [
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE",
+  ],
   accountScope: "args_only",
   programAllowlist: TOKEN_PROGRAMS,
 };
@@ -204,7 +211,7 @@ export const APPROVE: ToolManifest = {
  */
 export const REVOKE: ToolManifest = {
   tool: "revoke",
-  version: "1",
+  version: "2",
   args: { account: "address" },
   must: [],
   may: [{ type: "PROGRAM_INVOKE" }, { type: "BALANCE_DECREASE", mint: "SOL" }],
@@ -213,6 +220,7 @@ export const REVOKE: ToolManifest = {
     "AUTHORITY_CHANGE",
     "OWNER_CHANGE",
     "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE",
   ],
   accountScope: "args_only",
   programAllowlist: TOKEN_PROGRAMS,
@@ -221,7 +229,7 @@ export const REVOKE: ToolManifest = {
 /** Closing an empty token account and reclaiming its rent. */
 export const CLOSE_ACCOUNT: ToolManifest = {
   tool: "close_account",
-  version: "1",
+  version: "2",
   args: { account: "address", destination: "address" },
   must: [{ type: "ACCOUNT_CLOSE", account: "arg:account" }],
   may: [
@@ -230,7 +238,7 @@ export const CLOSE_ACCOUNT: ToolManifest = {
     { type: "BALANCE_INCREASE", account: "arg:destination" },
     { type: "BALANCE_DECREASE" },
   ],
-  mustNot: ["DELEGATE_GRANT", "AUTHORITY_CHANGE", "OWNER_CHANGE"],
+  mustNot: ["DELEGATE_GRANT", "AUTHORITY_CHANGE", "OWNER_CHANGE", "ACCOUNT_FREEZE"],
   accountScope: "args_plus_derived",
   programAllowlist: TOKEN_PROGRAMS,
 };

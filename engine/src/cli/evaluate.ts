@@ -113,6 +113,8 @@ function describeEffect(effect: Effect): string {
       return `owner → ${short(effect.counterparty ?? "?")}`;
     case "ACCOUNT_CREATE":
       return `account created  ${short(effect.account)}`;
+    case "ACCOUNT_FREEZE":
+      return `account frozen ${short(effect.account)}  owner can no longer move it`;
     case "ACCOUNT_CLOSE":
       return `account closed   ${short(effect.account)}`;
     case "PROGRAM_INVOKE":
@@ -198,6 +200,11 @@ function printPanel(
 
   console.log(
     `\n  policy ${verdict.policyVersion} · slot ${set.slot ?? "unavailable"} · ${set.effects.length} effects`,
+  );
+  // What this verdict is ABOUT. Whoever signs has to check that the bytes it
+  // signs hash to this, or the verdict describes some other transaction.
+  console.log(
+    `  message ${verdict.messageDigest ?? "could not be hashed"}`,
   );
   console.log(`${"=".repeat(64)}`);
 }

@@ -1,16 +1,22 @@
+import { ExtensionType } from "@solana/spl-token";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   alwaysCriticalFindings,
   coverageFindings,
+  feeFindings,
   isUnlimitedDelegate,
 } from "../../src/evaluation/critical.js";
+import { DEFAULT_THRESHOLDS } from "../../src/types/verdict.js";
 import {
   FixtureRpcClient,
   loadFixture,
   type Fixture,
 } from "../../src/normalization/fixture.js";
-import { opaqueExtensionsOf } from "../../src/normalization/spl.js";
+import {
+  authorityBearingProgram,
+  opaqueExtensionsOf,
+} from "../../src/normalization/spl.js";
 import { normalize } from "../../src/normalization/normalize.js";
 import type { EffectSet } from "../../src/types/effects.js";
 
@@ -96,6 +102,7 @@ describe("the safety net, with no manifest at all", () => {
       baselineSlot: 1,
       fee: null,
       feePayer: null,
+      messageDigest: null,
       simulation: { status: "executed", unitsConsumed: 1 },
       coverage: {
         referenced: [],
@@ -103,6 +110,10 @@ describe("the safety net, with no manifest at all", () => {
         unobserved: [],
         blindSpots: [],
         tokenExtensions: [],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
       },
     };
     const rules = alwaysCriticalFindings(set).map((f) => f.rule);
@@ -143,6 +154,7 @@ describe("bytes VETO does not read", () => {
       baselineSlot: 1,
       fee: null,
       feePayer: null,
+      messageDigest: null,
       simulation: { status: "executed", unitsConsumed: 1 },
       coverage: {
         referenced: ["A"],
@@ -150,6 +162,10 @@ describe("bytes VETO does not read", () => {
         unobserved: [],
         blindSpots: [],
         tokenExtensions: ["A"],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
       },
     };
     const finding = coverageFindings(set).find(
@@ -162,15 +178,29 @@ describe("bytes VETO does not read", () => {
     const token = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
     // Reporting every Token-2022 account made every legitimate transfer of
     // such a token produce a finding -- measured on real mainnet traffic.
-    expect(opaqueExtensionsOf(token, withExtensions([[7, 0], [19, 8]]))).toEqual(
-      [],
-    );
-    expect(opaqueExtensionsOf(token, withExtensions([[14, 32]]))).toEqual([
-      "transfer_hook",
+    const benign = withExtensions([
+      [ExtensionType.ImmutableOwner, 0],
+      [ExtensionType.TokenMetadata, 8],
     ]);
-    expect(opaqueExtensionsOf(token, withExtensions([[12, 32]]))).toEqual([
-      "permanent_delegate",
-    ]);
+    expect(opaqueExtensionsOf(token, benign)).toEqual([]);
+    expect(
+      opaqueExtensionsOf(token, withExtensions([[ExtensionType.TransferHook, 32]])),
+    ).toEqual(["TransferHook"]);
+    expect(
+      opaqueExtensionsOf(
+        token,
+        withExtensions([[ExtensionType.PermanentDelegate, 32]]),
+      ),
+    ).toEqual(["PermanentDelegate"]);
+    // Harmless in every other sense, and still reported: both change the
+    // relationship between the raw amount the diff reads and the number a
+    // human types, which is what the magnitude check converts between.
+    expect(
+      opaqueExtensionsOf(
+        token,
+        withExtensions([[ExtensionType.InterestBearingConfig, 40]]),
+      ),
+    ).toEqual(["InterestBearingConfig"]);
   });
 
   it("treats an extension it has never heard of as opaque", () => {
@@ -185,7 +215,7 @@ describe("bytes VETO does not read", () => {
 
   it("reports a list that runs past the buffer instead of trusting it", () => {
     const token = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
-    const data = withExtensions([[14, 4]]);
+    const data = withExtensions([[ExtensionType.TransferHook, 4]]);
     data.writeUInt16LE(9_000, 168); // a length far beyond what is there
     expect(opaqueExtensionsOf(token, data)).toEqual([
       "malformed_extension_list",
@@ -194,8 +224,99 @@ describe("bytes VETO does not read", () => {
 
   it("says nothing about an account no token program owns", () => {
     expect(
-      opaqueExtensionsOf("11111111111111111111111111111111", withExtensions([[12, 32]])),
+      opaqueExtensionsOf(
+        "11111111111111111111111111111111",
+        withExtensions([[ExtensionType.PermanentDelegate, 32]]),
+      ),
     ).toEqual([]);
+  });
+});
+
+describe("the fee nothing else looks at", () => {
+  const withFee = (fee: bigint | null): EffectSet => ({
+    effects: [],
+    slot: 1,
+    baselineSlot: 1,
+    fee,
+    feePayer: "Payer",
+    messageDigest: null,
+    simulation: { status: "executed", unitsConsumed: 1 },
+    coverage: {
+      referenced: [],
+      observed: [],
+      unobserved: [],
+      blindSpots: [],
+      tokenExtensions: [],
+      opaqueChanges: [],
+      inexactAmounts: [],
+      undecodable: [],
+      overSimulationLimit: [],
+    },
+  });
+
+  it("bounds a priority fee, because the diff deliberately excludes it", () => {
+    // The fee is taken out of the payer's balance change on purpose -- it is
+    // the cost of asking, not part of what was asked for. The consequence is
+    // that nothing in any manifest bounds it, and a priority fee is an
+    // arbitrary amount of SOL leaving the wallet. Paying it to validators
+    // empties the wallet just as well as paying it to an attacker.
+    const finding = feeFindings(
+      withFee(2_000_000_000n),
+      DEFAULT_THRESHOLDS,
+    ).find((f) => f.rule === "magnitude.fee_above_ceiling");
+    expect(finding?.severity).toBe("high");
+  });
+
+  it("says nothing about an ordinary fee, or one it does not know", () => {
+    expect(feeFindings(withFee(5_000n), DEFAULT_THRESHOLDS)).toEqual([]);
+    expect(feeFindings(withFee(null), DEFAULT_THRESHOLDS)).toEqual([]);
+  });
+});
+
+describe("changes VETO produced no effect for", () => {
+  it("reports a stake account whose bytes moved", () => {
+    // The diff reports what it reads: lamports, and the two token layouts.
+    // A stake account's authorities are neither, so handing over the
+    // withdrawer produces no effect at all -- which downstream is
+    // indistinguishable from "this transaction does nothing".
+    const set: EffectSet = {
+      effects: [],
+      slot: 1,
+      baselineSlot: 1,
+      fee: null,
+      feePayer: null,
+      messageDigest: null,
+      simulation: { status: "executed", unitsConsumed: 1 },
+      coverage: {
+        referenced: ["S"],
+        observed: ["S"],
+        unobserved: [],
+        blindSpots: [],
+        tokenExtensions: [],
+        opaqueChanges: ["S: stake"],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
+      },
+    };
+    const finding = coverageFindings(set).find(
+      (f) => f.rule === "coverage.undecoded_authority_account",
+    );
+    expect(finding?.severity).toBe("high");
+  });
+
+  it("knows which programs hold authority and which merely hold state", () => {
+    // An AMM pool changing is not a gap: the user's assets live in token
+    // accounts, which are read. A stake account changing is.
+    expect(
+      authorityBearingProgram("Stake11111111111111111111111111111111111111"),
+    ).toBe("stake");
+    expect(
+      authorityBearingProgram("BPFLoaderUpgradeab1e11111111111111111111111"),
+    ).toBe("upgradeable_loader");
+    expect(
+      authorityBearingProgram("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"),
+    ).toBeNull();
   });
 });
 
@@ -207,6 +328,7 @@ describe("what the evaluation could not see", () => {
       baselineSlot: null,
       fee: null,
       feePayer: null,
+      messageDigest: null,
       simulation: { status: "unavailable", reason: "429 Too Many Requests" },
       coverage: {
         referenced: ["A"],
@@ -214,6 +336,10 @@ describe("what the evaluation could not see", () => {
         unobserved: ["A"],
         blindSpots: [],
         tokenExtensions: [],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
       },
     };
     const findings = coverageFindings(set);
@@ -235,6 +361,7 @@ describe("what the evaluation could not see", () => {
       baselineSlot: 99,
       fee: null,
       feePayer: null,
+      messageDigest: null,
       simulation: { status: "executed", unitsConsumed: 0 },
       coverage: {
         referenced: [],
@@ -242,6 +369,10 @@ describe("what the evaluation could not see", () => {
         unobserved: [],
         blindSpots: [],
         tokenExtensions: [],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
       },
     };
     expect(
@@ -269,6 +400,7 @@ describe("a real blind spot is not the same as an expected one", () => {
       baselineSlot: 10,
       fee: null,
       feePayer: null,
+      messageDigest: null,
       simulation: { status: "executed", unitsConsumed: 0 },
       coverage: {
         referenced: ["A", "B"],
@@ -276,6 +408,10 @@ describe("a real blind spot is not the same as an expected one", () => {
         unobserved: ["B"],
         blindSpots: ["Table1: does not exist"],
         tokenExtensions: [],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
       },
     };
     const findings = coverageFindings(set);
@@ -294,6 +430,7 @@ describe("a real blind spot is not the same as an expected one", () => {
       baselineSlot: 10,
       fee: null,
       feePayer: null,
+      messageDigest: null,
       simulation: { status: "executed", unitsConsumed: 0 },
       coverage: {
         referenced: ["A", "Program"],
@@ -301,6 +438,10 @@ describe("a real blind spot is not the same as an expected one", () => {
         unobserved: ["Program"],
         blindSpots: [],
         tokenExtensions: [],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
       },
     };
     const unobserved = coverageFindings(set).find(

@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   FixtureRpcClient,
   loadFixture,
+  readTransaction,
   type Fixture,
 } from "../../src/normalization/fixture.js";
 import { normalize } from "../../src/normalization/normalize.js";
@@ -161,6 +163,109 @@ describe("degradation", () => {
     expect(set.effects).toEqual([]);
     expect(set.coverage.observed).toEqual([]);
     expect(set.coverage.unobserved).toEqual(set.coverage.referenced);
+  });
+});
+
+/** A client whose simulation never answers. */
+function hangingClient(base: FixtureRpcClient): RpcClient {
+  return {
+    readAccounts: async (addresses): Promise<RpcResult<AccountsRead>> =>
+      base.readAccounts(addresses),
+    simulate: (): Promise<RpcResult<SimulationResponse>> =>
+      new Promise(() => {
+        // Never settles. A network that accepts the connection and then goes
+        // quiet looks exactly like this.
+      }),
+    readLookupTables: async (addresses): Promise<RpcResult<LookupTableRead>> =>
+      base.readLookupTables(addresses),
+    feeFor: async (): Promise<RpcResult<bigint | null>> => base.feeFor(),
+    identifyNetwork: async (): Promise<RpcResult<string>> =>
+      base.identifyNetwork(),
+  };
+}
+
+describe("a client that answers without a post-state", () => {
+  /** Succeeds, and carries no post-state for the accounts that were asked for. */
+  function emptyPostState(base: FixtureRpcClient): RpcClient {
+    return {
+      readAccounts: async (a): Promise<RpcResult<AccountsRead>> =>
+        base.readAccounts(a),
+      simulate: async (tx, o): Promise<RpcResult<SimulationResponse>> => {
+        const real = await base.simulate(tx, o);
+        return real.ok
+          ? { ok: true, value: { ...real.value, accounts: [] } }
+          : real;
+      },
+      readLookupTables: async (a): Promise<RpcResult<LookupTableRead>> =>
+        base.readLookupTables(a),
+      feeFor: async (): Promise<RpcResult<bigint | null>> => base.feeFor(),
+      identifyNetwork: async (): Promise<RpcResult<string>> =>
+        base.identifyNetwork(),
+    };
+  }
+
+  it("does not invent a closure for every account it asked about", async () => {
+    // Zipping our requested list against a shorter response by position makes
+    // every entry null, and a null post-state for an account that existed
+    // reads as "the account is gone". The result was a full set of phantom
+    // closures AND a coverage report claiming everything had been observed --
+    // the second half being the dangerous one, because it is a claim of
+    // visibility the run never had.
+    const fixture = open("transfer-sol");
+    const rpc = emptyPostState(new FixtureRpcClient(fixture));
+    const set = await normalize(readTransaction(fixture), rpc);
+
+    expect(set.effects.filter((e) => e.type === "ACCOUNT_CLOSE")).toEqual([]);
+    expect(set.simulation.status).toBe("unavailable");
+    expect(set.coverage.observed).toEqual([]);
+  });
+});
+
+describe("what the verdict is about", () => {
+  it("binds to the signable message, not to the signed transaction", async () => {
+    // A verdict with nothing tying it to specific bytes is a verdict about
+    // nothing in particular: an agent can be handed "allow" for one
+    // transaction and put its signature on another.
+    const fixture = open("transfer-sol");
+    const rpc = new FixtureRpcClient(fixture);
+    const set = await normalize(rpc.transaction(), rpc);
+
+    const tx = readTransaction(fixture);
+    const expected = createHash("sha256")
+      .update(Buffer.from(tx.message.serialize()))
+      .digest("hex");
+    expect(set.messageDigest).toBe(expected);
+
+    // And the digest has to survive signing. Signatures are part of a
+    // serialized TRANSACTION, so hashing the whole thing would produce a
+    // value that changes at the moment of signing -- useless for binding.
+    const signed = readTransaction(fixture);
+    signed.signatures[0] = new Uint8Array(64).fill(7);
+    const afterSigning = createHash("sha256")
+      .update(Buffer.from(signed.message.serialize()))
+      .digest("hex");
+    expect(afterSigning).toBe(set.messageDigest);
+  });
+});
+
+describe("a decision that never arrives", () => {
+  it("degrades instead of waiting forever", async () => {
+    // The client here has no deadline of its own, which is the point: an
+    // RpcClient is an interface, and an integrator's implementation may have
+    // none. Whoever promises an answer owns the deadline.
+    const fixture = open("transfer-sol");
+    const rpc = hangingClient(new FixtureRpcClient(fixture));
+    const started = Date.now();
+    const set = await normalize(readTransaction(fixture), rpc, {
+      deadlineMs: 120,
+    });
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(set.simulation.status).toBe("unavailable");
+    if (set.simulation.status === "unavailable") {
+      expect(set.simulation.reason).toContain("timed out");
+    }
+    // And it has to be a DENY, not an empty effect list read as approval.
+    expect(set.effects).toEqual([]);
   });
 });
 

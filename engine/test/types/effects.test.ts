@@ -14,7 +14,7 @@ import {
 } from "../../src/types/effects.js";
 
 describe("effect vocabulary", () => {
-  it("has exactly the 8 agreed types", () => {
+  it("has exactly the 9 agreed types", () => {
     // Deliberate lock: the vocabulary is closed. If this test fails, someone
     // changed it -- which requires an explicit decision, not a commit.
     expect(EFFECT_TYPES).toEqual([
@@ -25,10 +25,15 @@ describe("effect vocabulary", () => {
       "OWNER_CHANGE",
       "ACCOUNT_CREATE",
       "ACCOUNT_CLOSE",
+      // The ninth, added by explicit decision: a token account has three
+      // answers to "who can move these tokens" -- owner, delegate, and
+      // whether it is frozen -- and the third was a byte we decoded and
+      // then ignored.
+      "ACCOUNT_FREEZE",
       "PROGRAM_INVOKE",
     ]);
-    expect(EFFECT_TYPES).toHaveLength(8);
-    expect(new Set(EFFECT_TYPES).size).toBe(8);
+    expect(EFFECT_TYPES).toHaveLength(9);
+    expect(new Set(EFFECT_TYPES).size).toBe(9);
   });
 
   it("accepts vocabulary types and rejects anything else", () => {
@@ -103,6 +108,7 @@ describe("EffectSet", () => {
     baselineSlot: 502538365,
     fee: 5000n,
     feePayer: null,
+    messageDigest: null,
     simulation: { status: "executed", unitsConsumed: 13476 },
     coverage: {
       referenced: ["ATokenAcc", "SolAcc", "JUP6"],
@@ -110,6 +116,10 @@ describe("EffectSet", () => {
       unobserved: [],
       blindSpots: [],
       tokenExtensions: [],
+      opaqueChanges: [],
+      inexactAmounts: [],
+      undecodable: [],
+      overSimulationLimit: [],
     },
   };
 
@@ -147,7 +157,13 @@ describe("EffectSet", () => {
       referenced: ["A", "B"],
       observed: ["A"],
       unobserved: ["B"],
-      blindSpots: [], tokenExtensions: [] };
+      blindSpots: [],
+      tokenExtensions: [],
+      opaqueChanges: [],
+      inexactAmounts: [],
+      undecodable: [],
+      overSimulationLimit: [],
+    };
     expect(coverageIsComplete(blind)).toBe(false);
   });
 
@@ -199,6 +215,7 @@ describe("the vessel and the party", () => {
       baselineSlot: 1,
       fee: null,
       feePayer: null,
+      messageDigest: null,
       simulation: { status: "executed", unitsConsumed: 1 },
       coverage: {
         referenced: [],
@@ -206,6 +223,10 @@ describe("the vessel and the party", () => {
         unobserved: [],
         blindSpots: [],
         tokenExtensions: [],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
       },
     };
     expect(counterparties(withOwner)).toEqual(["BobWallet"]);
@@ -225,6 +246,7 @@ describe("the vessel and the party", () => {
       baselineSlot: 1,
       fee: null,
       feePayer: null,
+      messageDigest: null,
       simulation: { status: "executed", unitsConsumed: 1 },
       coverage: {
         referenced: [],
@@ -232,6 +254,10 @@ describe("the vessel and the party", () => {
         unobserved: [],
         blindSpots: [],
         tokenExtensions: [],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
       },
     };
     expect(counterparties(plain)).toEqual(["Wallet"]);

@@ -238,11 +238,169 @@ Implementation gaps per block live in `pending.md`.
     benign is precisely how a detector goes quiet on the thing it was built
     for. So the list is an allowlist of the harmless, never a blocklist of
     the dangerous.
+60b. **Extension NAMES come from the token program's own enum, not from a
+    table here.** The first version transcribed the numbers, and a real
+    mainnet account came back carrying id 27 -- `PausableAccount` -- which
+    that table did not have. Hand-copied numbers go stale the moment the
+    program adds one, and `@solana/spl-token` is already a dependency. What
+    stays ours is the POLICY: which names are harmless.
+60c. **`InterestBearingConfig` and `ScaledUiAmountConfig` are reported**,
+    although neither lets anyone move or freeze anything. Both change the
+    relationship between the RAW amount the diff reads and the number a human
+    types into a tool call, and the magnitude check converts between exactly
+    those two using the mint's decimals. Under either extension that
+    conversion is silently wrong.
 61. **The sampling CLIs treat a rate limit as an answer, not an exception.** A
     429 does not reply in JSON -- it replies `Too Many Requests` in plain text
     -- and parsing that threw an unhandled rejection that took a whole
     sampling run down mid-flight. The library never had this hole; the CLI
     did, and sampling is exactly the workload that hits a rate limit.
+62. **An account owned by a program that holds AUTHORITY, whose bytes
+    changed, is a coverage finding** (`coverage.undecoded_authority_account`,
+    high). The diff reports what it reads: lamports and the two token
+    layouts. Anything else changes and produces NO effect, which downstream
+    is indistinguishable from "this transaction does nothing". For an AMM
+    pool that is correct, because the user's assets are in token accounts.
+    For a stake account or an upgradeable program it is a silent pass on
+    giving away control. The list is the four native programs; a third-party
+    multisig cannot be enumerated.
+63. **The normalizer holds a deadline of its own**, 5 s total, on top of the
+    client's 1.5 s per read and 3 s per simulation. An `RpcClient` is an
+    interface, and an integrator's implementation may have no deadline at
+    all; whoever promises an answer owns the deadline. A decision that never
+    arrives is the one outcome worse than a wrong one -- the agent is left
+    holding an unsigned transaction and no answer.
+64. **`lamportsExact` becomes a finding** (`coverage.inexact_lamports`, low).
+    Lamports arrive from JSON.parse as a number and above 2^53-1 the original
+    is unrecoverable. Every amount here is bigint precisely so that rounding
+    never happens silently, so where it happened before our boundary it is
+    reported rather than carried into an effect a magnitude check compares
+    against a declared number.
+65. **The verdict carries `messageDigest`**, sha256 of the signable message.
+    A verdict with nothing tying it to specific bytes is a verdict about
+    nothing in particular: an agent can be handed "allow" for one transaction
+    and put its signature on another. Whoever signs checks the hash.
+65a. **The MESSAGE, not the transaction.** Signatures are part of a serialized
+    transaction, so hashing the whole thing produces a digest that changes at
+    the moment of signing -- exactly useless for binding the two. For a
+    version 1 message, which this SDK will not serialize, the message is taken
+    out of the original wire bytes by stepping over the signature section.
+66. **The fee has a ceiling of its own** (`magnitude.fee_above_ceiling`, high,
+    default 0.01 SOL). The diff excludes the fee from the payer's balance
+    change deliberately -- it is the cost of asking, not part of what was
+    asked for -- and the consequence is that no manifest bounds it. A priority
+    fee is an arbitrary amount of SOL leaving the wallet, and paying it to
+    validators empties the wallet just as well as paying it to an attacker.
+    This hole was created by the fix in decision 52's neighbourhood and found
+    by asking what the tool would still miss.
+67. **Account resolution is verified against the SDK's own implementation.**
+    Every instruction refers to accounts by INDEX into one ordered list, and
+    the diff attributes each state change to whatever address sits at that
+    index. An off-by-one in the writable calculation makes a changing account
+    invisible; a mistake in the lookup-table ordering attributes real effects
+    to the wrong addresses, which is worse -- it reads as confident and is
+    wrong. So the test compares against `isAccountWritable`,
+    `isAccountSigner` and `getAccountKeys` across seven message shapes, with
+    padding in the table so an off-by-one cannot accidentally line up. Two
+    implementations of the same spec agreeing is evidence; one agreeing with
+    itself is not.
+68. **The fee is read from the BYTES, with the RPC as fallback.** Verified
+    exact against what the network actually charged on 150 of 150 real
+    mainnet transactions. It costs no round trip, which removes a call from
+    the critical path, and it works on a transaction whose blockhash has
+    expired -- where `getFeeForMessage` refuses to answer at all, which is
+    every historical transaction.
+68a. **The one assumption is the per-signature rate**, 5000 lamports. If the
+    cluster ever changed it this reads LOW, leaving part of the fee inside the
+    payer's balance change: a decrease that looks slightly larger than it is.
+    A false positive, never a missed drain. That is the only error direction
+    acceptable for this number, and it is why the estimate is allowed to
+    replace the RPC at all.
+69. **A version 1 message carries its fee in `transactionConfig`, in
+    LAMPORTS** -- not in ComputeBudget instructions, and not in micro-lamports
+    per compute unit. Found by comparing against real charges: every
+    disagreement in the first run was a v1 transaction read with v0 rules,
+    producing a confident 5000 against a real 5026. The shape is validated
+    with a schema rather than trusted.
+69a. **A transaction version whose fee model this code does not know reports
+    NO fee.** Never a confident wrong one. A number that is too high
+    over-subtracts from the payer's balance change and hides value leaving the
+    wallet, and a priority fee with no limit set is the same problem, so
+    neither is guessed at.
+69b. **A signature-verification precompile is charged per signature it
+    carries**, on top of the transaction's own required signatures, and the
+    count is the first byte of its instruction data. One disagreement in 349
+    real transactions, off by exactly 5000. Agreement went to 200 of 200.
+70. **`declaredFeeOf` asks for the three fields it reads**, not for a whole
+    `VersionedMessage`. A function that asks for less has visible
+    dependencies, and it can be tested with a literal instead of prototype
+    surgery on a compiled transaction.
+71. **A simulation that ran, was asked for post-state and carries none is a
+    FAILURE, not an empty answer.** Returning ok handed the caller an empty
+    list to zip against its requested addresses, which made every entry null
+    -- and a null post-state for an account that existed reads as "the account
+    is gone". The result was a phantom ACCOUNT_CLOSE and a full-balance
+    BALANCE_DECREASE for every account, AND a coverage report claiming
+    everything had been observed. The second half is the dangerous one: a
+    claim of visibility the run never had. Guarded in the client and again in
+    the normalizer, because the client is an interface.
+72. **A ninth effect type: `ACCOUNT_FREEZE`.** A token account has THREE
+    answers to "who can move these tokens" -- the owner, the delegate, and
+    whether it is frozen -- and the first two had types while the third was a
+    byte this project decoded and then ignored. A freeze moves no token, so
+    every amount comparison passed and the transaction read as doing nothing.
+    Emitted on freezing only: thawing hands control back, and the vocabulary
+    is about losing it, the same asymmetry that makes a grant an effect and a
+    revoke none. `high` rather than critical, in the safety net and in every
+    manifest's `mustNot`, because a freeze denies access rather than handing
+    control to anybody -- and a token issuer's agent freezes legitimately,
+    which its own manifest is then what authorises.
+73. **The Token-2022 account-type byte decides which layout a buffer holds.** A
+    mint with extensions is PADDED to the size of a token account, so length
+    alone cannot tell them apart -- and reading a mint through the token
+    layout takes its supply for an owner. Since a supply change alters bytes
+    inside that field, minting produced a phantom OWNER_CHANGE with a
+    FABRICATED address, reported as critical. A wrong confident answer, which
+    is worse than no answer. The same byte also stopped a padded mint from
+    being recognised as neither thing, which had made an authority handed over
+    on it produce no effect at all.
+74. **A token-program account that cannot be decoded is a coverage finding**
+    (`coverage.undecodable_token_account`, high). Truncated data, an unknown
+    discriminator, a layout that changed under us: the diff produces nothing,
+    and nothing is exactly what a drain hidden there would look like. An error
+    is never swallowed, and a failure to decode is an error.
+75. **Transaction shapes are BUILT, not only recorded.** Six devnet fixtures
+    and whatever mainnet sampling happens to contain do not cover the
+    transitions that matter most and occur least: an account frozen, a mint
+    authority handed over, an allowance that merely grows, an account created
+    and closed in one transaction, a padded Token-2022 mint. Those are what an
+    attacker reaches for, so they are assembled byte by byte with the
+    transition under test as the only difference between before and after.
+76. **An unresolvable lookup entry makes the whole resolution FAIL.** Skipping
+    it returned a shorter list, and instruction account indexes point INTO
+    that list -- so every index past the gap moved down by one and the effects
+    still produced came out attributed to the WRONG addresses. It read like
+    honest partial blindness and was not: confidently wrong, which is worse
+    than no answer. If one address is unknown, the positions are unknown.
+77. **Instruction indexes are validated once, in the resolver.** An
+    out-of-range program index simply vanished from the invoked programs, so a
+    manifest's program allowlist had nothing to reject -- an unknown program
+    read as no program at all. Checking it in one place removes the class
+    instead of asking every consumer to remember.
+78. **A truncated post-state is a failure.** The response carries `space`, the
+    account's real size, so a shorter buffer is detectable exactly. Diffing a
+    partial account invents changes where the cut lands and hides every change
+    past it. Not seen on mainnet, and the check costs nothing -- if it starts
+    happening the message says so instead of the effects quietly becoming
+    fiction.
+79. **The simulation returns post-state for at most 64 accounts**, measured:
+    asking for 100 gives `-32602 Too many accounts provided; max 64`. Real
+    traffic in the same sample had a median of 6 writable accounts, p90 of 12
+    and a maximum of 41. Going blind on the whole transaction would be the
+    wrong answer for the tail, so the first 64 are observed IN MESSAGE ORDER
+    -- which puts the signers and the fee payer first, so the caller's own
+    accounts are never the ones dropped -- and the remainder becomes
+    `coverage.account_limit_exceeded`, high.
 
 ---
 

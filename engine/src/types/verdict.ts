@@ -62,6 +62,16 @@ export type Decision = z.infer<typeof decisionSchema>;
 
 export interface Verdict {
   readonly actionId: string;
+  /**
+   * sha256 of the signable message this verdict is about, hex.
+   *
+   * A verdict with nothing tying it to specific bytes is a verdict about
+   * nothing in particular: an agent can be handed "allow" for one transaction
+   * and put its signature on another. Whoever signs is expected to check that
+   * what it signs hashes to this. null means the bytes could not be obtained,
+   * which only happens when the simulation was unavailable anyway.
+   */
+  readonly messageDigest: string | null;
   readonly decision: Decision;
   readonly findings: readonly Finding[];
   /** Milliseconds since the epoch. */
@@ -79,9 +89,24 @@ export interface Thresholds {
   readonly highsForDeny: number;
   /** How many `medium` findings are enough for FLAG. Default 1. */
   readonly mediumsForFlag: number;
+  /**
+   * The most the network fee may be, in lamports.
+   *
+   * The fee is deliberately kept out of the effects -- it is the cost of
+   * asking, not part of what was asked for -- and that is exactly why it
+   * needs a bound of its own. Nothing in a manifest looks at it, so an
+   * enormous priority fee is value leaving the payer that no other check
+   * would ever see. Paying it to validators drains the wallet just as well as
+   * paying it to an attacker.
+   *
+   * The default is calibration: 0.01 SOL is far above any ordinary priority
+   * fee and far below an amount worth stealing.
+   */
+  readonly maxFeeLamports: bigint;
 }
 
 export const DEFAULT_THRESHOLDS: Thresholds = {
   highsForDeny: 2,
   mediumsForFlag: 1,
+  maxFeeLamports: 10_000_000n,
 };
