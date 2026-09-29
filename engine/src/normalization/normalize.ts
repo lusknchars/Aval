@@ -256,7 +256,7 @@ export async function normalize(
       {
         referenced,
         observed: [],
-        unobserved: referenced,
+        unobserved: toObserve,
         blindSpots: blind,
         tokenExtensions: [],
         opaqueChanges: [],
@@ -276,7 +276,7 @@ export async function normalize(
       {
         referenced,
         observed: [],
-        unobserved: referenced,
+        unobserved: toObserve,
         blindSpots: blind,
         tokenExtensions: [],
         opaqueChanges: [],
@@ -304,7 +304,7 @@ export async function normalize(
       {
         referenced,
         observed: [],
-        unobserved: referenced,
+        unobserved: toObserve,
         blindSpots: blind,
         tokenExtensions: [],
         opaqueChanges: [],
@@ -332,7 +332,15 @@ export async function normalize(
   const observed = toObserve.filter(
     (address) => beforeByAddress.has(address) && afterByAddress.has(address),
   );
-  const unobserved = referenced.filter(
+  // A GAP, not an inventory.
+  //
+  // This used to be every referenced account minus the observed ones, which
+  // always includes the readonly accounts -- and a readonly account cannot
+  // change state, so never observing one is not a gap, it is the design. The
+  // effect was a finding on literally every transaction, which is the precise
+  // definition of a check nobody reads. What belongs here is an account we
+  // ASKED about and did not get back.
+  const unobserved = toObserve.filter(
     (address) => !observed.includes(address),
   );
   // Read off the post-state: an account whose base layout decoded fine but
@@ -413,7 +421,7 @@ export async function normalize(
       coverage: {
         referenced,
         observed: [],
-        unobserved: referenced,
+        unobserved: toObserve,
         blindSpots: blind,
         tokenExtensions: [],
         opaqueChanges: [],

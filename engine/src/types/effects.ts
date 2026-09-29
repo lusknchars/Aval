@@ -265,8 +265,12 @@ export interface AccountCoverage {
   /** Accounts with state before AND after, from which effects could be derived. */
   readonly observed: readonly string[];
   /**
-   * Referenced but never observed. Mostly readonly accounts, which cannot
-   * change state -- expected, and not worth an alert on its own.
+   * Writable accounts VETO asked about and did not get back.
+   *
+   * A real gap, not an inventory. Readonly accounts are never observed and
+   * that is the design, not a blind spot -- counting them here made the
+   * coverage finding fire on every ordinary transaction, which is the precise
+   * definition of a check nobody reads.
    */
   readonly unobserved: readonly string[];
   /**

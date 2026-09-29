@@ -18,7 +18,8 @@
  * exist first -- or every legitimate call produces findings, and a customer
  * who sees findings on every call stops reading them.
  */
-import type { ToolManifest } from "../../types/manifest.js";
+import type { ToolManifest, ToolMatch } from "../../types/manifest.js";
+import { resolveToolName } from "./tool-name.js";
 
 const SYSTEM_PROGRAM = "11111111111111111111111111111111";
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
@@ -243,6 +244,88 @@ export const CLOSE_ACCOUNT: ToolManifest = {
   programAllowlist: TOKEN_PROGRAMS,
 };
 
+/**
+ * Destroying tokens.
+ *
+ * A burn is irreversible and gives nothing to anybody, so provenance has
+ * nothing to ask -- which leaves the declared amount as the only thing
+ * standing between a request to burn ten and a transaction that burns
+ * everything.
+ */
+export const BURN_TOKENS: ToolManifest = {
+  tool: "burn_tokens",
+  version: "1",
+  args: { account: "address", mint: "mint", amount: "amount" },
+  must: [
+    {
+      type: "BALANCE_DECREASE",
+      account: "arg:account",
+      mint: "arg:mint",
+      maxAmount: "arg:amount",
+      unit: "decimal",
+    },
+  ],
+  may: [{ type: "PROGRAM_INVOKE" }, { type: "BALANCE_DECREASE", mint: "SOL" }],
+  mustNot: [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE",
+  ],
+  accountScope: "args_only",
+  programAllowlist: TOKEN_PROGRAMS,
+};
+
+/**
+ * Handing over an authority.
+ *
+ * The most severe operation a token account has, and the reason it gets a
+ * manifest at all is the rule that a manifest requiring an effect authorises
+ * it: without one, a tool whose entire purpose is this could never be
+ * allowed. What the manifest does NOT lift is who receives it -- provenance
+ * still asks where the new authority came from, and an authority handed to an
+ * address that appeared on a web page is the whole attack.
+ */
+export const SET_AUTHORITY: ToolManifest = {
+  tool: "set_authority",
+  version: "1",
+  args: { account: "address", newAuthority: "address" },
+  must: [{ type: "AUTHORITY_CHANGE", account: "arg:account" }],
+  may: [
+    { type: "PROGRAM_INVOKE" },
+    { type: "BALANCE_DECREASE", mint: "SOL" },
+    // Handing over the ACCOUNT owner is reported as OWNER_CHANGE rather than
+    // AUTHORITY_CHANGE, and it is the same instruction.
+    { type: "OWNER_CHANGE", account: "arg:account" },
+  ],
+  mustNot: ["DELEGATE_GRANT", "ACCOUNT_CLOSE", "ACCOUNT_FREEZE"],
+  accountScope: "args_only",
+  programAllowlist: TOKEN_PROGRAMS,
+};
+
+/**
+ * Freezing an account.
+ *
+ * No token moves, so every amount comparison passes. What it does is take the
+ * owner's access away, which is why the vocabulary has a type for it at all.
+ */
+export const FREEZE_ACCOUNT: ToolManifest = {
+  tool: "freeze_account",
+  version: "1",
+  args: { account: "address", mint: "mint" },
+  must: [{ type: "ACCOUNT_FREEZE", account: "arg:account" }],
+  may: [{ type: "PROGRAM_INVOKE" }, { type: "BALANCE_DECREASE", mint: "SOL" }],
+  mustNot: [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+  ],
+  accountScope: "args_only",
+  programAllowlist: TOKEN_PROGRAMS,
+};
+
 export const MANIFESTS: readonly ToolManifest[] = [
   TRANSFER_SOL,
   TRANSFER_TOKEN,
@@ -250,9 +333,34 @@ export const MANIFESTS: readonly ToolManifest[] = [
   APPROVE,
   REVOKE,
   CLOSE_ACCOUNT,
+  BURN_TOKENS,
+  SET_AUTHORITY,
+  FREEZE_ACCOUNT,
 ];
 
 const BY_TOOL = new Map(MANIFESTS.map((manifest) => [manifest.tool, manifest]));
+
+/** The tools a manifest exists for. */
+export const MANIFEST_TOOLS: ReadonlySet<string> = new Set(BY_TOOL.keys());
+
+/**
+ * The manifest for a tool call, with how the name was matched.
+ *
+ * A customer's agent does not spell tools the way these manifests do, so the
+ * identifier is normalised first -- see `tool-name.ts` for the rule that
+ * normalisation fixes spelling and never guesses meaning. `args` is optional
+ * and only used to separate names that mean two primitives at once, such as
+ * Agent Kit's `transfer`; without them such a name stays unknown.
+ */
+export function lookupManifest(
+  tool: string,
+  args?: Readonly<Record<string, unknown>>,
+): { readonly manifest: ToolManifest; readonly via: ToolMatch } | null {
+  const resolved = resolveToolName(tool, MANIFEST_TOOLS, args);
+  if (resolved === null) return null;
+  const manifest = BY_TOOL.get(resolved.tool);
+  return manifest === undefined ? null : { manifest, via: resolved.via };
+}
 
 /**
  * The manifest for a tool, or null when none exists.
@@ -260,8 +368,11 @@ const BY_TOOL = new Map(MANIFESTS.map((manifest) => [manifest.tool, manifest]));
  * null is a real answer, not an error: a tool nobody has written a manifest
  * for still gets the safety net and provenance, and the gap is reported.
  */
-export function manifestFor(tool: string): ToolManifest | null {
-  return BY_TOOL.get(tool) ?? null;
+export function manifestFor(
+  tool: string,
+  args?: Readonly<Record<string, unknown>>,
+): ToolManifest | null {
+  return lookupManifest(tool, args)?.manifest ?? null;
 }
 
 /** Manifest versions in force, for the policy version. */

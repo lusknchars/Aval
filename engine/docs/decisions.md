@@ -401,6 +401,78 @@ Implementation gaps per block live in `pending.md`.
     -- which puts the signers and the fee payer first, so the caller's own
     accounts are never the ones dropped -- and the remainder becomes
     `coverage.account_limit_exceeded`, high.
+80. **The evaluation CLI takes a real transaction, not only a fixture**
+    (`--signature`, `--tx`). Until then the deterministic layer could be run
+    against recorded scenarios or measured in bulk, and there was no way to ask
+    "what would VETO say about THIS transaction" -- which is the first thing
+    anyone wants. A real transaction carries no tool call, so the declaration a
+    truthful agent would have made is read back out of its own effects, by the
+    same strict classifier the bulk sampler uses.
+80a. **The alert prints the counterparty in FULL.** The elided display form is
+    unusable: somebody who wants to say "the user did ask for this address"
+    has to paste it back in, and pasting six characters is not pasting an
+    address. The matcher refuses it, correctly, and from the outside that
+    looks like a bug -- which is exactly what happened once already.
+83. **The capture layer stamps at the door, and the agent is never asked.** The
+    model passes no provenance field, cannot set one, and is not consulted.
+    Whoever calls a tool on its behalf knows whether the bytes came from the
+    human or from a page, and stamps them. Self-reported provenance is not a
+    weaker version of this -- a compromised agent labels the attacker's address
+    `user`, which is the most trusted tier, so it is none of it.
+84. **Interception happens at signing.** That is the one moment where the goal,
+    the stamped context, the tool call and the bytes all exist together, and in
+    a real integration it is a point the agent cannot route around without
+    removing the wallet.
+85. **History never feeds a verdict.** A transaction that already landed has
+    its real effects recorded in the block, and the demo shows them, because
+    re-simulating a landed transaction usually fails and "cannot know" is a
+    wall. But VETO judges BEFORE signing, where history does not exist; using
+    it to decide would be answering a different question and calling it the
+    same one.
+86. **An empty effect list is never written as "it does nothing".** It has two
+    causes -- nothing happened, or nothing could be seen -- and collapsing them
+    in the explanation is the exact mistake the `SimulationOutcome` union
+    exists to prevent.
+87. **An LLM may PROPOSE policy; it may never decide an action.** A judge with
+    power to overturn a deny was considered and rejected. Direction is what
+    matters: a model that can only tighten breaks nothing, and one that can
+    open changes the attacker's job from "defeat integer arithmetic and set
+    membership" -- which text cannot do -- to "convince a model with text",
+    which is precisely what prompt injection is good at. Worse, the thing such
+    a judge would read to decide includes the captured context, so it would
+    hand the attacker's own words to the component able to unlock the gate.
+87a. **The two other losses.** "The model decided at the time" is not
+    auditable, and today every verdict traces to a named rule under a hashed
+    `policyVersion`. And the same input stops producing the same output, which
+    is the property that lets an incident be reconstructed months later.
+88. **The policy proposer runs offline, on the STRUCTURED record.** It reads
+    verdicts, findings, tool calls and effects -- never the untrusted content
+    itself. A proposer that reads attacker-controlled prose is a slower
+    version of the judge that was just rejected; one that reads only the
+    structured record cannot be argued with.
+88a. **Every proposal is replayed against history before a human sees it.** The
+    interesting question about "allowlist this address" is not whether it looks
+    reasonable, it is WHAT IT WOULD HAVE LET THROUGH. A proposal is shown with
+    the past verdicts it would have changed, so approving it is a decision
+    about consequences rather than about plausibility.
+88b. **Nothing is ever auto-applied**, and an approved proposal becomes
+    versioned configuration, so `policyVersion` changes on its own and the
+    model and timestamp that produced it are recorded. Same discipline as the
+    task envelope's `derivedBy`.
+81. **The demo page renders the trace; it never computes anything.** A demo
+    that produces its own answer is demonstrating the demo. The server calls
+    the same `normalize` and `evaluate` the tests call, and `demo/trace.ts`
+    converts the objects the library already produces into something JSON can
+    carry. If a stage cannot be rendered from the real objects, that stage is
+    not explainable, and the fix belongs in the stage.
+81a. **The RPC url never reaches the browser.** It is the secret -- the
+    api-key is in its query string -- so every network call happens server
+    side and the page only ever sees addresses and verdicts. Errors return a
+    fixed string rather than a stack, because a stack can carry the url.
+82. **The trace is the shape the gate will need.** A gate that blocks a
+    transaction has to hand back WHY, and the decision section renders the
+    ceiling rule in order with the line that decided -- the same four
+    comparisons the code makes, not a restatement of them.
 
 ---
 

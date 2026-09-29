@@ -96,12 +96,16 @@ describe("the full path, offline", () => {
 
     expect(set.coverage.referenced.length).toBeGreaterThan(0);
     expect(set.coverage.observed).toEqual(fixture.before.addresses);
-    // Readonly accounts are referenced but never observed, and that is stated
-    // rather than implied.
-    expect(coverageIsComplete(set.coverage)).toBe(false);
-    expect(set.coverage.unobserved).toContain(
+
+    // A readonly account -- the System Program here -- is referenced and
+    // never observed, and that is the DESIGN: it cannot change state. It is
+    // not a gap, so it must not show up as one. Counting it made the coverage
+    // finding fire on every ordinary transaction.
+    expect(set.coverage.referenced).toContain(
       "11111111111111111111111111111111",
     );
+    expect(set.coverage.unobserved).toEqual([]);
+    expect(coverageIsComplete(set.coverage)).toBe(true);
   });
 });
 
@@ -162,7 +166,14 @@ describe("degradation", () => {
     // it has visibility it does not have.
     expect(set.effects).toEqual([]);
     expect(set.coverage.observed).toEqual([]);
-    expect(set.coverage.unobserved).toEqual(set.coverage.referenced);
+    // Every account it MEANT to observe, not every account referenced: a
+    // readonly account going unobserved is the design, not a gap.
+    expect(set.coverage.unobserved.length).toBeGreaterThan(0);
+    expect(
+      set.coverage.unobserved.every((a) =>
+        set.coverage.referenced.includes(a),
+      ),
+    ).toBe(true);
   });
 });
 

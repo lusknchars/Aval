@@ -11,7 +11,6 @@
  *
  * Exit codes mirror the decision: 0 allow, 1 bad input, 2 flag, 3 deny.
  */
-import { readFileSync } from "node:fs";
 import {
   PublicKey,
   SystemProgram,
@@ -24,7 +23,9 @@ import {
 } from "../evaluation/manifests/index.js";
 import { evaluate } from "../evaluation/verdict.js";
 import { DEFAULT_THRESHOLDS } from "../types/verdict.js";
-import { FixtureRpcClient, loadFixture } from "../normalization/fixture.js";
+import type { Network } from "../normalization/rpc.js";
+import { declarationFor, decimalsFor, toDecimalArgs } from "./declaration.js";
+import { loadSource } from "./transaction-source.js";
 import { normalize } from "../normalization/normalize.js";
 import { formatRawAmount } from "../normalization/spl.js";
 import type { ActionContext, ContextChunk } from "../types/context.js";
@@ -38,7 +39,11 @@ const EXIT_FLAG = 2;
 const EXIT_DENY = 3;
 
 interface Args {
-  readonly fixture: string;
+  /** One of these three says which transaction to evaluate. */
+  readonly fixture: string | null;
+  readonly signature: string | null;
+  readonly txBase64: string | null;
+  readonly network: Network;
   readonly goal: string;
   /** null means: use the tool the scenario stands for. */
   readonly toolCall: string | null;
@@ -48,6 +53,9 @@ interface Args {
 
 function parseArgs(argv: readonly string[]): Args | string {
   let fixture: string | null = null;
+  let signature: string | null = null;
+  let txBase64: string | null = null;
+  let network: Network = "mainnet";
   let goal = "";
   let toolCall: string | null = null;
   let retrieved: string | null = null;
@@ -62,6 +70,17 @@ function parseArgs(argv: readonly string[]): Args | string {
     } else if (arg === "--goal" && value !== undefined) {
       goal = value;
       i++;
+    } else if (arg === "--signature" && value !== undefined) {
+      signature = value;
+      i++;
+    } else if (arg === "--tx" && value !== undefined) {
+      txBase64 = value;
+      i++;
+    } else if (arg === "--network" && value !== undefined) {
+      if (value !== "mainnet" && value !== "devnet")
+        return "--network takes mainnet or devnet";
+      network = value;
+      i++;
     } else if (arg === "--tool" && value !== undefined) {
       toolCall = value;
       i++;
@@ -75,12 +94,15 @@ function parseArgs(argv: readonly string[]): Args | string {
       return `unknown or incomplete option: ${arg ?? ""}`;
     }
   }
-  if (fixture === null)
+  const sources = [fixture, signature, txBase64].filter((v) => v !== null);
+  if (sources.length !== 1)
     return (
-      "Usage: evaluate.ts --fixture <name> --goal <text> [--retrieved <text>] [--source <url>] [--tool <name>]" +
-      `\navailable fixtures: ${SCENARIOS.join(", ")}`
+      "Usage: evaluate.ts (--fixture <name> | --signature <sig> | --tx <base64>) --goal <text>\n" +
+      "       [--retrieved <text>] [--source <url>] [--tool <name>] [--network mainnet|devnet]\n" +
+      `available fixtures: ${SCENARIOS.join(", ")}\n` +
+      "a signature or raw transaction needs an RPC url in the environment"
     );
-  return { fixture, goal, toolCall, retrieved, source };
+  return { fixture, signature, txBase64, network, goal, toolCall, retrieved, source };
 }
 
 function short(address: string): string {
@@ -172,7 +194,13 @@ function printPanel(
     for (const finding of provenance) {
       const detail = finding.detail;
       const sources = Array.isArray(detail["sources"]) ? detail["sources"] : [];
-      console.log(`  ${short(String(detail["counterparty"] ?? "?"))}`);
+      // The FULL address, not the elided display form.
+      //
+      // The elided form is unusable: somebody who wants to say "the user did
+      // ask for this address" has to paste it back in, and pasting six
+      // characters is not pasting an address -- the matcher refuses it, which
+      // is correct and looks like a bug from the outside.
+      console.log(`  ${String(detail["counterparty"] ?? "?")}`);
       console.log(`    ✗ absent from the user's goal`);
       const provenances = Array.isArray(detail["provenances"])
         ? detail["provenances"]
@@ -244,30 +272,41 @@ async function main(): Promise<number> {
     return EXIT_INPUT;
   }
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(
-      readFileSync(`test/fixtures/${args.fixture}.json`, "utf8"),
-    );
-  } catch (error) {
-    console.error(
-      `could not read fixture: ${error instanceof Error ? error.message : String(error)}`,
-    );
+  const source = await loadSource(args);
+  if (typeof source === "string") {
+    console.error(source);
     return EXIT_INPUT;
   }
-  const loaded = loadFixture(raw);
-  if (!loaded.ok) {
-    console.error(loaded.failure.message);
-    return EXIT_INPUT;
-  }
+  const { rpc, tx, rawBase64, fixtureAddresses } = source;
+  const set = await normalize(
+    tx,
+    rpc,
+    rawBase64 === null ? {} : { rawTransactionBase64: rawBase64 },
+  );
 
-  const rpc = new FixtureRpcClient(loaded.value);
-  const set = await normalize(rpc.transaction(), rpc);
-  // The tool the scenario stands for, unless the caller named another one to
-  // see what the same transaction looks like under a different manifest.
-  const tool = args.toolCall ?? toolFor(args.fixture);
+  // Where the tool call comes from depends on what was handed in.
+  //
+  // A recorded scenario stands for a known tool. A real transaction stands
+  // for nothing -- it carries no tool call at all -- so the declaration a
+  // truthful agent would have made is read back out of its own effects. That
+  // is the only way to run a real transaction through a layer whose whole job
+  // is comparing a declaration against an execution.
+  const inferred = fixtureAddresses === null ? declarationFor(set) : null;
+  const tool =
+    args.toolCall ??
+    (fixtureAddresses === null
+      ? (inferred?.tool ?? "unknown_tool")
+      : toolFor(args.fixture ?? ""));
+  const decimals =
+    inferred === null ? DECIMALS : await decimalsFor(inferred.mints, rpc);
   const toolArgs =
-    args.toolCall === null ? argsFor(args.fixture, loaded.value.before.addresses) : {};
+    fixtureAddresses === null
+      ? inferred === null
+        ? {}
+        : toDecimalArgs(inferred, decimals)
+      : args.toolCall === null
+        ? argsFor(args.fixture ?? "", fixtureAddresses)
+        : {};
 
   // The captured context: what the user said, plus whatever the agent read.
   const chunks: ContextChunk[] = [{ text: args.goal, provenance: "user" }];
@@ -293,7 +332,14 @@ async function main(): Promise<number> {
     effects: set,
     context,
     manifest: manifestFor(tool),
-    decimals: DECIMALS,
+    decimals,
+    provenance: {
+      trustedSources: [],
+      allowlist: [],
+      knownCounterparties: [],
+      // The payer is the wallet doing the asking.
+      ownAccounts: set.feePayer === null ? [] : [set.feePayer],
+    },
     policy: {
       manifests: manifestVersions(),
       thresholds: DEFAULT_THRESHOLDS,

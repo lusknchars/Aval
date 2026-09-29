@@ -217,3 +217,18 @@ export function validateReferences(
 
   return problems;
 }
+
+/**
+ * How a tool identifier was matched to a manifest.
+ *
+ * Recorded on the verdict so a match is auditable: "this was judged against
+ * transfer_token because the call named a mint" is an answerable statement,
+ * and "it matched somehow" is not.
+ */
+export const toolMatchSchema = z.enum([
+  "exact",
+  "normalized",
+  "alias",
+  "by_argument",
+]);
+export type ToolMatch = z.infer<typeof toolMatchSchema>;

@@ -274,10 +274,16 @@ export function coverageFindings(set: EffectSet): readonly Finding[] {
     });
   }
 
-  // Readonly accounts are expected to go unobserved, so this is recorded for
-  // the audit trail rather than raised as a concern. A check that fires on
-  // every ordinary transaction is a check the customer switches off.
-  if (!coverageIsComplete(set.coverage)) {
+  // A writable account VETO asked about and did not get back.
+  //
+  // Only when something actually ran. A failed or unavailable simulation has
+  // no post-state for anything, and that fact already has its own finding --
+  // reporting it twice made the tool look half-blind on a transaction it had
+  // read perfectly, which is how the check earns being switched off.
+  if (
+    set.simulation.status === "executed" &&
+    !coverageIsComplete(set.coverage)
+  ) {
     findings.push({
       check: "coverage",
       severity: "low",
@@ -286,7 +292,7 @@ export function coverageFindings(set: EffectSet): readonly Finding[] {
         unobserved: set.coverage.unobserved.length,
         referenced: set.coverage.referenced.length,
         sample: set.coverage.unobserved.slice(0, 5),
-        note: "expected for readonly accounts, which cannot change state",
+        note: "writable accounts whose post-state never came back",
       },
     });
   }

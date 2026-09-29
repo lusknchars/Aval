@@ -16,6 +16,7 @@ import {
   coverageFindings,
   feeFindings,
 } from "./critical.js";
+import { denylistFindings } from "./denylist.js";
 import { manifestFindings } from "./manifest.js";
 import {
   provenanceFindings,
@@ -141,6 +142,9 @@ export function evaluate(input: EvaluationInput): Verdict {
       ...(input.decimals === undefined ? {} : { decimals: input.decimals }),
     }),
     ...provenanceFindings(input.effects, input.context, provenanceConfig),
+    // Last in the list and first in effect: an operator's own deny-list entry
+    // is critical, so it decides on its own.
+    ...denylistFindings(input.effects, provenanceConfig.denylist ?? []),
   ];
 
   return {

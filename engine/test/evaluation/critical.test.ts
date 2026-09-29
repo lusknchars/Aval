@@ -347,11 +347,14 @@ describe("what the evaluation could not see", () => {
       (f) => f.rule === "coverage.simulation_unavailable",
     );
     expect(unavailable?.severity).toBe("critical");
-    // A blind spot has to cost something, or the cheapest way to pass the
-    // evaluation would be to make it impossible.
+    // The blind spot costs something -- a CRITICAL, which is a deny on its
+    // own. What it must not do is cost twice: reporting "no account was
+    // observed" on top of "nothing ran" is the same fact said again, and a
+    // second line that changes no decision is how a check earns being
+    // switched off.
     expect(
       findings.some((f) => f.rule === "coverage.accounts_unobserved"),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("reports the slot gap between the two sides of the diff", () => {

@@ -51,6 +51,15 @@ export interface ProvenanceConfig {
   readonly trustedSources: readonly SourceTrust[];
   /** Addresses the customer approved in advance. */
   readonly allowlist: readonly string[];
+  /**
+   * Addresses a human decided never to transact with.
+   *
+   * Checked in `denylist.ts`, not here: this file answers "where did this
+   * address come from", and a deny-list entry is not an origin. It lives on
+   * the same config object because it is the same operator decision about the
+   * same address, and splitting it would let the two drift apart.
+   */
+  readonly denylist?: readonly string[];
   /** Addresses this agent has transacted with before. Empty until history exists. */
   readonly knownCounterparties: readonly string[];
   /**

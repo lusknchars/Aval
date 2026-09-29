@@ -76,16 +76,28 @@ describe("every shipped manifest is structurally sound", () => {
 
   it("forbids giving authority away in every manifest that is not about granting it", () => {
     for (const manifest of MANIFESTS) {
+      // A manifest whose entire purpose IS one of these obviously cannot
+      // forbid it -- the same rule that lets `approve` grant a delegate. What
+      // matters is that everything else does forbid it.
+      const requires = (type: string): boolean =>
+        manifest.must.some((p) => p.type === type) ||
+        manifest.may.some((p) => p.type === type);
       expect({
         tool: manifest.tool,
-        owner: manifest.mustNot.includes("OWNER_CHANGE"),
+        owner: manifest.mustNot.includes("OWNER_CHANGE") || requires("OWNER_CHANGE"),
         // A freeze moves no tokens, so no amount check in any of these would
-        // ever see it. None of these primitives has any business freezing.
-        freeze: manifest.mustNot.includes("ACCOUNT_FREEZE"),
+        // ever see it.
+        freeze:
+          manifest.mustNot.includes("ACCOUNT_FREEZE") ||
+          requires("ACCOUNT_FREEZE"),
+        authority:
+          manifest.mustNot.includes("AUTHORITY_CHANGE") ||
+          requires("AUTHORITY_CHANGE"),
       }).toEqual({
         tool: manifest.tool,
         owner: true,
         freeze: true,
+        authority: true,
       });
       const grantsDelegate = manifest.must.some(
         (p) => p.type === "DELEGATE_GRANT",

@@ -10,12 +10,14 @@
   },
   "scripts": {
     "dev": "tsx watch --env-file=.env src/index.ts",
+    "demo": "tsx --env-file=.env src/demo/server.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@solana/spl-token": "^0.4.15",
     "@solana/web3.js": "^1.99.0",
     "bs58": "^6.0.0",

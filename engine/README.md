@@ -389,9 +389,34 @@ pnpm typecheck      # tsc --noEmit
 `tsx` and `vitest` transpile with esbuild, which strips types without checking
 them. `pnpm typecheck` is the only thing that validates types — run both.
 
+### Seeing the whole pipeline
+
+```bash
+pnpm demo           # http://127.0.0.1:5173
+```
+
+A local page that takes a prompt and shows every stage: what was captured and
+how each piece was stamped, the tool call and the manifest governing it, the
+effects the transaction would cause, where every counterparty came from, what
+fired, and the severity ceiling that produced the verdict.
+
+It renders what the library returns and computes nothing itself, and the RPC
+url never reaches the browser. It works against the recorded fixtures with no
+network, or against a mainnet signature. `docs/demo.md` is the walkthrough.
+
 ### Command-line tools
 
 ```bash
+# the alert panel for one transaction -- recorded, or live from mainnet
+pnpm exec tsx --env-file=.env src/cli/evaluate.ts --fixture unlimited-approve --goal "rebalance my portfolio"
+pnpm exec tsx --env-file=.env src/cli/evaluate.ts --signature <sig> --goal "send funds to <address>"
+
+# measure false positives and detection against real mainnet traffic
+pnpm exec tsx --env-file=.env src/cli/sample-evaluate.ts --blocks 12 --limit 25
+
+# the normalizer alone, with the fee and effect-shape contracts checked
+pnpm exec tsx --env-file=.env src/cli/sample-block.ts --blocks 8 --limit 25
+
 # record a fixture from a real devnet simulation
 pnpm exec tsx --env-file=.env src/cli/record-fixture.ts --list
 pnpm exec tsx --env-file=.env src/cli/record-fixture.ts --all

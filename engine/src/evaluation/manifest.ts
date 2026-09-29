@@ -361,6 +361,9 @@ export function manifestFindings(
       rule: "magnitude.above_declared",
       detail: {
         tool: manifest.tool,
+        // The mint, so whoever reads the alert can turn raw units back into
+        // the number a human typed. Without it "500000000" is unreadable.
+        mint: pattern.mint ?? null,
         accounts: [...new Set(seen.accounts)],
         legs: seen.accounts.length,
         declared: (pattern.maxAmount ?? 0n).toString(),
