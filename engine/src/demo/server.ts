@@ -55,6 +55,10 @@ import {
   type Approval,
 } from "../record/policy.js";
 import { reviewQueue } from "../record/review.js";
+import { adaptersFromEnv } from "../adapters/config.js";
+import { alreadyTightest, applyOpinion } from "../judge/judge.js";
+import type { Verdict } from "../types/verdict.js";
+import type { EffectSet } from "../types/effects.js";
 import type { ActionContext, ContextChunk } from "../types/context.js";
 import type { ProvenanceConfig } from "../evaluation/provenance.js";
 
@@ -66,6 +70,41 @@ import type { ProvenanceConfig } from "../evaluation/provenance.js";
  * record under it -- and a FLAG that leaves nothing behind is a detection that
  * changed nothing.
  */
+/**
+ * The external layers, from the environment. Absent means the no-op default;
+ * the pipeline runs whole either way, and the startup line says which are on.
+ */
+const adapters = adaptersFromEnv(process.env);
+
+/**
+ * The judge, applied the way the gate applies it: after the deterministic
+ * verdict, skipped when there is nothing left to tighten, unable to open.
+ */
+async function judged(
+  verdict: Verdict,
+  context: ActionContext,
+  effects: EffectSet,
+  manifestTool: string | null,
+): Promise<Verdict> {
+  const judge = adapters.judge;
+  if (judge === undefined || alreadyTightest(verdict)) return verdict;
+  const result = await judge.judge({
+    record: buildActionRecord({
+      verdict,
+      context,
+      manifestTool,
+      manifestVia: null,
+      feePayer: effects.feePayer,
+      signed: false,
+    }),
+    effects,
+    userGoal: context.userGoal,
+    toolCall: context.toolCall,
+    chunks: context.contextChunks,
+  });
+  return applyOpinion(verdict, result, judge.name);
+}
+
 const RECORD_DIR = process.env["VETO_RECORD_DIR"] ?? ".veto";
 mkdirSync(RECORD_DIR, { recursive: true });
 const recordStore = new FileRecordStore(join(RECORD_DIR, "records.jsonl"));
@@ -199,6 +238,9 @@ async function runAgentPipeline(body: unknown): Promise<unknown> {
     agentId: "browser-agent",
     decimals,
     provenance,
+    ...(adapters.guard === undefined ? {} : { guard: adapters.guard }),
+    ...(adapters.corrector === undefined ? {} : { corrector: adapters.corrector }),
+    ...(adapters.ocr === undefined ? {} : { ocr: adapters.ocr }),
   });
 
   const servedPage = request.poison === true ? POISONED_PAGE : null;
@@ -226,7 +268,13 @@ async function runAgentPipeline(body: unknown): Promise<unknown> {
     };
   }
 
-  const { effects, verdict, context } = run.intercepted;
+  const { effects, context } = run.intercepted;
+  const verdict = await judged(
+    run.intercepted.verdict,
+    context,
+    effects,
+    manifestFor(context.toolCall.name)?.tool ?? null,
+  );
   const trace = buildTrace({
     // A model really emitted this one.
     declarationSource: "agent",
@@ -401,7 +449,7 @@ async function runPipeline(body: unknown): Promise<unknown> {
   };
 
   const found = lookupManifest(tool, finalArgs);
-  const verdict = evaluate({
+  const deterministic = evaluate({
     effects: set,
     context,
     manifest: found?.manifest ?? null,
@@ -414,6 +462,13 @@ async function runPipeline(body: unknown): Promise<unknown> {
       allowlist: provenance.allowlist,
     },
   });
+
+  const verdict = await judged(
+    deterministic,
+    context,
+    set,
+    found?.manifest.tool ?? null,
+  );
 
   // Recorded whether or not anything would have been signed. The demo never
   // signs, so `signed` is false by construction -- and saying that in the row
@@ -538,6 +593,11 @@ function main(): number {
   server.listen(port, "127.0.0.1", () => {
     console.log(`VETO demo on http://127.0.0.1:${port}`);
     console.log("nothing is signed and nothing is sent");
+    console.log(
+      adapters.configured.length === 0
+        ? "external layers: none configured (judge, guard, ocr, corrector run as no-ops)"
+        : `external layers: ${adapters.configured.join(", ")}`,
+    );
   });
   return 0;
 }

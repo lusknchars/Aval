@@ -24,19 +24,29 @@ Built, tested and measured against ground truth rather than against itself.
 | **Camada de avaliação** — veredito determinístico | 34/35 ALLOW em declaração honesta de mainnet; 24/24 e 24/24 nos dois modos de mentira |
 | **9 manifestos** | teste que recusa manifesto quebrado |
 | **Captura** — carimbo na porta, interceptação na assinatura | funciona com o agente de demonstração |
-| **Demo** — página, agente real, CLIs de amostragem | |
+| **Gate** — `allow` assina, `deny` recusa, `flag` assina e registra | o assinador nunca é chamado num DENY; testado em fixture real |
+| **Autorização de uso único** amarrada ao digest | transação B apresentada com o bilhete da A → recusada; replay → recusado |
+| **Identificador de ferramenta** normalizado | `SolanaTransferTool` + `mint` → manifesto de token; sem `mint` → SOL; `stake` continua desconhecido |
+| **Registro + fila de revisão** | retrospecto calculado com o `decide` real; aprovar muda o próximo veredito (`policyVersion` muda sozinho) |
+| **Deny-list** aprovada por humano | crítico, vence allowlist, qualquer papel do endereço |
+| **Check E** (conteúdo) | rótulo sobe, nunca desce; só quando o trecho rotulado contribuiu o destino |
+| **Juiz** — adaptador com mão única no tipo | não existe forma de dizer "allow"; indisponível vira finding, não silêncio |
+| **Camadas externas** por URL | juiz, guard, OCR, corretor: stub no-op quando ausente; toda falha vira `coverage.capture_degraded` |
+| **Demo** — página, agente real, fila de revisão, CLIs | |
 
-**244 testes, typecheck limpo.**
+**363 testes, typecheck limpo.**
 
 ## O que impede de chamar isso de produto
 
-Três coisas, e só a primeira é grande.
+Duas coisas.
 
-**Nada segura uma assinatura.** O veredito é calculado e exibido. `src/gate/`
-está vazio. Hoje o VETO é um parecer, não um portão.
+~~**Nada segura uma assinatura.**~~ *Feito: o gate, com autorização de uso
+único verificada no assinador.*
 
 **Nenhuma integração com framework que um cliente rode.** A captura funciona
-com o nosso agente de demonstração, que fomos nós que escrevemos.
+com o nosso agente de demonstração, que fomos nós que escrevemos. As camadas
+externas (juiz, guard, OCR, corretor) já têm tomada e stub; o que falta é a
+captura dentro do framework do cliente.
 
 **9 manifestos para 60+ ferramentas.** Numa integração real quase toda chamada
 cairia em `coverage.no_manifest`.
@@ -116,20 +126,20 @@ declares where information came from — whoever calls the tool stamps it.
 *Decide first:* which framework to instrument. Solana Agent Kit is the best
 documented and has 60+ tools; GOAT's repo is archived.
 
-### A2 · O gate **[livre]**
+### A2 · O gate **[feito]**
 The verdict is computed and displayed; nothing holds a signature back.
 `src/gate/` is an empty directory. The enforcement point is the wallet's
 signing function, and the agent must not be able to route around it without
 removing the wallet.
 
-### A3 · Autorização de uso único amarrada ao digest **[livre]**
+### A3 · Autorização de uso único amarrada ao digest **[feito]**
 *Ideia vinda do veto-lab.* We already put `messageDigest` on the verdict; the
 other half is missing. An ALLOW should mint a single-use MAC over that exact
 digest, and the signer should refuse any payload whose hash differs. That
 closes the gap between "VETO said yes" and "these bytes got signed", which
 today is closed by convention only. Chain-agnostic.
 
-### A4 · Normalização de identificador de ferramenta **[livre]**
+### A4 · Normalização de identificador de ferramenta **[feito]**
 `manifestFor` is an exact-name lookup. The same `transfer` appears in Solana
 Agent Kit as `transfer`, `TRANSFER`, `TRANSFER_ACTION` and (v1)
 `SolanaTransferTool`, and their own published skill documents stale names.
@@ -155,7 +165,7 @@ Per spec it never blocks alone — it raises severity and narrows scope.
 *Decided already:* inference runs on the customer's endpoint, schema/prompt/
 clamp are ours.
 
-### B3 · Veto Input Guard, check E **[livre]**
+### B3 · Veto Input Guard, check E **[feito — falta só o modelo por fora]**
 Classify every captured chunk with Prompt Guard 2 (86M, runs on CPU in
 process). It **labels, never drops** — a dropped chunk destroys the record
 that explains where an address came from. Catches instruction-shaped attacks;
@@ -196,6 +206,30 @@ A swap that drains a *different* mint from the caller's own account matches
 `swap`'s loose `may`, and its scope is `open`. Expressing "a decrease owned by
 `arg:from` of any mint other than `arg:mint`" needs negation, which the schema
 cannot say today. *(pending T.10)*
+
+---
+
+## G — Camadas externas: o que já está pronto para receber
+
+Cada uma é uma URL em `.env`; ausente, um stub no-op ocupa o lugar e o
+pipeline roda inteiro. O contrato de cada uma está em `src/adapters/config.ts`
+e no `.env.example`.
+
+| Camada | Variável | Recebe | Devolve | Regra que o VETO impõe |
+|---|---|---|---|---|
+| Juiz (Gemma) | `VETO_JUDGE_URL` | `{ record, effects, userGoal, toolCall, chunks }` | `{ tighten: null \| {to, reason}, model }` | só aperta; não simula; pulado se já DENY |
+| Guard (Prompt Guard) | `VETO_GUARD_URL` | `{ text, provenance, source? }` | `{ label, score, model }` | rotula, nunca remove; rótulo sobe, nunca desce |
+| OCR | `VETO_OCR_URL` | `{ image: base64, mimeType }` | `{ text, model }` | entra como trecho `via: "ocr"` com a origem da imagem |
+| Corretor | `VETO_CORRECTOR_URL` | `{ text }` | `{ text, model }` | só o modelo lê a cópia; endereço/valor alterado → recusado |
+
+Toda falha (timeout, corpo inválido, violação do contrato) vira uma linha em
+`degradations` e um finding `coverage.capture_degraded` no veredito. A
+"Pesquisa" do Lucas, seja o que for, entra pelo mesmo caminho: trechos com
+carimbo de origem.
+
+### G1 · Envelope de tarefa (B2) continua aberto
+O corretor conserta typo; não conserta o modelo escolher a ferramenta errada
+com uma prompt bem escrita. Quem pega isso é o envelope, e ele ainda não existe.
 
 ---
 

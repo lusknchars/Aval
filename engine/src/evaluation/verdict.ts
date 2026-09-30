@@ -16,6 +16,7 @@ import {
   coverageFindings,
   feeFindings,
 } from "./critical.js";
+import { contentFindings } from "./content.js";
 import { denylistFindings } from "./denylist.js";
 import { manifestFindings } from "./manifest.js";
 import {
@@ -128,6 +129,26 @@ export interface EvaluationInput {
  * A tool with no manifest still gets the safety net and provenance, and the
  * gap is reported rather than passed over.
  */
+/**
+ * What the capture layer said it could not do.
+ *
+ * Low severity: none of these change the decision on their own, because the
+ * missing layer could only have tightened it. They exist so the record says
+ * which layers actually ran.
+ */
+function captureFindings(context: ActionContext): readonly Finding[] {
+  const degradations = context.degradations ?? [];
+  if (degradations.length === 0) return [];
+  return [
+    {
+      check: "coverage",
+      severity: "low",
+      rule: "coverage.capture_degraded",
+      detail: { degradations },
+    },
+  ];
+}
+
 export function evaluate(input: EvaluationInput): Verdict {
   const provenanceConfig = input.provenance ?? EMPTY_PROVENANCE_CONFIG;
   const thresholds = input.thresholds ?? DEFAULT_THRESHOLDS;
@@ -145,6 +166,8 @@ export function evaluate(input: EvaluationInput): Verdict {
     // Last in the list and first in effect: an operator's own deny-list entry
     // is critical, so it decides on its own.
     ...denylistFindings(input.effects, provenanceConfig.denylist ?? []),
+    ...contentFindings(input.effects, input.context, provenanceConfig),
+    ...captureFindings(input.context),
   ];
 
   return {

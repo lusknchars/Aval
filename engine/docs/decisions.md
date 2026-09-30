@@ -474,6 +474,94 @@ Implementation gaps per block live in `pending.md`.
     ceiling rule in order with the line that decided -- the same four
     comparisons the code makes, not a restatement of them.
 
+### The gate, the record and the external layers
+
+89. **FLAG signs and records.** The default, and the only decision in the gate
+    that is a choice. A FLAG that holds every ambiguous call makes the product
+    unusable: on real mainnet traffic most FLAGs are `coverage.no_manifest`,
+    not theft. `onFlag: "hold"` and `"refuse"` exist for stricter operators.
+    Stated cost: once FLAG signs, DENY is the only decision that blocks, so the
+    accuracy of DENY is the accuracy of the product.
+90. **The review queue proposes; a human decides; nothing promotes itself.**
+    Repetition ranks an item, it never applies one. Rejected: "flagged N times
+    -> deny-list", for three reasons. Frequency correlates with routine far
+    more than with attack (the most-flagged tool is usually the customer's main
+    operation, and the right response is a manifest, not a block). A counter
+    that flips to DENY is a policy change with no human -- the same thing
+    rejected in 87 for the judge, made by something that reasons less. And it
+    is attacker-reachable: whoever can make the counter go up can deny service
+    on the customer's own deposit address.
+90a. **The retrospect is computed with `decide`**, the real combination
+    function, on the stored findings with the proposal's rules removed -- never
+    a description of what would happen. A proposal that could also ADD findings
+    (a new manifest starts checking what was never checked) is marked
+    `speculative`, and its number is presented as a floor.
+90b. **What the reviewer was shown is stored with the approval.** Months later
+    the question is never "was this reasonable" but "what were they told it
+    would do".
+90c. **An approval that is really a code change stays pending and changes
+    nothing.** Trust/block an address become live lists at once. Write/review a
+    manifest, allow a program in a manifest, are code. The interface says so on
+    the button, because an operator who thinks they fixed the noise and did
+    not will stop trusting the queue.
+90d. **No untrusted text on the approval screen.** Only structured fields. A
+    reviewer approving while reading attacker-written prose is being phished,
+    and the button must not sit next to it.
+91. **The deny-list is the one place accumulated observation changes a
+    decision, and only because a person put the entry there.** Critical, so it
+    decides alone; wins over an allowlist entry for the same address; matches
+    any role the address plays (account, owner, counterparty, fee payer),
+    because the conservative reading of "never deal with this address" is the
+    one that also covers an account it merely writes to. Check kind is
+    `provenance` -- a statement about who an address is -- so the closed
+    vocabulary of check kinds did not grow.
+92. **An ALLOW mints a single-use authorisation over the digest, verified at
+    the signer.** HMAC over (actionId, digest, expiry), length-prefixed so a
+    field containing the separator cannot alias another ticket. The signer
+    recomputes the digest from the bytes in front of it; the ticket is spent on
+    first use (a second signature of the same transaction is a second
+    transfer); it expires in 30s so it cannot be banked. The check lives in
+    `guardedSigner`, wrapping the wallet's own function -- a check inside the
+    gate, which already decided, would be decoration. The secret is generated
+    when gate and signer share a process and must be passed explicitly when
+    they do not.
+93. **Tool identifier normalisation fixes spelling, never meaning.** Case,
+    separators, framework prefix/suffix, and a reviewed alias table. A name
+    that means two primitives (`transfer`, SOL or token) is resolved by the
+    call's own arguments and stays unknown without them. `spl` is not stripped
+    because it is the only thing that said which asset moved. Unknown keeps
+    degrading to `coverage.no_manifest`.
+94. **The judge may only tighten, and the type says so.** `tighten` is null or
+    a move to flag/deny; there is no shape that means allow. It receives the
+    deterministic verdict, our `EffectSet` and the labelled chunks; it never
+    simulates (two simulations at different slots can disagree, and a system
+    with two sources of truth about what a transaction does has none). Skipped
+    when the verdict is already deny. Unavailability is a low coverage finding
+    on the record, never a change to the decision and never a silence.
+    Compatible with "no LLM in the decision path" under exactly this
+    condition: the worst an attacker can do through the judge is a denial.
+95. **External layers sit behind interfaces with no-op defaults and are
+    configured by URL.** Judge, guard, OCR, corrector: a URL each, absent
+    means the pipeline runs whole without it. Every failure -- timeout, bad
+    body, contract violation -- is a result, lands in `degradations` on the
+    context, and becomes `coverage.capture_degraded` on the verdict. A layer
+    the operator believes is running is visibly running, or visibly not.
+96. **The corrector produces a copy for the model; the original is what is
+    stamped.** A correction that changes the multiset of address-shaped or
+    number-shaped tokens is refused and the original is used, because a
+    corrected address is a guess and a wrong guess pays a stranger. A
+    malformed address is a warning, never a fix.
+97. **The guard labels; it never drops; the label raises and never lowers.**
+    Check E fires only when a labelled chunk contributed a counterparty the
+    human did not vouch for (critical, even on a trusted source -- which is
+    the case provenance alone cannot see). A label on text that contributed
+    nothing is a low finding, so the operator can see whether their classifier
+    fires on everything. A no-op guard writes no label: a benign label with no
+    model behind it would claim a classification that never happened.
+98. **The record is structured only, and subjects are resolved at write
+    time**, so the queue groups the way the rules grouped when they fired, not
+    the way today's extractor happens to.
+
 ---
 
 ## Open attention points — no defence implemented

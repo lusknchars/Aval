@@ -36,6 +36,8 @@ import type { PolicyIdentity } from "../evaluation/verdict.js";
 import type { RecordStore } from "../types/record.js";
 import type { Decision, Thresholds, Verdict } from "../types/verdict.js";
 import { Authorizer, type Authorization } from "./authorization.js";
+import { alreadyTightest, applyOpinion } from "../judge/judge.js";
+import type { Judge } from "../types/judge.js";
 
 /** What a FLAG does. The only configurable decision. */
 export type FlagPolicy = "sign" | "hold" | "refuse";
@@ -57,6 +59,12 @@ export interface GateOptions {
   readonly authorizer: Authorizer;
   /** Absent means nothing is kept, which also means no review queue. */
   readonly store?: RecordStore;
+  /**
+   * The customer's model, consulted after the deterministic verdict and
+   * before the signature. It can only tighten -- see `src/judge/`. Absent
+   * means not consulted, and the record does not pretend otherwise.
+   */
+  readonly judge?: Judge;
   readonly onFlag?: FlagPolicy;
   readonly provenance?: ProvenanceConfig;
   readonly policy?: PolicyIdentity;
@@ -156,7 +164,7 @@ export class Gate {
         : { rawTransactionBase64: this.options.rawTransactionBase64 }),
     });
 
-    const verdict = evaluate({
+    const deterministic = evaluate({
       effects,
       context,
       manifest: found?.manifest ?? null,
@@ -173,6 +181,32 @@ export class Gate {
         ? {}
         : { thresholds: this.options.thresholds }),
     });
+
+    // The judge sees the deterministic verdict as it would be recorded, and
+    // is skipped when there is nothing left to tighten. Whatever it answers,
+    // `applyOpinion` cannot make the decision less severe.
+    const judge = this.options.judge;
+    const verdict =
+      judge === undefined || alreadyTightest(deterministic)
+        ? deterministic
+        : applyOpinion(
+            deterministic,
+            await judge.judge({
+              record: buildActionRecord({
+                verdict: deterministic,
+                context,
+                manifestTool: found?.manifest.tool ?? null,
+                manifestVia: found?.via ?? null,
+                feePayer: effects.feePayer,
+                signed: false,
+              }),
+              effects,
+              userGoal: context.userGoal,
+              toolCall: context.toolCall,
+              chunks: context.contextChunks,
+            }),
+            judge.name,
+          );
 
     const onFlag = this.options.onFlag ?? "sign";
     const { permitted, reason } = permission(verdict.decision, onFlag);

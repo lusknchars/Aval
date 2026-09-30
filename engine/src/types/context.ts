@@ -47,12 +47,41 @@ export const sourceTrustSchema = z.object({
 });
 export type SourceTrust = z.infer<typeof sourceTrustSchema>;
 
-/** A piece of context that entered the model, with its origin assigned. */
+/**
+ * What an input classifier said about a chunk. Check E reads this.
+ *
+ * It is a LABEL, and the chunk stays. A classifier that drops what it flags
+ * destroys the record that explains where an address came from, and a dropped
+ * chunk can never be shown to the person who has to decide. The classifier is
+ * external -- Prompt Guard today, anything tomorrow -- and this is the whole
+ * of what VETO asks of it: a label, a confidence and a name.
+ */
+export const guardLabelSchema = z.enum(["benign", "injection", "jailbreak"]);
+export type GuardLabel = z.infer<typeof guardLabelSchema>;
+
+export const guardVerdictSchema = z.object({
+  label: guardLabelSchema,
+  /** The classifier's confidence in the label, 0..1. */
+  score: z.number().min(0).max(1),
+  /** Model and version, so a label is attributable months later. */
+  model: z.string().min(1),
+});
+export type GuardVerdict = z.infer<typeof guardVerdictSchema>;
+
+/**
+ * A piece of context that entered the model, with its origin assigned.
+ *
+ * `provenance` says WHERE it came from. `via` says HOW it was read, and only
+ * exists for the case where that changes what the text is worth: a chunk that
+ * came out of OCR is an interpretation of an image, not a copy of it.
+ */
 export const contextChunkSchema = z.object({
   text: z.string(),
   provenance: provenanceSchema,
   /** url, document id or memory key. Matched against SourceTrust.pattern. */
   source: z.string().optional(),
+  via: z.enum(["ocr"]).optional(),
+  guard: guardVerdictSchema.optional(),
 });
 export type ContextChunk = z.infer<typeof contextChunkSchema>;
 
@@ -86,6 +115,13 @@ export const actionContextSchema = z.object({
   unsignedTx: z.instanceof(VersionedTransaction),
   /** Milliseconds since the epoch. */
   timestamp: z.number().int().nonnegative(),
+  /**
+   * What the capture could not do: a classifier that timed out, an OCR that
+   * failed, a correction that was refused. Each becomes a coverage finding,
+   * so a layer the operator believes is running is visibly running -- or
+   * visibly not -- on every verdict.
+   */
+  degradations: z.array(z.string()).optional(),
 });
 export type ActionContext = z.infer<typeof actionContextSchema>;
 

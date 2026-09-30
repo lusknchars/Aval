@@ -77,11 +77,12 @@ export async function runAgent(input: AgentInput): Promise<AgentRun> {
   const client = new Anthropic({ apiKey: input.apiKey });
   const steps: string[] = [];
 
-  // Whatever the human typed is stamped before the model ever sees it.
-  input.capture.fromUser(input.prompt);
+  // Whatever the human typed is stamped before the model ever sees it. What
+  // the model reads may be a corrected copy; what is stamped is the original.
+  const forModel = await input.capture.fromUser(input.prompt);
 
   const messages: Anthropic.MessageParam[] = [
-    { role: "user", content: input.prompt },
+    { role: "user", content: forModel },
   ];
 
   // A handful of turns is enough for read-then-act, and a bound means a
@@ -121,7 +122,7 @@ export async function runAgent(input: AgentInput): Promise<AgentRun> {
       steps.push(`read_page(${url})`);
       // Stamped HERE, by us, with the url we actually fetched. The model is
       // not asked and could not be believed.
-      input.capture.fromToolOutput(text, url);
+      await input.capture.fromToolOutput(text, url);
       messages.push({ role: "assistant", content: reply.content });
       messages.push({
         role: "user",
