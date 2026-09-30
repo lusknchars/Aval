@@ -192,7 +192,7 @@ export function coverageFindings(set: EffectSet): readonly Finding[] {
       detail: {
         accounts: set.coverage.tokenExtensions.length,
         sample: set.coverage.tokenExtensions.slice(0, 3),
-        note: "Token-2022 extensions are not decoded: a transfer hook or permanent delegate here would be invisible",
+        note: "Token-2022 extensions that can move or hold tokens outside the diff; the permanent delegate, hook program and fee are read and named in `sample`",
       },
     });
   }

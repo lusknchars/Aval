@@ -15,6 +15,18 @@ import { formatRawAmount, UNLIMITED_ALLOWANCE } from "../normalization/spl.js";
 import { PROGRAM_NAMES } from "./recent.js";
 import type { Trace, TraceEffect } from "./trace.js";
 
+/** Authority kinds as a person would say them. */
+const AUTHORITY_PT: Readonly<Record<string, string>> = {
+  mint: "emissão",
+  freeze: "congelamento",
+  upgrade: "atualização do programa",
+  close: "fechamento",
+  staker: "stake (quem delega)",
+  withdrawer: "saque do stake",
+  custodian: "custódia do lockup",
+  transfer_hook: "programa que roda em toda transferência",
+};
+
 const EFFECT_PT: Readonly<Record<string, string>> = {
   BALANCE_DECREASE: "saída de saldo",
   BALANCE_INCREASE: "entrada de saldo",
@@ -183,7 +195,7 @@ function describeEffect(
         : `${short(e.counterparty ?? "?")} ganha procuração de ${value} sobre ${short(e.account)}`;
     }
     case "AUTHORITY_CHANGE":
-      return `a autoridade de ${e.authorityKind ?? "?"} de ${short(e.account)} passa para ${e.counterparty === null ? "ninguém" : short(e.counterparty)}`;
+      return `a autoridade de ${AUTHORITY_PT[e.authorityKind ?? ""] ?? e.authorityKind ?? "?"} de ${short(e.account)} passa para ${e.counterparty === null ? "ninguém" : short(e.counterparty)}`;
     case "OWNER_CHANGE":
       return `${short(e.account)} muda de dono para ${short(e.counterparty ?? "?")}`;
     case "ACCOUNT_CREATE":

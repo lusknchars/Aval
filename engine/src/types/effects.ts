@@ -50,12 +50,24 @@ export type EffectType = z.infer<typeof effectTypeSchema>;
 /** The 8 types in declaration order. Derived from the schema, never duplicated. */
 export const EFFECT_TYPES: readonly EffectType[] = effectTypeSchema.options;
 
-/** Which authority changed, when the effect is AUTHORITY_CHANGE. */
+/**
+ * Which authority changed, when the effect is AUTHORITY_CHANGE.
+ *
+ * An attribute, not a type: the vocabulary stays at nine, and a new kind of
+ * authority is a new value here. `staker`, `withdrawer` and `custodian` are
+ * the three a stake account carries; `transfer_hook` is the program a
+ * Token-2022 mint runs on every transfer, which changing hands is the same
+ * shape of event as a mint authority changing hands.
+ */
 export const authorityKindSchema = z.enum([
   "mint",
   "freeze",
   "upgrade",
   "close",
+  "staker",
+  "withdrawer",
+  "custodian",
+  "transfer_hook",
 ]);
 export type AuthorityKind = z.infer<typeof authorityKindSchema>;
 

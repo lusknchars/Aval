@@ -32,9 +32,12 @@ Built, tested and measured against ground truth rather than against itself.
 | **Check E** (conteúdo) | rótulo sobe, nunca desce; só quando o trecho rotulado contribuiu o destino |
 | **Juiz** — adaptador com mão única no tipo | não existe forma de dizer "allow"; indisponível vira finding, não silêncio |
 | **Camadas externas** por URL | juiz, guard, OCR, corretor: stub no-op quando ausente; toda falha vira `coverage.capture_degraded` |
+| **Conta de stake decodificada** | `withdrawer`/`staker`/`custodian` viram `AUTHORITY_CHANGE`; 3 contas reais batem com o parser do RPC; deactivate deixa de ser "opaco" |
+| **Valores das extensões Token-2022** | permanent delegate, programa do hook e taxa **com o valor**; PYUSD bate com o RPC; hook mudando de mãos é `AUTHORITY_CHANGE` |
+| **12 manifestos** (+ `stake_native`, `unstake_native`, `withdraw_stake`) | `stake` solto não é ligado a nenhum — no Agent Kit é liquid staking, um swap. **Ainda não medidos em tráfego real**: em 258 blocos apareceram 8 transações de stake, 6 falham no replay (estado já mudou) e 2 são depósito em pool, não a primitiva. Precisa de fixture em devnet (E5). |
 | **Demo** — página, agente real, fila de revisão, CLIs | |
 
-**363 testes, typecheck limpo.**
+**377 testes, typecheck limpo.**
 
 ## O que impede de chamar isso de produto
 
@@ -263,13 +266,13 @@ Verified against ground truth: fee 200/200 exact, account resolution agrees
 with the SDK, 375/375 effects conform to the shape contract. What is left are
 limits rather than defects.
 
-### D1 · Decodificar stake e o loader atualizável **[livre]**
+### D1 · Decodificar stake e o loader atualizável **[stake feito; loader em aberto]**
 Today an account owned by Stake, Vote, the upgradeable loader or Config whose
 bytes changed produces one blanket `coverage.undecoded_authority_account`.
 Decoding them turns that into a real `AUTHORITY_CHANGE` naming the old and new
 authority. *(pending 3.2)*
 
-### D2 · Ler os valores das extensões Token-2022 **[livre]**
+### D2 · Ler os valores das extensões Token-2022 **[feito para delegate, hook e taxa]**
 The TLV type ids are parsed, so `transfer_hook` is named. The values are not,
 so we cannot say which program the hook calls. *(pending T.12)*
 
@@ -312,7 +315,11 @@ incident_id`, so a whole test can be reconstructed from scenario to verdict to
 on-chain result to audit. We have `actionId` and `policyVersion` and nothing
 tying a session together.
 
-### E5 · Fixtures das operações perigosas **[livre]**
+### E5 · Fixtures das operações perigosas **[livre — agora inclui stake]**
+Native staking joined the list: `stake_native`, `unstake_native` and
+`withdraw_stake` are structurally validated and have never been run against a
+real transaction, because stake operations replayed at a later slot fail on
+state that has already moved. A devnet recording is the only honest measure.
 `set_authority`, `freeze_account` and `burn_tokens` fail against a wallet that
 owns no token account, so they never produce effects. Recording them on devnet
 the way `unlimited-approve` is recorded — create the account and act on it in

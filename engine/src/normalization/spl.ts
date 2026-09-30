@@ -230,29 +230,129 @@ export function opaqueExtensionsOf(
   data: Buffer,
 ): readonly string[] {
   if (!isTokenProgram(ownerProgram)) return [];
-  if (data.length <= TLV_START) return [];
-
   const found: string[] = [];
+  for (const entry of extensionEntries(data)) {
+    if (entry.type === null) {
+      found.push("malformed_extension_list");
+      break;
+    }
+    const name = NAME_BY_ID.get(entry.type);
+    if (name !== undefined && BENIGN_EXTENSIONS.has(name)) continue;
+    found.push(describeExtension(entry.type, name, entry.value));
+  }
+  return [...new Set(found)];
+}
+
+interface ExtensionEntry {
+  /** null marks a list that runs past the buffer. */
+  readonly type: number | null;
+  readonly value: Buffer;
+}
+
+/** Walks the TLV list. Stops at type 0 (end / padding) or at a malformed tail. */
+function extensionEntries(data: Buffer): readonly ExtensionEntry[] {
+  if (data.length <= TLV_START) return [];
+  const entries: ExtensionEntry[] = [];
   let offset = TLV_START;
   while (offset + 4 <= data.length) {
     const type = data.readUInt16LE(offset);
     const length = data.readUInt16LE(offset + 2);
-    // Type 0 is uninitialized: the end of the list, or zero padding.
     if (type === 0) break;
     const next = offset + 4 + length;
     if (next > data.length) {
-      // The list runs past the buffer. Stop, and say so: a malformed tail is
-      // a thing not read, which is exactly what this function reports.
-      found.push("malformed_extension_list");
+      entries.push({ type: null, value: Buffer.alloc(0) });
       break;
     }
+    entries.push({ type, value: data.subarray(offset + 4, next) });
     offset = next;
-    const name = NAME_BY_ID.get(type);
-    if (name !== undefined && BENIGN_EXTENSIONS.has(name)) continue;
-    found.push(name ?? `unknown_extension_${type}`);
   }
-  return [...new Set(found)];
+  return entries;
 }
+
+/** The value of one extension on this account, or null when absent. */
+function extensionValue(data: Buffer, type: number): Buffer | null {
+  for (const entry of extensionEntries(data)) {
+    if (entry.type === type) return entry.value;
+  }
+  return null;
+}
+
+/**
+ * The extension, with its VALUE where the value is what decides the danger.
+ *
+ * "PermanentDelegate" tells an operator to worry. "PermanentDelegate(9xQe...)"
+ * tells them WHO can move every holder's tokens, which is the difference
+ * between a warning and something they can put on a deny-list. Same for the
+ * hook program and the fee. Layouts are the token program's own, fixed:
+ *
+ *   PermanentDelegate     delegate [32]
+ *   TransferHook          authority [32], program_id [32]
+ *   TransferFeeConfig     config_authority [32], withdraw_authority [32],
+ *                         withheld u64, older {epoch u64, max u64, bps u16},
+ *                         newer {epoch u64, max u64, bps u16}
+ *   DefaultAccountState   state u8 (2 = frozen)
+ *
+ * Anything else is named and left at that.
+ */
+function describeExtension(
+  type: number,
+  name: string | undefined,
+  value: Buffer,
+): string {
+  if (name === undefined) return `unknown_extension_${type}`;
+  if (name === "PermanentDelegate" && value.length >= 32)
+    return `PermanentDelegate(${publicKeyAt(value, 0)})`;
+  if (name === "TransferHook" && value.length >= 64) {
+    // An all-zero program id is a hook slot with nothing in it: the mint
+    // reserved the ability, and nothing runs on transfer today. Still
+    // reported, because the authority can fill it in later.
+    const program = publicKeyAt(value, 32);
+    return program === "11111111111111111111111111111111"
+      ? "TransferHook(unset)"
+      : `TransferHook(program ${program})`;
+  }
+  if (name === "TransferFeeConfig" && value.length >= 108) {
+    // The newer fee is the one in force from its epoch on; both are shown
+    // because a fee that is about to change is a fee an amount check should
+    // know about.
+    const olderBps = value.readUInt16LE(72 + 16);
+    const newerBps = value.readUInt16LE(90 + 16);
+    const newerMax = value.readBigUInt64LE(90 + 8);
+    return `TransferFeeConfig(${newerBps} bps, max ${newerMax.toString()}${olderBps === newerBps ? "" : `, was ${olderBps} bps`})`;
+  }
+  if (name === "DefaultAccountState" && value.length >= 1)
+    return `DefaultAccountState(${value.readUInt8(0) === 2 ? "frozen" : "initialized"})`;
+  return name;
+}
+
+/**
+ * The transfer-hook program on a mint, when it has one.
+ *
+ * A program that runs on every transfer is an authority over the token in
+ * everything but name; it changing is an AUTHORITY_CHANGE, and that is the
+ * one extension value the diff compares across the transaction.
+ */
+export function transferHookProgramOf(data: Buffer): string | null {
+  const id = NAME_BY_ID_REVERSE.get("TransferHook");
+  if (id === undefined) return null;
+  const value = extensionValue(data, id);
+  if (value === null || value.length < 64) return null;
+  const program = publicKeyAt(value, 32);
+  // An all-zero program id means the hook was set and later cleared.
+  return program === "11111111111111111111111111111111" ? null : program;
+}
+
+/** The permanent delegate on a mint, when it has one. */
+export function permanentDelegateOf(data: Buffer): string | null {
+  const id = NAME_BY_ID_REVERSE.get("PermanentDelegate");
+  if (id === undefined) return null;
+  const value = extensionValue(data, id);
+  return value === null || value.length < 32 ? null : publicKeyAt(value, 0);
+}
+
+const NAME_BY_ID_REVERSE: ReadonlyMap<string, number> = new Map(
+  [...NAME_BY_ID].map(([id, name]) => [name, id]),
+);
 
 /**
  * Native programs whose account data carries AUTHORITY, and which VETO does

@@ -141,6 +141,19 @@ const ALIASES: Readonly<Record<string, string>> = {
   change_authority: "set_authority",
   update_authority: "set_authority",
 
+  // native staking. Note what is absent: bare `stake`, `unstake`, `withdraw`.
+  // In Solana Agent Kit `stake` is liquid staking through Jupiter, a swap;
+  // binding it to the native manifest would judge a swap against the wrong
+  // ceiling. Only names that say "native" or name the stake account resolve.
+  stake_native: "stake_native",
+  delegate_stake: "stake_native",
+  create_stake_account: "stake_native",
+  native_stake: "stake_native",
+  unstake_native: "unstake_native",
+  deactivate_stake: "unstake_native",
+  withdraw_stake: "withdraw_stake",
+  stake_withdraw: "withdraw_stake",
+
   // freezing
   freeze: "freeze_account",
   freeze_account: "freeze_account",

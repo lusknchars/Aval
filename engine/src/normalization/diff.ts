@@ -11,6 +11,8 @@
  * effect of intent, and an account that was never observed is never assumed
  * to be unchanged.
  */
+import { decodeStakeAccount, isStakeProgram } from "./stake.js";
+import { transferHookProgramOf } from "./spl.js";
 import { NATIVE_MINT, type Effect } from "../types/effects.js";
 import type { ResolvedAccount } from "./accounts.js";
 import type { AccountState } from "./rpc.js";
@@ -215,6 +217,21 @@ function mintEffects(
     };
     effects.push(effect);
   }
+  // Token-2022 only: the program that runs on every transfer of this token
+  // changing hands. Set at creation it is a property of the token; changed
+  // afterwards it is an authority moving, and it is read from the extension
+  // value rather than reported as "extensions present".
+  const hookBefore = transferHookProgramOf(before.data);
+  const hookAfter = transferHookProgramOf(after.data);
+  if (hookBefore !== hookAfter) {
+    const effect: Effect = {
+      type: "AUTHORITY_CHANGE",
+      account: address,
+      authorityKind: "transfer_hook",
+      ...(hookAfter === null ? {} : { counterparty: hookAfter }),
+    };
+    effects.push(effect);
+  }
   return effects;
 }
 
@@ -302,6 +319,47 @@ function closureEffects(
 }
 
 /**
+ * A stake account whose authorities moved.
+ *
+ * Lamports on it are already read by `solEffects` like any other account, so
+ * a withdrawal is a BALANCE_DECREASE with nothing added here. What only the
+ * stake layout can say is WHICH authority changed hands: the withdrawer is
+ * the one that can take the stake out, and it moving to a stranger is stake
+ * theft. Delegating, deactivating and merging change bytes but move no
+ * authority and no lamports, and produce nothing -- which is correct, and is
+ * the reason a decoded stake account no longer counts as opaque.
+ */
+function stakeEffects(
+  address: string,
+  before: AccountState,
+  after: AccountState,
+): readonly Effect[] {
+  const b = decodeStakeAccount(before.data, before.owner);
+  const a = decodeStakeAccount(after.data, after.owner);
+  if (!b.ok || !a.ok) return [];
+  // Initialising sets the authorities for the first time. That is the
+  // account being set up, not an authority being handed over.
+  if (b.value.state === "uninitialized") return [];
+
+  const effects: Effect[] = [];
+  const kinds: readonly ["staker" | "withdrawer" | "custodian", string, string][] = [
+    ["staker", b.value.staker, a.value.staker],
+    ["withdrawer", b.value.withdrawer, a.value.withdrawer],
+    ["custodian", b.value.lockup.custodian, a.value.lockup.custodian],
+  ];
+  for (const [kind, was, now] of kinds) {
+    if (was === now) continue;
+    effects.push({
+      type: "AUTHORITY_CHANGE",
+      account: address,
+      authorityKind: kind,
+      counterparty: now,
+    });
+  }
+  return effects;
+}
+
+/**
  * Turns observed state transitions into effects.
  *
  * Only observed accounts produce effects. An account that was never observed
@@ -362,6 +420,8 @@ export function diffAccounts(input: DiffInput): readonly Effect[] {
       effects.push(...tokenEffects(address, tokenBefore, tokenAfter));
     } else if (isMintAccount(before) && isMintAccount(after)) {
       effects.push(...mintEffects(address, before, after));
+    } else if (isStakeProgram(before.owner) && isStakeProgram(after.owner)) {
+      effects.push(...stakeEffects(address, before, after));
     }
   }
 

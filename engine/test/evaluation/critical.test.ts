@@ -191,7 +191,8 @@ describe("bytes VETO does not read", () => {
         token,
         withExtensions([[ExtensionType.PermanentDelegate, 32]]),
       ),
-    ).toEqual(["PermanentDelegate"]);
+      // The value is read now: thirty-two zero bytes is the all-ones address.
+    ).toEqual(["PermanentDelegate(11111111111111111111111111111111)"]);
     // Harmless in every other sense, and still reported: both change the
     // relationship between the raw amount the diff reads and the number a
     // human types, which is what the magnitude check converts between.

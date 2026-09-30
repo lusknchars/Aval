@@ -326,6 +326,98 @@ export const FREEZE_ACCOUNT: ToolManifest = {
   programAllowlist: TOKEN_PROGRAMS,
 };
 
+const STAKE_PROGRAM = "Stake11111111111111111111111111111111111111";
+
+/**
+ * Native staking: create a stake account, fund it, delegate it.
+ *
+ * `stake` on its own is NOT this manifest and has no alias to it. In Solana
+ * Agent Kit `stake` means liquid staking through Jupiter -- SOL out, an LST
+ * in -- which is a swap in every way that matters to the checks. Mapping
+ * that name here would judge a swap against a native-stake ceiling. The two
+ * are separate manifests and a framework's name has to be bound to one of
+ * them explicitly.
+ *
+ * The rent for the new stake account is SOL leaving the wallet, so `must`
+ * bounds the wallet's decrease by the amount plus a rent allowance rather
+ * than by the amount alone -- otherwise every honest stake fires magnitude.
+ */
+export const STAKE_NATIVE: ToolManifest = {
+  tool: "stake_native",
+  version: "1",
+  args: { from: "address", stakeAccount: "address", amount: "amount" },
+  must: [
+    {
+      type: "BALANCE_DECREASE",
+      account: "arg:from",
+      mint: "SOL",
+      maxAmount: "arg:amount",
+      unit: "raw",
+    },
+    { type: "BALANCE_INCREASE", account: "arg:stakeAccount", mint: "SOL" },
+  ],
+  may: [{ type: "ACCOUNT_CREATE" }, { type: "PROGRAM_INVOKE" }],
+  mustNot: [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE",
+  ],
+  accountScope: "args_plus_derived",
+  programAllowlist: [SYSTEM_PROGRAM, STAKE_PROGRAM, COMPUTE_BUDGET_PROGRAM],
+};
+
+/**
+ * Deactivating stake. Moves nothing: the lamports stay in the account until
+ * the cooldown ends. The only legitimate effect is the program call, and any
+ * balance or authority movement in the same transaction is something else.
+ */
+export const UNSTAKE_NATIVE: ToolManifest = {
+  tool: "unstake_native",
+  version: "1",
+  args: { stakeAccount: "address" },
+  must: [],
+  may: [{ type: "PROGRAM_INVOKE" }],
+  mustNot: [
+    "BALANCE_DECREASE",
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE",
+  ],
+  accountScope: "args_only",
+  programAllowlist: [STAKE_PROGRAM, COMPUTE_BUDGET_PROGRAM],
+};
+
+/** Withdrawing from a deactivated stake account back to the wallet. */
+export const WITHDRAW_STAKE: ToolManifest = {
+  tool: "withdraw_stake",
+  version: "1",
+  args: { stakeAccount: "address", to: "address", amount: "amount" },
+  must: [
+    {
+      type: "BALANCE_DECREASE",
+      account: "arg:stakeAccount",
+      mint: "SOL",
+      maxAmount: "arg:amount",
+      unit: "raw",
+    },
+    { type: "BALANCE_INCREASE", account: "arg:to", mint: "SOL" },
+  ],
+  // Withdrawing everything closes the account; that is the normal shape.
+  may: [{ type: "ACCOUNT_CLOSE" }, { type: "PROGRAM_INVOKE" }],
+  mustNot: [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_FREEZE",
+  ],
+  accountScope: "args_only",
+  programAllowlist: [STAKE_PROGRAM, COMPUTE_BUDGET_PROGRAM],
+};
+
 export const MANIFESTS: readonly ToolManifest[] = [
   TRANSFER_SOL,
   TRANSFER_TOKEN,
@@ -336,6 +428,9 @@ export const MANIFESTS: readonly ToolManifest[] = [
   BURN_TOKENS,
   SET_AUTHORITY,
   FREEZE_ACCOUNT,
+  STAKE_NATIVE,
+  UNSTAKE_NATIVE,
+  WITHDRAW_STAKE,
 ];
 
 const BY_TOOL = new Map(MANIFESTS.map((manifest) => [manifest.tool, manifest]));

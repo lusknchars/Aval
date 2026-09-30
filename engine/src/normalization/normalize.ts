@@ -25,6 +25,7 @@ import { declaredFeeOf } from "./fee.js";
 import { messageBytes, messageDigestOf } from "./message.js";
 import { MAX_SIMULATION_ACCOUNTS, withDeadline } from "./rpc.js";
 import type { AccountState, InnerInstructionRef, RpcClient } from "./rpc.js";
+import { decodeStakeAccount } from "./stake.js";
 import {
   authorityBearingProgram,
   decodeTokenAccount,
@@ -376,6 +377,8 @@ export async function normalize(
       if (!decoded.ok) undecodable.push(`${address}: ${decoded.reason}`);
     }
 
+    // A stake account is read now, so its changes are effects or are known
+    // to be benign. It is only opaque when its bytes do not decode.
     const program = authorityBearingProgram(after.owner);
     if (
       program !== null &&
@@ -383,7 +386,11 @@ export async function normalize(
       before !== null &&
       !before.data.equals(after.data)
     ) {
-      opaqueChanges.push(`${address}: ${program}`);
+      const readable =
+        program === "stake" &&
+        decodeStakeAccount(before.data, before.owner).ok &&
+        decodeStakeAccount(after.data, after.owner).ok;
+      if (!readable) opaqueChanges.push(`${address}: ${program}`);
     }
   }
 

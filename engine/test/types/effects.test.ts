@@ -45,12 +45,19 @@ describe("effect vocabulary", () => {
     expect(effectTypeSchema.safeParse("").success).toBe(false);
   });
 
-  it("has the 4 authorities of the account model", () => {
+  it("has the authorities of the account model, and nothing that is not one", () => {
+    // Four from the token and loader layouts, three from the stake layout,
+    // one Token-2022 extension value. Attributes of AUTHORITY_CHANGE, never
+    // new effect types: the vocabulary is still nine.
     expect(authorityKindSchema.options).toEqual([
       "mint",
       "freeze",
       "upgrade",
       "close",
+      "staker",
+      "withdrawer",
+      "custodian",
+      "transfer_hook",
     ]);
     expect(authorityKindSchema.safeParse("owner").success).toBe(false);
   });

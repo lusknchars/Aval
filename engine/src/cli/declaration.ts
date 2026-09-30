@@ -35,6 +35,8 @@ function largest(effects: readonly Effect[]): Effect | null {
   return best;
 }
 
+const STAKE_PROGRAM = "Stake11111111111111111111111111111111111111";
+
 export interface Declaration {
   readonly tool: string;
   readonly args: Record<string, unknown>;
@@ -71,6 +73,36 @@ export function declarationFor(set: EffectSet): Declaration | null {
   // Anything that hands over control is its own operation. A transaction
   // doing that AND moving value is not one of our primitives.
   if (authorities.length > 0 || owners.length > 0) return null;
+
+  // Native staking is recognised by the stake program being called with
+  // SOL arriving in, or leaving, one account -- and nothing else moving.
+  const stakeProgram = of(set, "PROGRAM_INVOKE").some(
+    (e) => e.program === STAKE_PROGRAM,
+  );
+  if (stakeProgram && tokenOut.length === 0 && tokenIn.length === 0 && grants.length === 0) {
+    const creates = of(set, "ACCOUNT_CREATE");
+    const out = largest(solOut);
+    const into = largest(solIn);
+    if (creates.length === 1 && out !== null && into !== null && closes.length === 0) {
+      const created = creates[0];
+      if (created !== undefined && into.account === created.account)
+        return {
+          tool: "stake_native",
+          args: { from: out.account, stakeAccount: created.account, amount: out.amount ?? 0n },
+          mints: [],
+        };
+    }
+    if (out !== null && into !== null && solOut.length === 1 && solIn.length === 1 && creates.length === 0)
+      return {
+        tool: "withdraw_stake",
+        args: { stakeAccount: out.account, to: into.account, amount: out.amount ?? 0n },
+        mints: [],
+      };
+    if (solOut.length === 0 && solIn.length === 0 && creates.length === 0 && closes.length === 0) {
+      // Deactivate: the program was called and no balance moved anywhere.
+      return { tool: "unstake_native", args: { stakeAccount: "" }, mints: [] };
+    }
+  }
 
   if (grants.length > 0) {
     const grant = grants[0];

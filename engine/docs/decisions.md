@@ -562,6 +562,45 @@ Implementation gaps per block live in `pending.md`.
     time**, so the queue groups the way the rules grouped when they fired, not
     the way today's extractor happens to.
 
+### Reading more with the same nine words
+
+99. **The vocabulary stays at nine; precision grows by reading more accounts,
+    not by adding types.** The nine effects are the things that can change on
+    an account, and 375/375 effects from real traffic fit them. A new type
+    would be one of two things: an observation the bytes can carry, which the
+    existing types plus attributes already express, or an INTERPRETATION of an
+    instruction -- which is the decoding-by-IDL path rejected at the start,
+    and where errors come from. The test for a new type is three-fold:
+    readable from bytes, a distinct harm nothing else expresses, seen in
+    practice. `ACCOUNT_FREEZE` passed; nothing else has.
+100. **Stake accounts are decoded, from the fixed StakeStateV2 layout.** The
+    withdrawer authority moving is how stake is stolen, and until now it was
+    indistinguishable from a deactivate -- both were "opaque bytes changed".
+    Now it is AUTHORITY_CHANGE with `authorityKind: withdrawer` (or `staker`,
+    `custodian`); a delegate or deactivate produces nothing, correctly, and a
+    decoded stake account no longer counts as opaque. Lamports were always
+    read. Verified on three mainnet accounts against the RPC's own parser.
+100a. **Initialising a stake account is not an authority handover.** The
+    authorities being set for the first time is the account being made.
+101. **Token-2022 extension VALUES are read where the value is the danger.**
+    "PermanentDelegate" tells an operator to worry; "PermanentDelegate(2apB…)"
+    tells them who can move every holder's tokens, which is something a
+    deny-list can hold. Same for the hook program and the fee. The hook
+    program changing hands is AUTHORITY_CHANGE `transfer_hook`. Verified on
+    PYUSD against the RPC. An extension id the installed enum does not know
+    stays `unknown_extension_N` -- unknown is reported, never assumed benign.
+101a. **Authority kinds are attributes, not types.** `staker`, `withdrawer`,
+    `custodian`, `transfer_hook` joined `mint`, `freeze`, `upgrade`, `close`
+    on AUTHORITY_CHANGE. Every manifest's `mustNot: AUTHORITY_CHANGE` covers
+    them with no change.
+102. **Native staking has its own manifests, and bare `stake` binds to none of
+    them.** In Solana Agent Kit `stake` is liquid staking through Jupiter --
+    SOL out, an LST in -- which is a swap in every way the checks care about.
+    Binding the name to `stake_native` would judge a swap against a native
+    ceiling. `stake_native`, `unstake_native` and `withdraw_stake` resolve
+    only from names that say so; a framework's `stake` is bound explicitly by
+    the operator, or stays `no_manifest`.
+
 ---
 
 ## Open attention points — no defence implemented
