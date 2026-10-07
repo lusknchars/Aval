@@ -349,16 +349,13 @@ p { text-wrap: pretty; }
 .solfloat { margin-left: auto; width: clamp(180px, 17vw, 250px); display: grid; justify-items: center; gap: 4px; pointer-events: none; }
 .solfloat__stage { width: 100%; aspect-ratio: 1; }
 .solfloat__gl { width: 100%; height: 100%; }
-.solfloat__credit { justify-self: end; text-align: right; pointer-events: auto; font-size: 9.5px; letter-spacing: .06em; color: var(--mute); text-decoration: none; white-space: nowrap; }
-.solfloat__credit:hover { color: var(--dim); text-decoration: underline; }
-@media (max-width: 900px) { .solfloat { width: min(240px, 64vw); margin: 8px auto 0; flex-basis: 100%; } .solfloat__credit { white-space: normal; text-align: center; justify-self: center; } }
+@media (max-width: 900px) { .solfloat { width: min(240px, 64vw); margin: 8px auto 0; flex-basis: 100%; } }
 /* Wide screens: float it in the empty left margin of the band, centred in
    that margin and on the band's height. Narrower screens keep it in the row. */
 @media (min-width: 1600px) {
   .flip { position: relative; }
   .solfloat { --w: clamp(160px, calc((100vw - 1320px) / 2 - 130px), 320px); position: absolute; width: var(--w); margin: 0; grid-template-columns: 100%;
     left: calc((100vw - 1320px) / 4 - var(--w) / 2); top: 50%; transform: translateY(-50%); }
-  .solfloat__credit { justify-self: center; text-align: center; white-space: normal; }
 }
 @media (max-width: 560px) { .stack { flex-direction: column; align-items: flex-start; gap: 14px; } .stack__list { gap: 10px; } .stack__item { padding: 10px 14px; font-size: 16px; } .stack__mark { width: 22px; height: 22px; } }
 
@@ -636,6 +633,8 @@ p { text-wrap: pretty; }
 .finale .sbtn--ghost:hover, .finale .sbtn--ghost:focus-visible { color: var(--ink); }
 .finale .footer { border-top: 1px solid var(--line); color: var(--dim); padding: 18px 0 0; }
 .footer__links { display: inline-flex; gap: 18px; }
+.footer__credits { margin: -8px 0 0; font-size: 10px; letter-spacing: .06em; color: var(--dim); opacity: .7; }
+.footer__credits a { color: inherit; }
 .footer__links a:hover { color: var(--bg); }
 
 .finale > * { min-width: 0; }

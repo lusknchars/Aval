@@ -318,6 +318,7 @@ export default function App() {
               <span className="footer__links"><a href="#feed">Verdicts</a><a href="#lifecycle">Lifecycle</a><a href="/app/">Console</a></span>
               <span>EOF</span>
             </footer>
+            <p className="footer__credits">3D Solana model by <a href="https://sketchfab.com/3d-models/solana-logo-7b786b250ea74f0bbb007b1b99792745" target="_blank" rel="noreferrer">eshraqism</a> · CC BY 4.0</p>
           </Rise>
         </section>
       </main>
