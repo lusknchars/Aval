@@ -610,12 +610,9 @@ p { text-wrap: pretty; }
 .footer__links a:hover { color: var(--bg); }
 
 .finale > * { min-width: 0; }
-/* Inset screen, always dark like the Scanner demo (in the dark theme it reads
-   as inverted against the light panel), with the Scanner behind the AVAL word. The word lets the pointer through
-   so the scanner's ripple follows the cursor. */
+/* Inset screen holding the AVAL word, always dark (in the dark theme it reads
+   as inverted against the light panel). */
 .finale__screen { position: relative; isolation: isolate; overflow: hidden; border-radius: 14px; background: #0e0d12; color: #ececec; border: 1px solid rgba(255, 255, 255, .08); padding: clamp(28px, 5vw, 72px) clamp(16px, 3vw, 40px); }
-.finale__scan { position: absolute; inset: 0; z-index: -1; }
-.finale__screen .outro__word { position: relative; pointer-events: none; }
 .finale .footer { flex-wrap: wrap; }
 
 /* smoke heading (receipts) */

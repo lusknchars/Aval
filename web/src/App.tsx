@@ -18,7 +18,6 @@ import SlotTower from './components/SlotTower'
 import SmokeHeading from './components/SmokeHeading'
 import AttackReel from './components/AttackReel'
 import CurrentBand from './components/CurrentBand'
-import FooterScanner from './components/FooterScanner'
 import { ATTACKS } from './components/attacks'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
@@ -107,7 +106,7 @@ function SectionPill() {
   )
 }
 
-/* The footer word sits on the always-dark scanner screen, so it draws light
+/* The footer word sits on the always-dark inset screen, so it draws light
    in both themes (the page's bg color is the light one in the light theme). */
 function FooterWord() {
   const light = useTheme() === 'light'
@@ -310,7 +309,6 @@ export default function App() {
               </div>
             </div>
             <div className="finale__screen">
-              <FooterScanner />
               <FooterWord />
             </div>
             <footer className="footer">
