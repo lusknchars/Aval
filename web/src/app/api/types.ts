@@ -121,6 +121,16 @@ export interface EvalRequest {
   goal: string
   fixture: string
   provenance: Provenance
+  /** Text the agent read before acting, and where it came from. */
+  retrieved?: string
+  source?: string
+  /** What the agent said the amount was, to expose a declared/executed gap. */
+  declaredAmount?: string
+  /** Override the tool the fixture is attributed to. */
+  tool?: string
+  network?: 'mainnet' | 'devnet'
+  /** From the published policy: addresses approved in advance. */
+  allowlist?: string[]
 }
 
 /** One evaluation the console ran or loaded, with where its verdict came from. */

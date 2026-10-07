@@ -1,0 +1,496 @@
+{
+ "manifests": [
+  {
+   "tool": "transfer_sol",
+   "version": "2",
+   "args": {
+    "from": "address",
+    "to": "address",
+    "amount": "amount"
+   },
+   "must": [
+    {
+     "type": "BALANCE_DECREASE",
+     "account": "arg:from",
+     "mint": "SOL",
+     "maxAmount": "arg:amount",
+     "unit": "raw"
+    },
+    {
+     "type": "BALANCE_INCREASE",
+     "account": "arg:to",
+     "mint": "SOL"
+    }
+   ],
+   "may": [
+    {
+     "type": "ACCOUNT_CREATE"
+    },
+    {
+     "type": "PROGRAM_INVOKE"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_plus_derived",
+   "programAllowlist": [
+    "11111111111111111111111111111111",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "transfer_token",
+   "version": "3",
+   "args": {
+    "from": "address",
+    "to": "address",
+    "mint": "mint",
+    "amount": "amount"
+   },
+   "must": [
+    {
+     "type": "BALANCE_DECREASE",
+     "owner": "arg:from",
+     "mint": "arg:mint",
+     "maxAmount": "arg:amount",
+     "unit": "decimal"
+    },
+    {
+     "type": "BALANCE_INCREASE",
+     "mint": "arg:mint",
+     "counterparty": "arg:to"
+    }
+   ],
+   "may": [
+    {
+     "type": "ACCOUNT_CREATE"
+    },
+    {
+     "type": "PROGRAM_INVOKE"
+    },
+    {
+     "type": "BALANCE_DECREASE",
+     "mint": "SOL"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_plus_derived",
+   "programAllowlist": [
+    "11111111111111111111111111111111",
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "swap",
+   "version": "3",
+   "args": {
+    "from": "address",
+    "to": "address",
+    "mint": "mint",
+    "amountIn": "amount"
+   },
+   "must": [
+    {
+     "type": "BALANCE_DECREASE",
+     "owner": "arg:from",
+     "mint": "arg:mint",
+     "maxAmount": "arg:amountIn",
+     "unit": "decimal",
+     "tolerance": 0.03
+    }
+   ],
+   "may": [
+    {
+     "type": "BALANCE_INCREASE"
+    },
+    {
+     "type": "ACCOUNT_CREATE"
+    },
+    {
+     "type": "PROGRAM_INVOKE"
+    },
+    {
+     "type": "BALANCE_DECREASE"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "open"
+  },
+  {
+   "tool": "approve",
+   "version": "2",
+   "args": {
+    "account": "address",
+    "delegate": "address",
+    "mint": "mint",
+    "amount": "amount"
+   },
+   "must": [
+    {
+     "type": "DELEGATE_GRANT",
+     "mint": "arg:mint",
+     "counterparty": "arg:delegate",
+     "maxAmount": "arg:amount",
+     "unit": "decimal"
+    }
+   ],
+   "may": [
+    {
+     "type": "PROGRAM_INVOKE"
+    },
+    {
+     "type": "ACCOUNT_CREATE"
+    },
+    {
+     "type": "BALANCE_DECREASE",
+     "mint": "SOL"
+    }
+   ],
+   "mustNot": [
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_only",
+   "programAllowlist": [
+    "11111111111111111111111111111111",
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "revoke",
+   "version": "2",
+   "args": {
+    "account": "address"
+   },
+   "must": [],
+   "may": [
+    {
+     "type": "PROGRAM_INVOKE"
+    },
+    {
+     "type": "BALANCE_DECREASE",
+     "mint": "SOL"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_only",
+   "programAllowlist": [
+    "11111111111111111111111111111111",
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "close_account",
+   "version": "2",
+   "args": {
+    "account": "address",
+    "destination": "address"
+   },
+   "must": [
+    {
+     "type": "ACCOUNT_CLOSE",
+     "account": "arg:account"
+    }
+   ],
+   "may": [
+    {
+     "type": "PROGRAM_INVOKE"
+    },
+    {
+     "type": "ACCOUNT_CREATE"
+    },
+    {
+     "type": "BALANCE_INCREASE",
+     "account": "arg:destination"
+    },
+    {
+     "type": "BALANCE_DECREASE"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_plus_derived",
+   "programAllowlist": [
+    "11111111111111111111111111111111",
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "burn_tokens",
+   "version": "1",
+   "args": {
+    "account": "address",
+    "mint": "mint",
+    "amount": "amount"
+   },
+   "must": [
+    {
+     "type": "BALANCE_DECREASE",
+     "account": "arg:account",
+     "mint": "arg:mint",
+     "maxAmount": "arg:amount",
+     "unit": "decimal"
+    }
+   ],
+   "may": [
+    {
+     "type": "PROGRAM_INVOKE"
+    },
+    {
+     "type": "BALANCE_DECREASE",
+     "mint": "SOL"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_only",
+   "programAllowlist": [
+    "11111111111111111111111111111111",
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "set_authority",
+   "version": "1",
+   "args": {
+    "account": "address",
+    "newAuthority": "address"
+   },
+   "must": [
+    {
+     "type": "AUTHORITY_CHANGE",
+     "account": "arg:account"
+    }
+   ],
+   "may": [
+    {
+     "type": "PROGRAM_INVOKE"
+    },
+    {
+     "type": "BALANCE_DECREASE",
+     "mint": "SOL"
+    },
+    {
+     "type": "OWNER_CHANGE",
+     "account": "arg:account"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_only",
+   "programAllowlist": [
+    "11111111111111111111111111111111",
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "freeze_account",
+   "version": "1",
+   "args": {
+    "account": "address",
+    "mint": "mint"
+   },
+   "must": [
+    {
+     "type": "ACCOUNT_FREEZE",
+     "account": "arg:account"
+    }
+   ],
+   "may": [
+    {
+     "type": "PROGRAM_INVOKE"
+    },
+    {
+     "type": "BALANCE_DECREASE",
+     "mint": "SOL"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE"
+   ],
+   "accountScope": "args_only",
+   "programAllowlist": [
+    "11111111111111111111111111111111",
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "stake_native",
+   "version": "1",
+   "args": {
+    "from": "address",
+    "stakeAccount": "address",
+    "amount": "amount"
+   },
+   "must": [
+    {
+     "type": "BALANCE_DECREASE",
+     "account": "arg:from",
+     "mint": "SOL",
+     "maxAmount": "arg:amount",
+     "unit": "raw"
+    },
+    {
+     "type": "BALANCE_INCREASE",
+     "account": "arg:stakeAccount",
+     "mint": "SOL"
+    }
+   ],
+   "may": [
+    {
+     "type": "ACCOUNT_CREATE"
+    },
+    {
+     "type": "PROGRAM_INVOKE"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_plus_derived",
+   "programAllowlist": [
+    "11111111111111111111111111111111",
+    "Stake11111111111111111111111111111111111111",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "unstake_native",
+   "version": "1",
+   "args": {
+    "stakeAccount": "address"
+   },
+   "must": [],
+   "may": [
+    {
+     "type": "PROGRAM_INVOKE"
+    }
+   ],
+   "mustNot": [
+    "BALANCE_DECREASE",
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_CLOSE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_only",
+   "programAllowlist": [
+    "Stake11111111111111111111111111111111111111",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  },
+  {
+   "tool": "withdraw_stake",
+   "version": "1",
+   "args": {
+    "stakeAccount": "address",
+    "to": "address",
+    "amount": "amount"
+   },
+   "must": [
+    {
+     "type": "BALANCE_DECREASE",
+     "account": "arg:stakeAccount",
+     "mint": "SOL",
+     "maxAmount": "arg:amount",
+     "unit": "raw"
+    },
+    {
+     "type": "BALANCE_INCREASE",
+     "account": "arg:to",
+     "mint": "SOL"
+    }
+   ],
+   "may": [
+    {
+     "type": "ACCOUNT_CLOSE"
+    },
+    {
+     "type": "PROGRAM_INVOKE"
+    }
+   ],
+   "mustNot": [
+    "DELEGATE_GRANT",
+    "AUTHORITY_CHANGE",
+    "OWNER_CHANGE",
+    "ACCOUNT_FREEZE"
+   ],
+   "accountScope": "args_only",
+   "programAllowlist": [
+    "Stake11111111111111111111111111111111111111",
+    "ComputeBudget111111111111111111111111111111"
+   ]
+  }
+ ],
+ "thresholds": {
+  "highsForDeny": 2,
+  "mediumsForFlag": 1,
+  "maxFeeLamports": "10000000"
+ },
+ "totalDeadlineMs": 5000
+}

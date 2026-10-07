@@ -6,6 +6,15 @@ import Evaluate from './pages/Evaluate'
 import Actions from './pages/Actions'
 import TraceView from './pages/TraceView'
 import Review from './pages/Review'
+import Policy from './pages/Policy'
+import Manifests from './pages/Manifests'
+import Lists from './pages/Lists'
+import Agents from './pages/Agents'
+import Deploy from './pages/Deploy'
+import System from './pages/System'
+import { ChangeBar } from './config/ui'
+import { useConfig } from './config/store'
+import { diff } from './config/impact'
 import CommandPalette from './ui/CommandPalette'
 import Toasts from './ui/Toasts'
 import Scramble from '../components/Scramble'
@@ -14,16 +23,32 @@ import ThemeToggle from '../components/ThemeToggle'
 import { useReduced } from '../lib/useReduced'
 
 const NAV = [
-  { k: 'overview', label: 'Overview', g: '◇' },
-  { k: 'evaluate', label: 'Evaluate', g: '▷' },
-  { k: 'actions', label: 'Actions', g: '≡' },
-  { k: 'review', label: 'Review', g: '◎' },
+  { group: 'monitor', items: [
+    { k: 'overview', label: 'Overview', g: '◇' },
+    { k: 'actions', label: 'Actions', g: '≡' },
+    { k: 'review', label: 'Review', g: '◎' },
+  ] },
+  { group: 'operate', items: [
+    { k: 'evaluate', label: 'Scenario Lab', g: '▷' },
+    { k: 'agents', label: 'Agents', g: '⌬' },
+  ] },
+  { group: 'configure', items: [
+    { k: 'policy', label: 'Policy', g: '⚖' },
+    { k: 'manifests', label: 'Manifests', g: '▤' },
+    { k: 'lists', label: 'Lists', g: '☰' },
+  ] },
+  { group: 'ship', items: [
+    { k: 'deploy', label: 'Deploy', g: '⇪' },
+    { k: 'system', label: 'System', g: '⌁' },
+  ] },
 ]
 
 export default function App() {
   const route = useRoute()
   const engine = useEngine()
   const reduced = useReduced()
+  const cfg = useConfig()
+  const pending = diff(cfg.history[0].config, cfg.draft).length
   const [page = 'overview', arg] = route
   const key = route.join('/') || 'overview'
 
@@ -32,6 +57,12 @@ export default function App() {
   else if (page === 'actions' && arg) view = <TraceView id={arg} />
   else if (page === 'actions') view = <Actions />
   else if (page === 'review') view = <Review />
+  else if (page === 'policy') view = <Policy />
+  else if (page === 'manifests') view = <Manifests />
+  else if (page === 'lists') view = <Lists />
+  else if (page === 'agents') view = <Agents />
+  else if (page === 'deploy') view = <Deploy />
+  else if (page === 'system') view = <System />
   else view = <Overview />
 
   return (
@@ -43,16 +74,22 @@ export default function App() {
           <em>console</em>
         </a>
         <nav className="rail__nav" aria-label="Console">
-          {NAV.map((n) => {
-            const on = page === n.k
-            return (
-              <a key={n.k} href={`#/${n.k}`} className={on ? 'is-on' : ''} aria-current={on ? 'page' : undefined}>
-                {on && <motion.span layoutId="rail-hl" className="rail__hl" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
-                <span className="rail__g" aria-hidden="true">{n.g}</span>
-                <Scramble text={n.label} />
-              </a>
-            )
-          })}
+          {NAV.map((grp) => (
+            <div key={grp.group} className="rail__group">
+              <span className="rail__glabel">{grp.group}</span>
+              {grp.items.map((n) => {
+                const on = page === n.k
+                return (
+                  <a key={n.k} href={`#/${n.k}`} className={on ? 'is-on' : ''} aria-current={on ? 'page' : undefined}>
+                    {on && <motion.span layoutId="rail-hl" className="rail__hl" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
+                    <span className="rail__g" aria-hidden="true">{n.g}</span>
+                    <Scramble text={n.label} />
+                    {n.k === 'deploy' && pending > 0 && <span className="rail__badge" aria-label={`${pending} unpublished changes`}>{pending}</span>}
+                  </a>
+                )
+              })}
+            </div>
+          ))}
         </nav>
         <button type="button" className="rail__k" onClick={() => dispatchEvent(new Event('aval:palette'))}>
           <span>Search</span><kbd>⌘K</kbd>
@@ -80,6 +117,7 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </main>
+      <ChangeBar />
       <CommandPalette />
       <Toasts />
     </div>

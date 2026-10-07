@@ -33,6 +33,12 @@ export default function CommandPalette() {
     { id: 'p-e', label: 'Evaluate a transaction', hint: 'page', run: () => go('evaluate') },
     { id: 'p-a', label: 'Actions', hint: 'page', run: () => go('actions') },
     { id: 'p-r', label: 'Review queue', hint: 'page', run: () => go('review') },
+    { id: 'p-ag', label: 'Agents', hint: 'operate', run: () => go('agents') },
+    { id: 'p-po', label: 'Policy: thresholds, gate, judge', hint: 'configure', run: () => go('policy') },
+    { id: 'p-mf', label: 'Manifests', hint: 'configure', run: () => go('manifests') },
+    { id: 'p-li', label: 'Lists: allow, deny, trusted', hint: 'configure', run: () => go('lists') },
+    { id: 'p-de', label: 'Deploy: publish or roll back policy', hint: 'ship', run: () => go('deploy') },
+    { id: 'p-sy', label: 'System health', hint: 'ship', run: () => go('system') },
     { id: 't', label: `Switch to ${current() === 'dark' ? 'light' : 'dark'} theme`, hint: 'theme', run: () => toggleTheme(innerWidth / 2, innerHeight / 3) },
     ...FIXTURES.map((f) => ({ id: 'f-' + f.name, label: `Run ${f.title}`, hint: 'evaluate', run: () => go(`evaluate/${f.name}`) })),
     ...entries.slice(0, 12).map((e) => ({
