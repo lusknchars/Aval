@@ -1,5 +1,6 @@
 import { SiEthereum, SiRust, SiSolana } from 'react-icons/si'
 import type { IconType } from 'react-icons'
+import SolanaFloat from './SolanaFloat'
 
 /*
  * The technologies behind AVAL, as a row of marks under the verdicts feed.
@@ -24,6 +25,7 @@ export default function StackStrip() {
           </li>
         ))}
       </ul>
+      <SolanaFloat />
     </div>
   )
 }
