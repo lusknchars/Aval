@@ -17,6 +17,7 @@ import { RevealHeading, ScrollManifesto } from './components/ScrollManifesto'
 import SlotTower from './components/SlotTower'
 import SmokeHeading from './components/SmokeHeading'
 import AttackReel from './components/AttackReel'
+import CurrentBand from './components/CurrentBand'
 import { ATTACKS } from './components/attacks'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
@@ -181,6 +182,7 @@ export default function App() {
           <TxFeed />
         </section>
 
+        <CurrentBand>
         <section id="how" className="section">
           <Scramble as="p" text="02 / pipeline" className="kicker" />
           <RevealHeading text="Three steps, under a millisecond." className="center" />
@@ -218,6 +220,7 @@ export default function App() {
           </div>
           <TxLifecycle />
         </section>
+        </CurrentBand>
 
         <section id="statement" className="statement">
           <ScrollManifesto

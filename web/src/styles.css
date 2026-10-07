@@ -333,8 +333,8 @@ p { text-wrap: pretty; }
 @media (max-width: 480px) { .themetoggle__label { display: none; } }
 
 /* ── transaction lifecycle ─────────────────────── */
-.life__intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: end; margin-bottom: 36px; }
-.life__intro p { color: var(--dim); max-width: 56ch; margin: 0; }
+.life__intro { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 56px); align-items: end; margin-bottom: 36px; }
+.life__intro p { color: var(--dim); width: 100%; max-width: none; margin: 0; font-size: 15px; line-height: 1.7; }
 @media (max-width: 900px) { .life__intro { grid-template-columns: 1fr; gap: 0; } }
 .life { --gap: 40px; display: grid; gap: 18px; }
 .life__bar { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
@@ -549,3 +549,15 @@ p { text-wrap: pretty; }
 .attacks__reel--loading { height: 540px; }
 .attacks__hint { text-align: center; color: var(--mute); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin: 8px 0 0; }
 @media (max-width: 860px) { .attacks__head { grid-template-columns: 1fr; gap: 12px; } .attacks__reel, .attacks__reel--loading { height: 460px !important; } }
+
+/* ── chroma current band (pipeline + lifecycle) ── */
+.band { position: relative; isolation: isolate; }
+.band__bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+.band__current { position: absolute !important; inset: 0; min-height: 0 !important; height: 100% !important; }
+/* Fade into the page at both ends, and soften the middle so text stays readable. */
+.band__veil { position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(var(--bg), transparent 14%, transparent 86%, var(--bg)),
+    radial-gradient(ellipse 70% 55% at 50% 50%, rgba(var(--bg-rgb), .3), transparent 75%); }
+.band__content > section { pointer-events: none; }
+.band__content :is(a, button, .spot, .life__bar, .life__grid, .life__cap, .life__intro p, .kicker, h2) { pointer-events: auto; }
