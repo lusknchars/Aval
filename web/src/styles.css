@@ -533,3 +533,8 @@ p { text-wrap: pretty; }
 
 .finale > * { min-width: 0; }
 .finale .footer { flex-wrap: wrap; }
+
+/* smoke heading (receipts) */
+.smoke-h { display: inline-block; margin: 0 0 24px; font-family: var(--display); }
+.smoke-h--static { font-size: clamp(34px, 5vw, 64px); font-weight: 700; letter-spacing: -0.015em; line-height: 1; }
+#receipt { overflow-x: clip; } /* the smoke canvas pads past the heading; keep it inside the section */

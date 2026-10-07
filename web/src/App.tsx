@@ -15,6 +15,7 @@ import TxLifecycle from './components/TxLifecycle'
 import { Rise, useCurrentSection } from './components/ScrollFx'
 import { RevealHeading, ScrollManifesto } from './components/ScrollManifesto'
 import SlotTower from './components/SlotTower'
+import SmokeHeading from './components/SmokeHeading'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
 import ThemeToggle from './components/ThemeToggle'
@@ -260,7 +261,7 @@ export default function App() {
           </SpotCard>
           <div className="split__copy">
             <Scramble as="p" text="05 / receipts" className="kicker" />
-            <RevealHeading text="Every verdict shows its work." />
+            <SmokeHeading text="Every verdict shows its work." />
             <p>
               Each decision carries the simulated slot, the balance deltas and a digest
               that matches the transaction's own message digest. Anyone can check that
