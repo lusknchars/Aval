@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { motion, useScroll, useSpring } from 'motion/react'
-import AsciiImage from './components/AsciiImage'
 import Scramble from './components/Scramble'
 import ScrambleButton from './components/ScrambleButton'
 import TxFeed from './components/TxFeed'
@@ -19,13 +18,12 @@ import SmokeHeading from './components/SmokeHeading'
 import AttackReel from './components/AttackReel'
 import CurrentBand from './components/CurrentBand'
 import FooterBadge from './components/FooterBadge'
+import FooterInfo from './components/FooterInfo'
 import { ATTACKS } from './components/attacks'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
 import ThemeToggle from './components/ThemeToggle'
-import { useTheme } from './lib/theme'
 
-const WORD = { kind: 'text', text: 'AVAL' } as const
 
 const INTERCEPT = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
   const lane = '-'.repeat(22).split('')
@@ -105,13 +103,6 @@ function SectionPill() {
       </AnimatePresence>
     </div>
   )
-}
-
-/* The footer word sits on the always-dark inset screen, so it draws light
-   in both themes (the page's bg color is the light one in the light theme). */
-function FooterWord() {
-  const light = useTheme() === 'light'
-  return <AsciiImage source={WORD} cell={12} minCols={70} scatter={140} scan={false} inverse={light} className="outro__word" label="AVAL" />
 }
 
 export default function App() {
@@ -310,7 +301,7 @@ export default function App() {
               </div>
             </div>
             <div className="finale__screen">
-              <FooterWord />
+              <FooterInfo />
               <FooterBadge />
             </div>
             <footer className="footer">
