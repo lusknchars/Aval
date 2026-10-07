@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useCanvasLoop } from '../lib/useCanvasLoop'
 import { BINARY, MONO, NOISE, pick, rampAt } from '../lib/glyphs'
 import { useReduced } from '../lib/useReduced'
+import { palette } from '../lib/theme'
 
 /*
  * Renders an image (or a word) as live ASCII.
@@ -29,8 +30,8 @@ type Cell = {
 export default function AsciiImage({
   source,
   cell = 10,
-  ink = '#f2f2f2',
-  accent = '#ffffff',
+  ink,
+  accent,
   scatter = 90,
   scan = true,
   minCols = 0,
@@ -40,6 +41,7 @@ export default function AsciiImage({
   source: AsciiSource
   /** Row height in CSS px; columns are 0.6 of that. */
   cell?: number
+  /** Defaults follow the theme's ink. */
   ink?: string
   accent?: string
   /** Pointer radius in CSS px. 0 disables the scatter. */
@@ -178,7 +180,7 @@ export default function AsciiImage({
           }
           if (glyph === ' ') continue
           ctx.globalAlpha = hot ? 1 : alpha
-          ctx.fillStyle = hot ? accent : ink
+          ctx.fillStyle = hot ? (accent ?? `rgb(${palette.ink})`) : (ink ?? `rgb(${palette.ink})`)
           ctx.fillText(glyph, x, y)
         }
       }

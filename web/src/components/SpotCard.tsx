@@ -13,8 +13,8 @@ export default function SpotCard({ children, className = '' }: { children: React
   const mx = useMotionValue(-200), my = useMotionValue(-200)
   const rx = useSpring(0, { stiffness: 200, damping: 20 })
   const ry = useSpring(0, { stiffness: 200, damping: 20 })
-  const glow = useMotionTemplate`radial-gradient(260px circle at ${mx}px ${my}px, rgba(255,255,255,.55), transparent 60%)`
-  const wash = useMotionTemplate`radial-gradient(420px circle at ${mx}px ${my}px, rgba(255,255,255,.06), transparent 65%)`
+  const glow = useMotionTemplate`radial-gradient(260px circle at ${mx}px ${my}px, rgba(var(--glow-rgb),.55), transparent 60%)`
+  const wash = useMotionTemplate`radial-gradient(420px circle at ${mx}px ${my}px, rgba(var(--glow-rgb),.06), transparent 65%)`
 
   return (
     <motion.div

@@ -4,6 +4,7 @@ import { go } from '../router'
 import { useEntries } from '../api/store'
 import { FIXTURES } from '../api/fixtures'
 import { DECISION_WORD } from './Decision'
+import { current, toggleTheme } from '../../lib/theme'
 
 /* ⌘K / Ctrl+K: jump to any page, recent verdict, or start a fixture run. */
 type Cmd = { id: string; label: string; hint: string; run: () => void }
@@ -32,6 +33,7 @@ export default function CommandPalette() {
     { id: 'p-e', label: 'Evaluate a transaction', hint: 'page', run: () => go('evaluate') },
     { id: 'p-a', label: 'Actions', hint: 'page', run: () => go('actions') },
     { id: 'p-r', label: 'Review queue', hint: 'page', run: () => go('review') },
+    { id: 't', label: `Switch to ${current() === 'dark' ? 'light' : 'dark'} theme`, hint: 'theme', run: () => toggleTheme(innerWidth / 2, innerHeight / 3) },
     ...FIXTURES.map((f) => ({ id: 'f-' + f.name, label: `Run ${f.title}`, hint: 'evaluate', run: () => go(`evaluate/${f.name}`) })),
     ...entries.slice(0, 12).map((e) => ({
       id: 'e-' + e.id,

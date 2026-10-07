@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#050505" />
+    <script>
+      /* Apply the saved or system theme before first paint, so nothing flashes. */
+      (function () {
+        var t = null
+        try { t = localStorage.getItem('aval.theme') } catch (e) {}
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+        document.documentElement.dataset.theme = t
+      })()
+    </script>
     <title>AVAL — EDR for autonomous agents</title>
     <link rel="icon" href="/logo-dark.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { MONO, NOISE, pick } from '../lib/glyphs'
 import { useReduced } from '../lib/useReduced'
+import { palette } from '../lib/theme'
 
 /*
  * Page-wide glyph trail: every ~14px of pointer travel drops a character that
@@ -47,8 +48,7 @@ export default function CursorTrail() {
         if (p.life <= 0) { ps.splice(i, 1); continue }
         p.x += p.vx * dt; p.y += p.vy * dt
         if (Math.random() < 0.08) p.ch = pick(NOISE)
-        const g = Math.round(120 + 135 * p.life)
-        ctx.fillStyle = `rgba(${g},${g},${g},${p.life})`
+        ctx.fillStyle = `rgba(${palette.ink},${(p.life * 0.9).toFixed(3)})`
         ctx.fillText(p.ch, p.x, p.y)
       }
     }

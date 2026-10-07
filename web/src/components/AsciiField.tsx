@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useCanvasLoop } from '../lib/useCanvasLoop'
 import { MONO, RAMP } from '../lib/glyphs'
 import { useReduced } from '../lib/useReduced'
+import { palette } from '../lib/theme'
 
 /*
  * Full-bleed glyph field. Three interfering sinusoids pick a ramp character per
@@ -69,7 +70,7 @@ export default function AsciiField({
       ctx.font = `${cell * 0.92}px ${MONO}`
       ctx.textBaseline = 'top'
       for (let k = 0; k < LEVELS; k++) {
-        ctx.fillStyle = `rgba(236,236,236,${(((k + 1) / LEVELS) * intensity).toFixed(3)})`
+        ctx.fillStyle = `rgba(${palette.ink},${(((k + 1) / LEVELS) * intensity).toFixed(3)})`
         for (const g of b[k]) ctx.fillText(g.c, g.x, g.y)
       }
     },

@@ -9,6 +9,8 @@ import Review from './pages/Review'
 import CommandPalette from './ui/CommandPalette'
 import Toasts from './ui/Toasts'
 import Scramble from '../components/Scramble'
+import Logo from '../components/Logo'
+import ThemeToggle from '../components/ThemeToggle'
 import { useReduced } from '../lib/useReduced'
 
 const NAV = [
@@ -37,8 +39,8 @@ export default function App() {
       <a href="#main" className="skip">Skip to content</a>
       <aside className="rail">
         <a className="rail__brand" href="/" aria-label="AVAL site">
-          <span className="rail__mark" aria-hidden="true" />
-          <span>AVAL<em>console</em></span>
+          <Logo className="rail__logo" label="AVAL" />
+          <em>console</em>
         </a>
         <nav className="rail__nav" aria-label="Console">
           {NAV.map((n) => {
@@ -55,6 +57,7 @@ export default function App() {
         <button type="button" className="rail__k" onClick={() => dispatchEvent(new Event('aval:palette'))}>
           <span>Search</span><kbd>⌘K</kbd>
         </button>
+        <ThemeToggle className="rail__theme" />
         <div className={`rail__engine engine engine--${engine}`}>
           <i aria-hidden="true" />
           <span>

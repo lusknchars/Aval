@@ -12,6 +12,8 @@ import FrameLoop from './components/FrameLoop'
 import Counter from './components/Counter'
 import LatencyBars from './components/LatencyBars'
 import CursorTrail from './components/CursorTrail'
+import Logo from './components/Logo'
+import ThemeToggle from './components/ThemeToggle'
 
 const LOGO = { kind: 'image', src: '/logo-dark.png' } as const
 const WORD = { kind: 'text', text: 'AVAL' } as const
@@ -61,8 +63,7 @@ export default function App() {
 
       <header className="nav">
         <a href="#top" className="nav__brand" aria-label="AVAL home">
-          <span className="nav__mark" aria-hidden="true" />
-          <span className="nav__word">AVAL</span>
+          <Logo className="nav__logo" label="AVAL" />
         </a>
         <nav className="nav__links" aria-label="Sections">
           <Scramble as="a" text="verdicts" className="nav__link" href='#feed' />
@@ -70,7 +71,11 @@ export default function App() {
           <Scramble as="a" text="speed" className="nav__link" href='#speed' />
           <Scramble as="a" text="receipts" className="nav__link" href='#receipt' />
         </nav>
-        <span className="nav__status"><i aria-hidden="true" /> armed · <Clock /></span>
+        <div className="nav__right">
+          <a href="/app/" className="nav__console">console →</a>
+          <ThemeToggle />
+          <span className="nav__status"><i aria-hidden="true" /> armed · <Clock /></span>
+        </div>
       </header>
 
       <main id="top">
