@@ -23,6 +23,7 @@ import { ATTACKS } from './components/attacks'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
 import ThemeToggle from './components/ThemeToggle'
+import { useTheme } from './lib/theme'
 
 const WORD = { kind: 'text', text: 'AVAL' } as const
 
@@ -104,6 +105,13 @@ function SectionPill() {
       </AnimatePresence>
     </div>
   )
+}
+
+/* The footer word sits on the always-dark scanner screen, so it draws light
+   in both themes (the page's bg color is the light one in the light theme). */
+function FooterWord() {
+  const light = useTheme() === 'light'
+  return <AsciiImage source={WORD} cell={12} minCols={70} scatter={140} scan={false} inverse={light} className="outro__word" label="AVAL" />
 }
 
 export default function App() {
@@ -303,7 +311,7 @@ export default function App() {
             </div>
             <div className="finale__screen">
               <FooterScanner />
-              <AsciiImage source={WORD} cell={12} minCols={70} scatter={140} scan={false} className="outro__word" label="AVAL" />
+              <FooterWord />
             </div>
             <footer className="footer">
               <span>AVAL · built for VETO · Superteam Brasil 2026</span>
