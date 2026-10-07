@@ -133,17 +133,24 @@ export default function App() {
       </header>
 
       <main id="top">
-        <FlowWaveHero>
+        <FlowWaveHero
+          over={
+            <div className="wave__over">
+              <p className="wave__slogan"><b>Autonomy for your agent.</b> <span>Oversight for your money.</span></p>
+              <p className="wave__trust">The trust infrastructure for the agent economy: AVAL checks every transaction before it's signed and proves every decision on-chain.</p>
+            </div>
+          }
+        >
           <div className="wave__copy">
             <p className="wave__tag"><span className="nav__status"><i /> armed</span><span>behavioral EDR · solana</span><Clock /></p>
             <div className="wave__main">
               <h1 className="wave__title">
-                <Scramble text="Autonomy for your agent." as="span" delay={300} />
-                <Scramble text="Oversight for your money." as="span" className="dim" delay={700} />
+                <Scramble text="Your agent signs." as="span" delay={300} />
+                <Scramble text="AVAL decides." as="span" className="dim" delay={700} />
               </h1>
               <p className="wave__sub">
-                The trust infrastructure for the agent economy: AVAL checks every
-                transaction before it's signed and proves every decision on-chain.
+                Every transaction an AI agent proposes is simulated locally and judged
+                on what it would actually do, before it ever reaches the chain.
               </p>
             </div>
             <div className="wave__cta">

@@ -6,11 +6,11 @@ const Impl = lazy(() => import('./FlowWaveImpl'))
 
 /*
  * Lookbook-style hero: the Flow Wave field fills the top of a pinned stage
- * and the copy sits in a band beneath it. The wrapper is taller than the
+ * and the copy sits in a band beneath it; `over` floats on the field itself. The wrapper is taller than the
  * screen, so scrolling through it drives the camera dive before the page
  * moves on.
  */
-export default function FlowWaveHero({ children }: { children: ReactNode }) {
+export default function FlowWaveHero({ children, over }: { children: ReactNode; over?: ReactNode }) {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] })
   return (
@@ -19,6 +19,7 @@ export default function FlowWaveHero({ children }: { children: ReactNode }) {
         <div className="wave__field">
           <Suspense fallback={null}><Impl progress={scrollYProgress} /></Suspense>
         </div>
+        {over}
         {children}
       </div>
     </section>

@@ -164,6 +164,20 @@ p { text-wrap: pretty; }
 .wave__stage { position: sticky; top: 0; height: 100svh; display: grid; grid-template-rows: minmax(0, 1fr) auto; background: var(--bg); overflow: hidden; }
 .wave__field { position: relative; background: #000; overflow: hidden; }
 .wave__gl { position: absolute; inset: 0; }
+/* Slogan floating on the field. Outside the field element, so the light
+   theme's invert filter leaves it alone; a soft scrim keeps it legible over
+   the brightest hills, and it lets the pointer through to the wave. */
+.wave__over { grid-row: 1; grid-column: 1; align-self: center; justify-self: center; position: relative; z-index: 2; pointer-events: none;
+  width: min(1000px, calc(100% - 2 * var(--gutter))); text-align: center; padding: 28px clamp(16px, 4vw, 48px); isolation: isolate; }
+/* Halo: the hills behind the words blur and dim, fading out at the edges. */
+.wave__over::before { content: ''; position: absolute; inset: -18% -12%; z-index: -1;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(var(--bg-rgb), .82), rgba(var(--bg-rgb), .55) 55%, rgba(var(--bg-rgb), 0) 100%);
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); }
+.wave__slogan { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(28px, min(3.6vw, 6vh), 60px); line-height: 1.04; letter-spacing: -.01em; color: var(--ink); text-wrap: balance; }
+.wave__slogan b, .wave__slogan span { display: block; font-weight: 700; }
+.wave__slogan span { color: var(--dim); }
+.wave__trust { margin: 16px auto 0; max-width: 64ch; font-size: clamp(12px, 1.05vw, 15px); line-height: 1.6; color: var(--ink); opacity: .8; text-wrap: balance; }
 /* Seam: the field dissolves into the copy band, fading to the page color
    and blurring progressively toward the bottom edge. Sits outside the field
    so the light theme's invert filter does not touch it. */
