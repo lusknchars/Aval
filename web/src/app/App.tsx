@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRoute } from './router'
 import { useEngine } from './api/engine'
@@ -13,7 +14,6 @@ import Agents from './pages/Agents'
 import Deploy from './pages/Deploy'
 import System from './pages/System'
 import Inspect from './pages/Inspect'
-import Monitoring from './pages/Monitoring'
 import { ChangeBar } from './config/ui'
 import { useConfig } from './config/store'
 import { diff } from './config/impact'
@@ -23,6 +23,18 @@ import Scramble from '../components/Scramble'
 import Logo from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
 import { useReduced } from '../lib/useReduced'
+
+// Monitoring pulls in recharts (~half the console's bundle), so it loads on first visit.
+const Monitoring = lazy(() => import('./pages/Monitoring'))
+
+function PageLoading({ label }: { label: string }) {
+  return (
+    <div className="page pageload" role="status" aria-live="polite">
+      <p className="kicker">loading {label}…</p>
+      <div className="pageload__grid" aria-hidden="true">{Array.from({ length: 7 }, (_, i) => <span key={i} />)}</div>
+    </div>
+  )
+}
 
 const NAV = [
   { group: 'monitor', items: [
@@ -61,7 +73,7 @@ export default function App() {
   else if (page === 'actions') view = <Actions />
   else if (page === 'review') view = <Review />
   else if (page === 'overview' && arg === 'inspect' && arg2) view = <Inspect id={arg2} />
-  else if (page === 'monitoring') view = <Monitoring />
+  else if (page === 'monitoring') view = <Suspense fallback={<PageLoading label="monitoring" />}><Monitoring /></Suspense>
   else if (page === 'policy') view = <Policy />
   else if (page === 'manifests') view = <Manifests />
   else if (page === 'lists') view = <Lists />
