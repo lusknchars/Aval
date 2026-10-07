@@ -18,6 +18,7 @@ import SlotTower from './components/SlotTower'
 import SmokeHeading from './components/SmokeHeading'
 import AttackReel from './components/AttackReel'
 import CurrentBand from './components/CurrentBand'
+import FooterScanner from './components/FooterScanner'
 import { ATTACKS } from './components/attacks'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
@@ -300,7 +301,10 @@ export default function App() {
                 <ScrambleButton label="Back to the top" href="#home" variant="ghost" />
               </div>
             </div>
-            <AsciiImage source={WORD} cell={12} minCols={70} scatter={140} scan={false} inverse className="outro__word" label="AVAL" />
+            <div className="finale__screen">
+              <FooterScanner />
+              <AsciiImage source={WORD} cell={12} minCols={70} scatter={140} scan={false} className="outro__word" label="AVAL" />
+            </div>
             <footer className="footer">
               <span>AVAL · built for VETO · Superteam Brasil 2026</span>
               <span className="footer__links"><a href="#feed">Verdicts</a><a href="#lifecycle">Lifecycle</a><a href="/app/">Console</a></span>

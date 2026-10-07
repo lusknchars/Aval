@@ -610,6 +610,13 @@ p { text-wrap: pretty; }
 .footer__links a:hover { color: var(--bg); }
 
 .finale > * { min-width: 0; }
+/* Inset screen in the page's own colors (inverted against the panel), with
+   the Scanner running behind the AVAL word. The word lets the pointer through
+   so the scanner's ripple follows the cursor. */
+.finale__screen { position: relative; isolation: isolate; overflow: hidden; border-radius: 14px; background: var(--bg); color: var(--ink); padding: clamp(28px, 5vw, 72px) clamp(16px, 3vw, 40px); }
+.finale__scan { position: absolute; inset: 0; z-index: -1; }
+:root[data-theme='light'] .finale__scan { filter: invert(1); }
+.finale__screen .outro__word { position: relative; pointer-events: none; }
 .finale .footer { flex-wrap: wrap; }
 
 /* smoke heading (receipts) */
