@@ -177,11 +177,11 @@ p { text-wrap: pretty; }
 .wave__field { grid-row: 1; grid-column: 1; }
 /* Light theme: the same field, inverted to dark points on a light ground. */
 :root[data-theme='light'] .wave__field { filter: invert(1) hue-rotate(180deg); }
-.wave__copy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 48px); align-items: end; padding: clamp(28px, 4.5vh, 56px) var(--gutter) clamp(24px, 4vh, 44px); }
+.wave__copy { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2.8fr) auto; gap: clamp(20px, 3vw, 48px); align-items: end; padding: clamp(28px, 4.5vh, 56px) var(--gutter) clamp(24px, 4vh, 44px); }
 .wave__tag { margin: 0; display: grid; gap: 6px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
 .wave__tag .nav__status { color: var(--ink); }
-.wave__title { margin: 0; font-size: clamp(38px, min(5.2vw, 8.5vh), 92px); line-height: .98; display: flex; flex-direction: column; }
-.wave__title > span { min-height: 1em; white-space: pre; }
+.wave__title { margin: 0; font-size: clamp(34px, min(4vw, 7vh), 80px); line-height: .98; display: flex; flex-direction: column; }
+.wave__title > span { min-height: 1em; }
 .wave__sub { margin: clamp(14px, 2.4vh, 26px) 0 0; max-width: 62ch; color: var(--dim); }
 .wave__cta { display: flex; flex-direction: column; align-items: stretch; gap: 10px; justify-self: end; }
 @media (max-width: 900px) {
