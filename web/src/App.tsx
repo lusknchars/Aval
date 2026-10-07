@@ -16,6 +16,8 @@ import { Rise, useCurrentSection } from './components/ScrollFx'
 import { RevealHeading, ScrollManifesto } from './components/ScrollManifesto'
 import SlotTower from './components/SlotTower'
 import SmokeHeading from './components/SmokeHeading'
+import AttackReel from './components/AttackReel'
+import { ATTACKS } from './components/attacks'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
 import ThemeToggle from './components/ThemeToggle'
@@ -59,7 +61,7 @@ function Clock() {
 
 const SECTIONS = [
   ['home', 'Home'], ['cases', 'Cases'], ['feed', 'Verdicts'], ['how', 'Pipeline'], ['lifecycle', 'Lifecycle'],
-  ['statement', 'Why'], ['speed', 'Speed'], ['receipt', 'Receipts'], ['finale', 'Console'],
+  ['statement', 'Why'], ['speed', 'Speed'], ['receipt', 'Receipts'], ['attacks', 'Attacks'], ['finale', 'Console'],
 ] as const
 const SECTION_IDS = SECTIONS.map(([id]) => id)
 
@@ -268,6 +270,22 @@ export default function App() {
               the transaction AVAL judged is the one that was signed.
             </p>
           </div>
+        </section>
+
+        <section id="attacks" className="section attacks">
+          <div className="attacks__head">
+            <div>
+              <Scramble as="p" text="06 / attacks" className="kicker" />
+              <RevealHeading text="Attacks that never get a signature." />
+            </div>
+            <p className="attacks__lede">
+              {ATTACKS.length} ways an agent’s wallet gets emptied, and the engine rule that stops each one.
+              Critical findings are <b className="hot">denied</b> on their own; a high finding is <b className="flagc">held</b> for a person,
+              and two of them deny.
+            </p>
+          </div>
+          <AttackReel />
+          <p className="attacks__hint">hover to scrub · click an attack to open it · ← → with the keyboard</p>
         </section>
 
         <section id="finale">

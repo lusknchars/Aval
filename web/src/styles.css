@@ -538,3 +538,14 @@ p { text-wrap: pretty; }
 .smoke-h { display: inline-block; margin: 0 0 24px; font-family: var(--display); }
 .smoke-h--static { font-size: clamp(34px, 5vw, 64px); font-weight: 700; letter-spacing: -0.015em; line-height: 1; }
 #receipt { overflow-x: clip; } /* the smoke canvas pads past the heading; keep it inside the section */
+
+/* ── attacks reel ──────────────────────────────── */
+.attacks__head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); gap: 32px; align-items: end; margin-bottom: 24px; }
+.attacks__head h2 { margin-bottom: 0; }
+.attacks__lede { color: var(--dim); max-width: 52ch; margin: 0; }
+.attacks__lede b { font-weight: 700; }
+.flagc { color: var(--flag); }
+.attacks__reel { height: 540px !important; color: var(--ink); }
+.attacks__reel--loading { height: 540px; }
+.attacks__hint { text-align: center; color: var(--mute); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin: 8px 0 0; }
+@media (max-width: 860px) { .attacks__head { grid-template-columns: 1fr; gap: 12px; } .attacks__reel, .attacks__reel--loading { height: 460px !important; } }
