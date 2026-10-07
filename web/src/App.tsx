@@ -4,6 +4,7 @@ import Scramble from './components/Scramble'
 import ScrambleButton from './components/ScrambleButton'
 import TxFeed from './components/TxFeed'
 import FlowWaveHero from './components/FlowWaveHero'
+import SloganMesh from './components/SloganMesh'
 import StackStrip from './components/StackStrip'
 import SpotCard from './components/SpotCard'
 import Donut from './components/Donut'
@@ -136,7 +137,7 @@ export default function App() {
         <FlowWaveHero
           over={
             <div className="wave__over">
-              <p className="wave__slogan"><b>Autonomy for your agent.</b> <span>Oversight for your money.</span></p>
+              <SloganMesh />
               <p className="wave__trust">The trust infrastructure for the agent economy: AVAL checks every transaction before it's signed and proves every decision on-chain.</p>
             </div>
           }
