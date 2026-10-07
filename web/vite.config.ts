@@ -16,7 +16,10 @@ const proxy = {
 
 // Bind to 127.0.0.1: plain "localhost" lands on IPv6 only, which some
 // browsers and extensions can't reach.
-export default defineConfig({
+// `vite build --mode public` builds the landing page only: the console (and
+// the private Veto snapshots it bundles) stays out of the public deploy, and
+// /app/ is served by the placeholder in public-only/.
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': resolve(import.meta.dirname, 'src') } },
   // The footer lanyard's deps load lazily; pre-bundle them at startup so the
@@ -26,7 +29,9 @@ export default defineConfig({
   preview: { host: '127.0.0.1', port: 4173, proxy },
   build: {
     rollupOptions: {
-      input: { site: resolve(import.meta.dirname, 'index.html'), console: resolve(import.meta.dirname, 'app/index.html') },
+      input: mode === 'public'
+        ? { site: resolve(import.meta.dirname, 'index.html') }
+        : { site: resolve(import.meta.dirname, 'index.html'), console: resolve(import.meta.dirname, 'app/index.html') },
     },
   },
-})
+}))
