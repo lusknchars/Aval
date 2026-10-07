@@ -13,6 +13,8 @@ import Counter from './components/Counter'
 import LatencyBars from './components/LatencyBars'
 import CursorTrail from './components/CursorTrail'
 import TxLifecycle from './components/TxLifecycle'
+import { BlobShowcase, Divider, Rise, WaveText, useCurrentSection } from './components/ScrollFx'
+import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
 import ThemeToggle from './components/ThemeToggle'
 
@@ -53,6 +55,52 @@ function Clock() {
   return <time>{now.toISOString().slice(11, 19)} UTC</time>
 }
 
+const SECTIONS = [
+  ['home', 'Home'], ['cases', 'Cases'], ['feed', 'Verdicts'], ['how', 'Pipeline'], ['lifecycle', 'Lifecycle'],
+  ['statement', 'Why'], ['speed', 'Speed'], ['receipt', 'Receipts'], ['finale', 'Console'],
+] as const
+const SECTION_IDS = SECTIONS.map(([id]) => id)
+
+/* The pill names the section in view; its + opens every section as a menu. */
+function SectionPill() {
+  const cur = useCurrentSection(SECTION_IDS)
+  const [open, setOpen] = useState(false)
+  const label = SECTIONS.find(([id]) => id === cur)?.[1] ?? 'Home'
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent | KeyboardEvent) => { if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as HTMLElement).closest('.pill')) setOpen(false) }
+    addEventListener('click', close); addEventListener('keydown', close)
+    return () => { removeEventListener('click', close); removeEventListener('keydown', close) }
+  }, [open])
+  return (
+    <div className="pill">
+      <button type="button" className="pill__btn" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen((o) => !o)}>
+        <span className="pill__dot" aria-hidden="true" />
+        <span className="pill__label">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span key={label} initial={{ y: 14, opacity: 0, filter: 'blur(4px)' }} animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ y: -14, opacity: 0, filter: 'blur(4px)' }} transition={{ type: 'spring', stiffness: 420, damping: 32 }}>{label}</motion.span>
+          </AnimatePresence>
+        </span>
+        <motion.span className="pill__plus" animate={{ rotate: open ? 45 : 0 }} aria-hidden="true">+</motion.span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.ul className="pill__menu" role="menu" initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ type: 'spring', stiffness: 520, damping: 36 }}>
+            {SECTIONS.map(([id, l], i) => (
+              <motion.li key={id} role="none" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0, transition: { delay: i * 0.025 } }}>
+                <a role="menuitem" href={`#${id}`} className={cur === id ? 'is-on' : ''} onClick={() => setOpen(false)}>
+                  <span>{String(i).padStart(2, '0')}</span>{l}
+                </a>
+              </motion.li>
+            ))}
+            <li role="none"><a role="menuitem" href="/app/" className="pill__console">Open console →</a></li>
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export default function App() {
   const { scrollYProgress } = useScroll()
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 30 })
@@ -63,7 +111,8 @@ export default function App() {
       <motion.div className="progress" style={{ scaleX: progress }} aria-hidden="true" />
 
       <header className="nav">
-        <a href="#top" className="nav__brand" aria-label="AVAL home">
+        <div className="nav__inner">
+        <a href="#home" className="nav__brand" aria-label="AVAL home">
           <Logo className="nav__logo" label="AVAL" />
         </a>
         <nav className="nav__links" aria-label="Sections">
@@ -74,14 +123,14 @@ export default function App() {
           <Scramble as="a" text="receipts" className="nav__link" href='#receipt' />
         </nav>
         <div className="nav__right">
-          <a href="/app/" className="nav__console">console →</a>
           <ThemeToggle />
-          <span className="nav__status"><i aria-hidden="true" /> armed · <Clock /></span>
+          <SectionPill />
+        </div>
         </div>
       </header>
 
       <main id="top">
-        <section className="hero">
+        <section className="hero" id="home">
           <AsciiField className="hero__field" />
           <div className="hero__vignette" aria-hidden="true" />
           <div className="hero__inner">
@@ -100,11 +149,16 @@ export default function App() {
               <ScrambleButton label="How it works" href="#how" variant="ghost" />
             </div>
           </div>
-          <div className="hud hud--bl" aria-hidden="true">move to scatter · click to pulse</div>
+          <div className="hud hud--bl" aria-hidden="true"><span className="nav__status"><i /> armed · <Clock /></span> · move to scatter · click to pulse</div>
           <div className="hud hud--br" aria-hidden="true">scroll <span className="bob">↓</span></div>
         </section>
 
         <Marquee items={['VETO', 'AVAL', 'behavioral EDR', '0.39 ms warm p50', 'local simulation', 'solana', 'agents with wallets']} />
+
+        <section id="cases" className="cases">
+          <Divider text="Selected verdicts" />
+          <BlobShowcase />
+        </section>
 
         <section id="feed" className="section split">
           <div className="split__copy">
@@ -150,6 +204,8 @@ export default function App() {
           </div>
         </section>
 
+        <Divider text="Where AVAL sits" dir={1} />
+
         <section id="lifecycle" className="section">
           <Scramble as="p" text="03 / where aval sits" className="kicker" />
           <div className="life__intro">
@@ -161,6 +217,10 @@ export default function App() {
             </p>
           </div>
           <TxLifecycle />
+        </section>
+
+        <section id="statement" className="statement">
+          <WaveText text="Agents act in milliseconds. AVAL decides in less, and only then does a key sign." />
         </section>
 
         <section id="speed" className="section invert">
@@ -203,18 +263,27 @@ export default function App() {
           </div>
         </section>
 
-        <section className="outro">
-          <AsciiImage source={WORD} cell={12} minCols={70} scatter={140} scan={false} className="outro__word" label="AVAL" />
-          <div className="outro__row">
-            <ScrambleButton label="Back to the top" href="#top" />
-          </div>
+        <section id="finale">
+          <Rise className="finale">
+            <div className="finale__top">
+              <div>
+                <p className="kicker">the console</p>
+                <h2 className="finale__h">Run it on your own agents.</h2>
+              </div>
+              <div className="finale__cta">
+                <ScrambleButton label="Open the console" href="/app/" />
+                <ScrambleButton label="Back to the top" href="#home" variant="ghost" />
+              </div>
+            </div>
+            <AsciiImage source={WORD} cell={12} minCols={70} scatter={140} scan={false} inverse className="outro__word" label="AVAL" />
+            <footer className="footer">
+              <span>AVAL · built for VETO · Superteam Brasil 2026</span>
+              <span className="footer__links"><a href="#feed">Verdicts</a><a href="#lifecycle">Lifecycle</a><a href="/app/">Console</a></span>
+              <span>EOF</span>
+            </footer>
+          </Rise>
         </section>
       </main>
-
-      <footer className="footer">
-        <span>AVAL · built for VETO · Superteam Brasil 2026</span>
-        <span className="dim">EOF</span>
-      </footer>
     </>
   )
 }

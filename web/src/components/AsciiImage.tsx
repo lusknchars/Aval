@@ -35,6 +35,7 @@ export default function AsciiImage({
   scatter = 90,
   scan = true,
   minCols = 0,
+  inverse = false,
   className,
   label,
 }: {
@@ -49,6 +50,8 @@ export default function AsciiImage({
   scan?: boolean
   /** Shrink the cell on narrow boxes so the art keeps at least this many columns. */
   minCols?: number
+  /** Draw in the background color, for inverted (light-on-dark swapped) sections. */
+  inverse?: boolean
   className?: string
   label: string
 }) {
@@ -180,7 +183,8 @@ export default function AsciiImage({
           }
           if (glyph === ' ') continue
           ctx.globalAlpha = hot ? 1 : alpha
-          ctx.fillStyle = hot ? (accent ?? `rgb(${palette.ink})`) : (ink ?? `rgb(${palette.ink})`)
+          const base = `rgb(${inverse ? palette.bg : palette.ink})`
+          ctx.fillStyle = hot ? (accent ?? base) : (ink ?? base)
           ctx.fillText(glyph, x, y)
         }
       }

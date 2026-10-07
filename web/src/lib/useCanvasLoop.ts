@@ -34,9 +34,10 @@ export function useCanvasLoop(
     const start = last
 
     const resize = () => {
-      const r = canvas.getBoundingClientRect()
+      // Layout size, not getBoundingClientRect: a parent mid scale/translate
+      // animation would otherwise freeze the canvas at the transformed size.
       const dpr = Math.min(devicePixelRatio || 1, opts.maxDpr ?? 2)
-      w = r.width; h = r.height
+      w = canvas.offsetWidth; h = canvas.offsetHeight
       canvas.width = Math.max(1, Math.round(w * dpr))
       canvas.height = Math.max(1, Math.round(h * dpr))
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
