@@ -31,6 +31,7 @@ export default function CommandPalette() {
   const all: Cmd[] = useMemo(() => [
     { id: 'p-o', label: 'Overview', hint: 'page', run: () => go('overview') },
     { id: 'p-e', label: 'Evaluate a transaction', hint: 'page', run: () => go('evaluate') },
+    { id: 'p-mo', label: 'Monitoring: activity and charts', hint: 'monitor', run: () => go('monitoring') },
     { id: 'p-a', label: 'Actions', hint: 'page', run: () => go('actions') },
     { id: 'p-r', label: 'Review queue', hint: 'page', run: () => go('review') },
     { id: 'p-ag', label: 'Agents', hint: 'operate', run: () => go('agents') },

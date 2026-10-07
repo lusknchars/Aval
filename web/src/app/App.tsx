@@ -13,6 +13,7 @@ import Agents from './pages/Agents'
 import Deploy from './pages/Deploy'
 import System from './pages/System'
 import Inspect from './pages/Inspect'
+import Monitoring from './pages/Monitoring'
 import { ChangeBar } from './config/ui'
 import { useConfig } from './config/store'
 import { diff } from './config/impact'
@@ -26,6 +27,7 @@ import { useReduced } from '../lib/useReduced'
 const NAV = [
   { group: 'monitor', items: [
     { k: 'overview', label: 'Overview', g: '◇' },
+    { k: 'monitoring', label: 'Monitoring', g: '∿' },
     { k: 'actions', label: 'Actions', g: '≡' },
     { k: 'review', label: 'Review', g: '◎' },
   ] },
@@ -59,6 +61,7 @@ export default function App() {
   else if (page === 'actions') view = <Actions />
   else if (page === 'review') view = <Review />
   else if (page === 'overview' && arg === 'inspect' && arg2) view = <Inspect id={arg2} />
+  else if (page === 'monitoring') view = <Monitoring />
   else if (page === 'policy') view = <Policy />
   else if (page === 'manifests') view = <Manifests />
   else if (page === 'lists') view = <Lists />
