@@ -4,7 +4,7 @@ import { drawBack, drawFront, drawStrap } from './badgeArt'
 
 type Art = { front: string; back: string; strap: string }
 
-/* The React Bits lanyard, wearing an AVAL agent pass. */
+/* The React Bits lanyard, wearing an AVAL transaction security card. */
 export default function FooterBadgeImpl() {
   const [art, setArt] = useState<Art | null>(null)
   useEffect(() => {
@@ -13,5 +13,5 @@ export default function FooterBadgeImpl() {
     return () => { live = false }
   }, [])
   if (!art) return null
-  return <Lanyard position={[0, 0, 16]} gravity={[0, -40, 0]} frontImage={art.front} backImage={art.back} lanyardImage={art.strap} imageFit="cover" />
+  return <Lanyard position={[0, 0, 11]} gravity={[0, -40, 0]} frontImage={art.front} backImage={art.back} lanyardImage={art.strap} imageFit="cover" />
 }

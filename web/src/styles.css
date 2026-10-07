@@ -610,10 +610,11 @@ p { text-wrap: pretty; }
 .footer__links a:hover { color: var(--bg); }
 
 .finale > * { min-width: 0; }
-/* Inset screen holding the AVAL word, always dark (in the dark theme it reads
-   as inverted against the light panel). */
+/* Inset screen: partners, the promise and the team on the left, the AVAL
+   security card on its lanyard on the right. Always dark (in the dark theme
+   it reads as inverted against the light panel). */
 .finale__screen { position: relative; isolation: isolate; overflow: hidden; border-radius: 14px; background: #0e0d12; color: #ececec; border: 1px solid rgba(255, 255, 255, .08); padding: clamp(28px, 5vw, 72px) clamp(16px, 3vw, 40px); }
-.finale__screen { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: center; gap: 0 24px; padding-block: 0; }
+.finale__screen { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: center; gap: 0 24px; padding-block: 0; }
 .finfo { display: grid; gap: clamp(28px, 4vw, 44px); padding: clamp(28px, 4vw, 56px) clamp(8px, 2vw, 24px); }
 .finfo__label { margin: 0 0 10px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .45); }
 .finfo__partners { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 16px 28px; }
@@ -621,17 +622,18 @@ p { text-wrap: pretty; }
 .finfo__st { width: clamp(180px, 22vw, 280px); height: auto; display: block; }
 .finfo__sol { display: inline-flex; align-items: center; gap: 12px; font-family: var(--display); font-weight: 600; font-size: clamp(18px, 1.8vw, 24px); }
 .finfo__sol svg { width: 26px; height: 26px; }
-.finfo__stats { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid rgba(255, 255, 255, .1); }
-.finfo__stats > div { padding: 20px 16px 20px 0; }
-.finfo__stats > div + div { padding-left: 20px; border-left: 1px solid rgba(255, 255, 255, .1); }
-.finfo__stats dt { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 3.4vw, 48px); line-height: 1; }
-.finfo__stats dd { margin: 8px 0 0; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: rgba(255, 255, 255, .5); }
+.finfo__slogan { border-block: 1px solid rgba(255, 255, 255, .1); padding: 24px 0; }
+.finfo__line { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(26px, 2.9vw, 42px); line-height: 1.05; letter-spacing: -.01em; color: #fff; }
+.finfo__line--dim { color: rgba(255, 255, 255, .5); }
+.finfo__live { margin: 18px 0 0; display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255, 255, 255, .5); }
+.finfo__live i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #3ddc84; box-shadow: 0 0 0 0 rgba(61, 220, 132, .6); animation: finfo-ping 1.8s ease-out infinite; }
+@keyframes finfo-ping { to { box-shadow: 0 0 0 10px rgba(61, 220, 132, 0); } }
+@media (prefers-reduced-motion: reduce) { .finfo__live i { animation: none; } }
 .finfo__team ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .finfo__team a { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; color: #ececec; text-decoration: none; font-size: 13px; transition: border-color .25s, background .25s; }
 .finfo__team a:hover, .finfo__team a:focus-visible { border-color: #ececec; background: rgba(255, 255, 255, .06); }
 .finfo__team img { width: 30px; height: 30px; border-radius: 50%; background: #222; }
 .finfo__gh { width: 14px; height: 14px; opacity: .55; }
-@media (max-width: 560px) { .finfo__stats { grid-template-columns: 1fr; } .finfo__stats > div + div { padding-left: 0; border-left: 0; border-top: 1px solid rgba(255, 255, 255, .1); } }
 .badge { position: relative; height: clamp(440px, 46vw, 600px); margin-right: calc(-1 * clamp(16px, 3vw, 40px)); }
 .badge .lanyard-wrapper { position: absolute; inset: 0; height: 100%; }
 @media (max-width: 760px) { .finale__screen { grid-template-columns: 1fr; } .badge { height: 460px; margin: 0 calc(-1 * clamp(16px, 3vw, 40px)); } }

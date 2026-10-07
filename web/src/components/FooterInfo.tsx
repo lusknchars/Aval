@@ -2,15 +2,9 @@ import { SiGithub, SiSolana } from 'react-icons/si'
 
 /*
  * The left side of the footer screen: who it is built for, what it runs on,
- * the numbers from the speed section, and the team. Avatars come straight
+ * the promise in one line, and the team. Avatars come straight
  * from each GitHub profile.
  */
-const STATS = [
-  { n: '0.39 ms', l: 'verdict, warm p50' },
-  { n: '574×', l: 'faster than RPC simulate' },
-  { n: '10', l: 'attack patterns stopped' },
-]
-
 const TEAM = ['lusknchars', 'ericferrazp', 'Luispessoa18']
 
 export default function FooterInfo() {
@@ -23,11 +17,11 @@ export default function FooterInfo() {
         <span className="finfo__sol"><SiSolana aria-hidden="true" /> Solana mainnet</span>
       </div>
 
-      <dl className="finfo__stats">
-        {STATS.map((s) => (
-          <div key={s.l}><dt>{s.n}</dt><dd>{s.l}</dd></div>
-        ))}
-      </dl>
+      <div className="finfo__slogan">
+        <p className="finfo__line">Every transaction judged before it lands.</p>
+        <p className="finfo__line finfo__line--dim">Every agent watched, 24/7.</p>
+        <p className="finfo__live"><i aria-hidden="true" /> monitoring live · simulated before signing · vetoed in under a millisecond</p>
+      </div>
 
       <div className="finfo__team">
         <p className="finfo__label">The team</p>

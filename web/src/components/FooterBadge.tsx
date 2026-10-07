@@ -12,12 +12,12 @@ class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
   render() { return this.state.failed ? null : this.props.children }
 }
 
-/* A draggable AVAL agent pass hanging on a lanyard, inside the footer screen. */
+/* A draggable AVAL security card hanging on a lanyard, inside the footer screen. */
 export default function FooterBadge() {
   const ref = useRef<HTMLDivElement>(null)
   const near = useInView(ref, { once: true, margin: '100% 0px 100% 0px' })
   return (
-    <div ref={ref} className="badge" aria-label="AVAL agent pass on a lanyard; drag it to swing it">
+    <div ref={ref} className="badge" aria-label="AVAL transaction security card on a lanyard; drag it to swing it">
       {near && <Quiet><Suspense fallback={null}><Impl /></Suspense></Quiet>}
     </div>
   )
