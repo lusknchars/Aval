@@ -10,6 +10,7 @@
     "local": "vite build && vite preview --host 127.0.0.1 --port 4173 --strictPort --open"
   },
   "dependencies": {
+    "@paper-design/shaders-react": "^0.0.81",
     "clsx": "^2.1.1",
     "motion": "^14.0.0",
     "react": "^19.3.0",

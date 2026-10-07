@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion, useMotionValueEvent, useScroll, useSpring, useTransform } from 'motion/react'
 import { useReduced } from '../lib/useReduced'
-import AsciiField from './AsciiField'
 
 /* Scroll-driven transitions between landing sections. All of them settle into
    a readable resting state, and reduced motion gets that state directly. */
@@ -60,61 +59,6 @@ export function WaveText({ text, className = '' }: { text: string; className?: s
       ))}
     </p>
   )
-}
-
-/* ── blob showcase: three transactions, alternating sides ───────────── */
-const CASES = [
-  { title: 'Unlimited', italic: 'approve', verdict: 'DENY', rule: 'provenance.unexplained', art: `agent  treasury-07
-tool   approve
-amount u64::MAX  (unlimited)
-to     Bfwi…J3Td
-origin unexplained  ✕`, note: 'A delegate the user never mentioned would have controlled every token in the account.' },
-  { title: 'Drain to a', italic: 'fresh wallet', verdict: 'DENY', rule: 'untrusted source', art: `agent  trader-3
-tool   transfer
-amount 98% of balance
-to     9Dwk…F5HL
-origin email · billing@…  ✕`, note: 'The address arrived in an email the agent read. Provenance traced it there and the gate refused.' },
-  { title: 'Honest', italic: 'swap', verdict: 'ALLOW', rule: 'within policy', art: `agent  treasury-07
-tool   swap
-amount 420 USDC → SOL
-to     own accounts
-origin user goal  ✓`, note: 'Everything matched the manifest and the user’s goal, so the signature went through in under a millisecond.' },
-]
-
-const BLOBS = [
-  ['48% 52% 44% 56% / 52% 46% 54% 48%', '56% 44% 58% 42% / 44% 58% 42% 56%'],
-  ['60% 40% 52% 48% / 46% 54% 46% 54%', '44% 56% 40% 60% / 56% 42% 58% 44%'],
-  ['52% 48% 60% 40% / 58% 44% 56% 42%', '46% 54% 48% 52% / 48% 56% 44% 52%'],
-]
-
-function BlobCase({ c, i }: { c: (typeof CASES)[number]; i: number }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const reduced = useReduced()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
-  const y = useTransform(scrollYProgress, [0, 1], [90, -90])
-  const scale = useTransform(scrollYProgress, [0, 0.45, 1], [0.82, 1, 0.94])
-  const radius = useTransform(scrollYProgress, [0, 1], BLOBS[i % BLOBS.length])
-  const ty = useTransform(scrollYProgress, [0, 1], [40, -40])
-  const right = i % 2 === 1
-  return (
-    <div ref={ref} className={`bcase ${right ? 'bcase--right' : ''}`}>
-      <motion.div className={`bcase__blob ${c.verdict === 'DENY' ? 'is-deny' : 'is-allow'}`} style={reduced ? undefined : { y, scale, borderRadius: radius }}>
-        <AsciiField className="bcase__field" cell={12} intensity={0.55} />
-        <pre className="bcase__art">{c.art}</pre>
-        <span className={`bcase__stamp ${c.verdict === 'DENY' ? 'is-deny' : 'is-allow'}`}>{c.verdict}</span>
-      </motion.div>
-      <motion.div className="bcase__copy" style={reduced ? undefined : { y: ty }}>
-        <span className="bcase__n">{String(i + 1).padStart(2, '0')}</span>
-        <h3 className="bcase__title">{c.title}<em>{c.italic}</em></h3>
-        <p className="bcase__rule">{c.verdict === 'DENY' ? 'vetoed · ' : 'allowed · '}{c.rule}</p>
-        <p className="bcase__note">{c.note}</p>
-      </motion.div>
-    </div>
-  )
-}
-
-export function BlobShowcase() {
-  return <div className="bshow">{CASES.map((c, i) => <BlobCase key={c.italic} c={c} i={i} />)}</div>
 }
 
 /** Section the header pill should name, by the ids passed in. */

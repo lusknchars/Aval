@@ -13,7 +13,8 @@ import Counter from './components/Counter'
 import LatencyBars from './components/LatencyBars'
 import CursorTrail from './components/CursorTrail'
 import TxLifecycle from './components/TxLifecycle'
-import { BlobShowcase, Divider, Rise, WaveText, useCurrentSection } from './components/ScrollFx'
+import { Divider, Rise, WaveText, useCurrentSection } from './components/ScrollFx'
+import SlotTower from './components/SlotTower'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
 import ThemeToggle from './components/ThemeToggle'
@@ -157,7 +158,7 @@ export default function App() {
 
         <section id="cases" className="cases">
           <Divider text="Selected verdicts" />
-          <BlobShowcase />
+          <SlotTower />
         </section>
 
         <section id="feed" className="section split">
