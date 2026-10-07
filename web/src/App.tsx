@@ -12,6 +12,7 @@ import FrameLoop from './components/FrameLoop'
 import Counter from './components/Counter'
 import LatencyBars from './components/LatencyBars'
 import CursorTrail from './components/CursorTrail'
+import TxLifecycle from './components/TxLifecycle'
 import Logo from './components/Logo'
 import ThemeToggle from './components/ThemeToggle'
 
@@ -68,6 +69,7 @@ export default function App() {
         <nav className="nav__links" aria-label="Sections">
           <Scramble as="a" text="verdicts" className="nav__link" href='#feed' />
           <Scramble as="a" text="pipeline" className="nav__link" href='#how' />
+          <Scramble as="a" text="lifecycle" className="nav__link" href='#lifecycle' />
           <Scramble as="a" text="speed" className="nav__link" href='#speed' />
           <Scramble as="a" text="receipts" className="nav__link" href='#receipt' />
         </nav>
@@ -148,8 +150,21 @@ export default function App() {
           </div>
         </section>
 
+        <section id="lifecycle" className="section">
+          <Scramble as="p" text="03 / where aval sits" className="kicker" />
+          <div className="life__intro">
+            <h2>Before the signature, not after the block.</h2>
+            <p>
+              A Solana transaction is irreversible from the moment it is signed and sent: it is forwarded to the
+              leader, executed, shredded across the network and voted into the chain in well under a second.
+              AVAL is the one step that happens before any of that.
+            </p>
+          </div>
+          <TxLifecycle />
+        </section>
+
         <section id="speed" className="section invert">
-          <Scramble as="p" text="03 / speed" className="kicker" />
+          <Scramble as="p" text="04 / speed" className="kicker" />
           <div className="stats">
             <div className="stat">
               <Counter to={0.39} decimals={2} suffix="ms" className="stat__n" />
@@ -178,7 +193,7 @@ export default function App() {
             </pre>
           </SpotCard>
           <div className="split__copy">
-            <Scramble as="p" text="04 / receipts" className="kicker" />
+            <Scramble as="p" text="05 / receipts" className="kicker" />
             <h2>Every verdict shows its work.</h2>
             <p>
               Each decision carries the simulated slot, the balance deltas and a digest
