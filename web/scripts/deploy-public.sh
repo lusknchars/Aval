@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Public deploy: landing page only (no console, no private Veto snapshots).
-#   scripts/deploy-public.sh          → production deploy to Vercel (project "aval")
+#   scripts/deploy-public.sh          → production deploy to Vercel (project "aval", aval-labs.vercel.app)
 #   scripts/deploy-public.sh --build  → build dist-public/ only
 set -euo pipefail
 cd "$(dirname "$0")/.."
