@@ -11,7 +11,8 @@ export default function CurrentBandImpl({ centerY }: { centerY: number }) {
     <ConcentricTides
       className="band__current"
       backgroundColor={light ? '#f2f2ef' : '#050505'}
-      colors={light ? ['#0d0d0c', '#3a3a38'] : ['#e3fff3', '#eeeded']}
+      // Same palette as the manifesto ribbons below, so the two read as one.
+      colors={light ? ['#141414', '#8c8c86'] : ['#4a4a55', '#eeeef2']}
       lineCount={24}
       speed={0.6}
       quality={0.75}
