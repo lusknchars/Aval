@@ -556,6 +556,14 @@ p { text-wrap: pretty; }
 .manifesto { position: relative; }
 .manifesto__pin { position: sticky; top: 0; height: 100svh; overflow: hidden; isolation: isolate; }
 .manifesto__bg { position: absolute; inset: 0; z-index: -1; }
+/* Seam at the top: the ribbons rise out of the page instead of starting on a
+   hard line, fading from the page color and unblurring as they come down. */
+.manifesto__bg::after {
+  content: ''; position: absolute; inset: 0 0 auto; height: clamp(120px, 22vh, 220px); pointer-events: none;
+  background: linear-gradient(to top, rgba(var(--bg-rgb), 0), rgba(var(--bg-rgb), .55) 55%, var(--bg));
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  -webkit-mask-image: linear-gradient(to top, transparent, #000 70%); mask-image: linear-gradient(to top, transparent, #000 70%);
+}
 .manifesto__ribbons { position: absolute !important; inset: 0; min-height: 0 !important; }
 /* Keeps the letters readable over the brightest ribbons. */
 .manifesto__veil { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 60% 55% at 55% 50%, rgba(var(--bg-rgb), .72), rgba(var(--bg-rgb), .2) 70%, transparent); }
