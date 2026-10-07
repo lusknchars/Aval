@@ -26,7 +26,8 @@ export default function Counter({
   const [txt, setTxt] = useState(reduced ? final : final.replace(/\d/g, '0'))
 
   useEffect(() => {
-    if (!inView || reduced) return
+    if (reduced) return setTxt(final)
+    if (!inView) return
     const c = animate(0, 1, {
       duration,
       ease: [0.16, 1, 0.3, 1],
@@ -44,7 +45,7 @@ export default function Counter({
       onComplete: () => setTxt(final),
     })
     return () => c.stop()
-  }, [inView, reduced])
+  }, [inView, reduced, final])
 
   return (
     <span ref={ref} className={className} aria-label={final + suffix}>

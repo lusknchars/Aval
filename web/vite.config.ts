@@ -1,10 +1,23 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'node:path'
 
-// Bind dev to 127.0.0.1 too: plain "localhost" lands on IPv6 only, which some
+// The console calls the Veto demo server through /veto, so the browser never
+// needs CORS and the engine's RPC config stays on the server side.
+const VETO = process.env.VETO_URL ?? 'http://127.0.0.1:5173'
+const proxy = {
+  '/veto': { target: VETO, changeOrigin: true, rewrite: (p: string) => p.replace(/^\/veto/, '') },
+}
+
+// Bind to 127.0.0.1: plain "localhost" lands on IPv6 only, which some
 // browsers and extensions can't reach.
 export default defineConfig({
   plugins: [react()],
-  server: { host: '127.0.0.1', port: 5191 },
-  preview: { host: '127.0.0.1', port: 4173 },
+  server: { host: '127.0.0.1', port: 5191, proxy },
+  preview: { host: '127.0.0.1', port: 4173, proxy },
+  build: {
+    rollupOptions: {
+      input: { site: resolve(import.meta.dirname, 'index.html'), console: resolve(import.meta.dirname, 'app/index.html') },
+    },
+  },
 })
