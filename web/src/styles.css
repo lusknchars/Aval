@@ -164,6 +164,17 @@ p { text-wrap: pretty; }
 .wave__stage { position: sticky; top: 0; height: 100svh; display: grid; grid-template-rows: minmax(0, 1fr) auto; background: var(--bg); overflow: hidden; }
 .wave__field { position: relative; background: #000; overflow: hidden; }
 .wave__gl { position: absolute; inset: 0; }
+/* Seam: the field dissolves into the copy band, fading to the page color
+   and blurring progressively toward the bottom edge. Sits outside the field
+   so the light theme's invert filter does not touch it. */
+.wave__stage::after {
+  content: ''; grid-row: 1; grid-column: 1; align-self: end; position: relative; z-index: 1;
+  height: clamp(120px, 22vh, 220px); pointer-events: none;
+  background: linear-gradient(to bottom, rgba(var(--bg-rgb), 0), rgba(var(--bg-rgb), .55) 55%, var(--bg));
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 70%); mask-image: linear-gradient(to bottom, transparent, #000 70%);
+}
+.wave__field { grid-row: 1; grid-column: 1; }
 /* Light theme: the same field, inverted to dark points on a light ground. */
 :root[data-theme='light'] .wave__field { filter: invert(1) hue-rotate(180deg); }
 .wave__copy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 48px); align-items: end; padding: clamp(28px, 4.5vh, 56px) var(--gutter) clamp(24px, 4vh, 44px); }
