@@ -213,17 +213,6 @@ p { text-wrap: pretty; }
 .sbtn__corner--br { bottom: 4px; right: 4px; border-left: 0; border-top: 0; transform: translate(-4px, -4px); }
 .sbtn:hover .sbtn__corner, .sbtn:focus-visible .sbtn__corner { opacity: 1; transform: none; }
 
-/* ── marquee ───────────────────────────────────── */
-.marq { border-block: 1px solid var(--line); overflow: hidden; padding: 18px 0; background: var(--bg-2); }
-.marq__track { display: flex; width: max-content; will-change: transform; }
-.marq__item {
-  display: inline-flex; align-items: center; gap: 28px; padding-right: 28px;
-  font-family: var(--display); font-weight: 700;
-  font-size: clamp(22px, 3vw, 38px); text-transform: uppercase; white-space: nowrap;
-}
-.marq__item:nth-child(even) { color: transparent; -webkit-text-stroke: 1px var(--ink); }
-.marq__item b { font-family: var(--ascii); font-weight: 400; font-size: .6em; color: var(--dim); -webkit-text-stroke: 0; }
-
 /* ── sections ──────────────────────────────────── */
 .section { padding: clamp(80px, 12vw, 160px) var(--gutter); max-width: 1320px; margin: 0 auto; }
 .kicker { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin: 0 0 18px; }

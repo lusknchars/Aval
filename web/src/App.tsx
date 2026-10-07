@@ -4,7 +4,6 @@ import AsciiField from './components/AsciiField'
 import AsciiImage from './components/AsciiImage'
 import Scramble from './components/Scramble'
 import ScrambleButton from './components/ScrambleButton'
-import Marquee from './components/Marquee'
 import TxFeed from './components/TxFeed'
 import StackStrip from './components/StackStrip'
 import SpotCard from './components/SpotCard'
@@ -157,8 +156,6 @@ export default function App() {
           <div className="hud hud--bl" aria-hidden="true"><span className="nav__status"><i /> armed · <Clock /></span> · move to scatter · click to pulse</div>
           <div className="hud hud--br" aria-hidden="true">scroll <span className="bob">↓</span></div>
         </section>
-
-        <Marquee items={['VETO', 'AVAL', 'behavioral EDR', '0.39 ms warm p50', 'local simulation', 'solana', 'agents with wallets']} />
 
         <section id="cases" className="cases">
           <SlotTower />
