@@ -158,6 +158,31 @@ p { text-wrap: pretty; }
 @media (max-width: 860px) { .nav__links { display: none; } .nav__inner { grid-template-columns: 1fr auto; height: 60px; } .nav__logo { height: 34px; } }
 @media (max-width: 480px) { .nav__status time { display: none; } }
 
+/* ── flow wave hero (lookbook layout) ── */
+/* Taller than the screen: the stage pins while the scroll drives the dive. */
+.wave { position: relative; height: 210vh; }
+.wave__stage { position: sticky; top: 0; height: 100svh; display: grid; grid-template-rows: minmax(0, 1fr) auto; background: var(--bg); overflow: hidden; }
+.wave__field { position: relative; background: #000; overflow: hidden; }
+.wave__gl { position: absolute; inset: 0; }
+/* Light theme: the same field, inverted to dark points on a light ground. */
+:root[data-theme='light'] .wave__field { filter: invert(1) hue-rotate(180deg); }
+.wave__copy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.2fr) minmax(0, 1fr); gap: clamp(20px, 3vw, 48px); align-items: end; padding: clamp(28px, 4.5vh, 56px) var(--gutter) clamp(24px, 4vh, 44px); }
+.wave__tag { margin: 0; display: grid; gap: 6px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.wave__tag .nav__status { color: var(--ink); }
+.wave__title { margin: 0; font-size: clamp(38px, min(5.2vw, 8.5vh), 92px); line-height: .98; display: flex; flex-direction: column; }
+.wave__title > span { min-height: 1em; white-space: pre; }
+.wave__sub { margin: clamp(14px, 2.4vh, 26px) 0 0; max-width: 62ch; color: var(--dim); }
+.wave__cta { display: flex; flex-direction: column; align-items: stretch; gap: 10px; justify-self: end; }
+@media (max-width: 900px) {
+  .wave { height: 180vh; }
+  .wave__stage { grid-template-rows: minmax(0, 1fr) auto; }
+  .wave__copy { grid-template-columns: 1fr; gap: 18px; }
+  .wave__tag { order: -1; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .wave__tag > * { white-space: nowrap; }
+  .wave__title > span { white-space: normal; }
+  .wave__cta { flex-direction: row; flex-wrap: wrap; justify-self: start; }
+}
+
 /* ── hero ──────────────────────────────────────── */
 .hero {
   position: relative; min-height: 100svh;

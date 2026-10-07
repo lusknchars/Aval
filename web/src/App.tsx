@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { motion, useScroll, useSpring } from 'motion/react'
-import AsciiField from './components/AsciiField'
 import AsciiImage from './components/AsciiImage'
 import Scramble from './components/Scramble'
 import ScrambleButton from './components/ScrambleButton'
 import TxFeed from './components/TxFeed'
+import FlowWaveHero from './components/FlowWaveHero'
 import StackStrip from './components/StackStrip'
 import SpotCard from './components/SpotCard'
 import Donut from './components/Donut'
@@ -23,7 +23,6 @@ import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
 import ThemeToggle from './components/ThemeToggle'
 
-const LOGO = { kind: 'image', src: '/logo-dark.png' } as const
 const WORD = { kind: 'text', text: 'AVAL' } as const
 
 const INTERCEPT = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
@@ -134,28 +133,25 @@ export default function App() {
       </header>
 
       <main id="top">
-        <section className="hero" id="home">
-          <AsciiField className="hero__field" />
-          <div className="hero__vignette" aria-hidden="true" />
-          <div className="hero__inner">
-            <Scramble text="[ behavioral EDR · autonomous agents · solana ]" className="eyebrow" hover={false} />
-            <AsciiImage source={LOGO} cell={9} minCols={110} className="hero__logo" label="AVAL logo: a figure with binary glasses beside the word AVAL" />
-            <h1 className="hero__title">
-              <Scramble text="Your agent signs." as="span" delay={500} />
-              <Scramble text="AVAL decides." as="span" className="dim" delay={900} />
-            </h1>
-            <p className="hero__sub">
-              Every transaction an AI agent proposes is simulated locally and judged
-              on what it would actually do, before it ever reaches the chain.
-            </p>
-            <div className="hero__cta">
+        <FlowWaveHero>
+          <div className="wave__copy">
+            <p className="wave__tag"><span className="nav__status"><i /> armed</span><span>behavioral EDR · solana</span><Clock /></p>
+            <div className="wave__main">
+              <h1 className="wave__title">
+                <Scramble text="Your agent signs." as="span" delay={300} />
+                <Scramble text="AVAL decides." as="span" className="dim" delay={700} />
+              </h1>
+              <p className="wave__sub">
+                Every transaction an AI agent proposes is simulated locally and judged
+                on what it would actually do, before it ever reaches the chain.
+              </p>
+            </div>
+            <div className="wave__cta">
               <ScrambleButton label="Watch it veto" href="#feed" />
               <ScrambleButton label="How it works" href="#how" variant="ghost" />
             </div>
           </div>
-          <div className="hud hud--bl" aria-hidden="true"><span className="nav__status"><i /> armed · <Clock /></span> · move to scatter · click to pulse</div>
-          <div className="hud hud--br" aria-hidden="true">scroll <span className="bob">↓</span></div>
-        </section>
+        </FlowWaveHero>
 
         <section id="cases" className="cases">
           <SlotTower />
