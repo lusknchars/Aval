@@ -17,6 +17,7 @@ import SlotTower from './components/SlotTower'
 import SmokeHeading from './components/SmokeHeading'
 import AttackReel from './components/AttackReel'
 import CurrentBand from './components/CurrentBand'
+import KnotBand from './components/KnotBand'
 import FooterBadge from './components/FooterBadge'
 import FooterInfo from './components/FooterInfo'
 import { ATTACKS } from './components/attacks'
@@ -261,6 +262,7 @@ export default function App() {
           <p className="foot">Measured 2026-10-06 on 20 mainnet transactions against a public RPC. Linear scale.</p>
         </section>
 
+        <KnotBand>
         <section id="receipt" className="section split split--rev">
           <SpotCard className="receipt">
             <div className="receipt__bar"><span>verdict.json</span><span className="hot">DENY</span></div>
@@ -280,6 +282,7 @@ export default function App() {
             </p>
           </div>
         </section>
+        </KnotBand>
 
         <section id="attacks" className="section attacks">
           <div className="attacks__head">

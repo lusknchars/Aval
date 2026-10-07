@@ -712,3 +712,17 @@ p { text-wrap: pretty; }
   -webkit-mask-position: 0 0, var(--hole-x) var(--hole-y); mask-position: 0 0, var(--hole-x) var(--hole-y);
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
+
+/* ── photon knot band (receipts) ─────────────────── */
+.knotband { position: relative; isolation: isolate; }
+.knotband__bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+.knotband__knot { position: absolute !important; inset: 0; min-height: 0 !important; height: 100% !important; }
+/* Fade into the page at both ends; a soft dimming behind the copy column. */
+.knotband__veil { position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(var(--bg), transparent 16%, transparent 84%, var(--bg)),
+    radial-gradient(ellipse 30% 34% at 70% 52%, rgba(var(--bg-rgb), .78), rgba(var(--bg-rgb), .5) 55%, transparent 100%); }
+.knotband__content > section { pointer-events: none; }
+.knotband__content :is(.spot, .split__copy > *) { pointer-events: auto; }
+/* The knot's glow runs behind the copy: a halo in the page colour keeps it legible. */
+.knotband .split__copy :is(p, .kicker) { text-shadow: 0 0 10px rgb(var(--bg-rgb)), 0 0 22px rgb(var(--bg-rgb)), 0 0 2px rgb(var(--bg-rgb)); }
