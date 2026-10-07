@@ -174,15 +174,9 @@ p { text-wrap: pretty; }
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   background: radial-gradient(ellipse 50% 50% at 50% 50%, rgba(var(--bg-rgb), .82), rgba(var(--bg-rgb), .55) 55%, rgba(var(--bg-rgb), 0) 100%);
   -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); }
-.wave__slogan { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(28px, min(3.6vw, 6vh), 60px); line-height: 1.04; letter-spacing: -.01em; color: var(--ink); text-wrap: balance; }
+.wave__slogan { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(32px, min(5vw, 8.5vh), 88px); line-height: 1.04; letter-spacing: -.01em; color: var(--ink); text-wrap: balance; }
 .wave__slogan b, .wave__slogan span { display: block; font-weight: 700; }
 .wave__slogan span { color: var(--dim); }
-/* Mesh lettering: each line gets its own strip; the component fits the words
-   to ~80% of the strip's width, so the strip size sets the type size. */
-.wave__slogan--mesh { display: grid; gap: 0; margin-inline: auto; width: min(1180px, 100%); }
-.wave__mesh-line { display: block; height: clamp(64px, min(9vw, 13vh), 150px); }
-.wave__mesh-fallback { display: grid; place-items: center; height: 100%; font-size: clamp(30px, min(5.2vw, 8vh), 92px); }
-.wave__mesh-fallback.is-dim { color: var(--dim); }
 .wave__trust { margin: 8px auto 0; max-width: 64ch; font-size: clamp(13px, 1.15vw, 17px); line-height: 1.6; color: var(--ink); opacity: .8; text-wrap: balance; }
 /* Seam: the field dissolves into the copy band, fading to the page color
    and blurring progressively toward the bottom edge. Sits outside the field
