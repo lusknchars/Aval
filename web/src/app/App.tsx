@@ -12,6 +12,7 @@ import Lists from './pages/Lists'
 import Agents from './pages/Agents'
 import Deploy from './pages/Deploy'
 import System from './pages/System'
+import Inspect from './pages/Inspect'
 import { ChangeBar } from './config/ui'
 import { useConfig } from './config/store'
 import { diff } from './config/impact'
@@ -49,7 +50,7 @@ export default function App() {
   const reduced = useReduced()
   const cfg = useConfig()
   const pending = diff(cfg.history[0].config, cfg.draft).length
-  const [page = 'overview', arg] = route
+  const [page = 'overview', arg, arg2] = route
   const key = route.join('/') || 'overview'
 
   let view
@@ -57,6 +58,7 @@ export default function App() {
   else if (page === 'actions' && arg) view = <TraceView id={arg} />
   else if (page === 'actions') view = <Actions />
   else if (page === 'review') view = <Review />
+  else if (page === 'overview' && arg === 'inspect' && arg2) view = <Inspect id={arg2} />
   else if (page === 'policy') view = <Policy />
   else if (page === 'manifests') view = <Manifests />
   else if (page === 'lists') view = <Lists />

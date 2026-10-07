@@ -66,7 +66,7 @@ export default function Overview() {
           <ul className="vlist">
             {entries.slice(0, 7).map((e) => (
               <li key={e.id}>
-                <button type="button" className="vrow" onClick={() => go(`actions/${e.id}`)}>
+                <button type="button" className="vrow" onClick={() => go(`overview/inspect/${e.id}`)}>
                   <DecisionBadge d={e.trace.decision.outcome} />
                   <span className="vrow__tool">{e.trace.toolCall?.name ?? e.request.fixture}</span>
                   <span className="vrow__digest">{short(e.trace.transaction.messageDigest, 5)}</span>

@@ -94,7 +94,7 @@ export default function VetoInspector({ entries }: { entries: Entry[] }) {
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); move(1) }
               if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); move(-1) }
-              if (e.key === 'Enter' && current) go(`actions/${current.id}`)
+              if (e.key === 'Enter' && current) go(`overview/inspect/${current.id}`)
             }}
           >
             <span className="vi__line" aria-hidden="true" />
@@ -133,7 +133,7 @@ export default function VetoInspector({ entries }: { entries: Entry[] }) {
           </AnimatePresence>
         </div>
       )}
-      <p className="vi__keys mono-dim small" aria-hidden="true">↑ ↓ to move · enter opens the full trace</p>
+      <p className="vi__keys mono-dim small" aria-hidden="true">↑ ↓ to move · enter to inspect</p>
     </section>
   )
 }
@@ -221,7 +221,7 @@ function Detail({ e, denylisted }: { e: Entry; denylisted: string[] }) {
         <span className="mono-dim small">digest <Copy value={t.transaction.messageDigest ?? ''} display={short(t.transaction.messageDigest, 6)} /> · slot {t.transaction.slot?.toLocaleString('en-US') ?? '—'} · {t.policyVersion}</span>
         <div className="inline">
           <button type="button" className="act" onClick={() => go(`evaluate/${e.request.fixture}`)}>Replay in lab</button>
-          <button type="button" className="act act--primary" onClick={() => go(`actions/${e.id}`)}>Inspect trace →</button>
+          <button type="button" className="act act--primary" onClick={() => go(`overview/inspect/${e.id}`)}>Inspect →</button>
         </div>
       </div>
     </motion.article>
