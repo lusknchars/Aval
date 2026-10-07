@@ -681,11 +681,6 @@ p { text-wrap: pretty; }
 .flagc { color: var(--flag); }
 .attacks__reel { height: 540px !important; color: var(--ink); }
 .attacks__reel--loading { height: 540px; }
-/* Glyph globe between the heading and the reel; full bleed, edges fading out. */
-.attacks__orb { position: relative; height: clamp(340px, 42vw, 560px); margin: clamp(8px, 2vw, 24px) calc(50% - 50vw) clamp(24px, 4vw, 56px); width: 100vw; }
-.attacks__orb-gl { position: absolute !important; inset: 0; height: 100% !important; }
-.attacks__orb::after { content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(var(--bg), transparent 12%, transparent 88%, var(--bg)), linear-gradient(90deg, var(--bg), transparent 15%, transparent 85%, var(--bg)); }
 .attacks__hint { text-align: center; color: var(--mute); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin: 8px 0 0; }
 @media (max-width: 860px) { .attacks__head { grid-template-columns: 1fr; gap: 12px; } .attacks__reel, .attacks__reel--loading { height: 460px !important; } }
 
