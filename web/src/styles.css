@@ -81,7 +81,7 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
-/* Film grain + scanlines across the whole page, below the cursor trail. */
+/* Film grain + scanlines across the whole page. */
 body::after {
   content: '';
   position: fixed; inset: 0;
@@ -100,7 +100,6 @@ p { text-wrap: pretty; }
 .dim { color: var(--dim); }
 .hot { color: var(--hot); }
 
-.trail { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 60; }
 .progress { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: var(--ink); transform-origin: 0 50%; z-index: 40; }
 
 /* ── nav ───────────────────────────────────────── */
@@ -485,7 +484,13 @@ p { text-wrap: pretty; }
 /* ── scroll manifesto (pinned, letters written by scroll) ── */
 .statement { position: relative; }
 .manifesto { position: relative; }
-.manifesto__pin { position: sticky; top: 0; height: 100svh; display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: clamp(20px, 4vw, 64px); align-items: center; max-width: 1272px; margin: 0 auto; padding: 80px var(--gutter) 40px; }
+.manifesto__pin { position: sticky; top: 0; height: 100svh; overflow: hidden; isolation: isolate; }
+.manifesto__bg { position: absolute; inset: 0; z-index: -1; }
+.manifesto__ribbons { position: absolute !important; inset: 0; min-height: 0 !important; }
+/* Keeps the letters readable over the brightest ribbons. */
+.manifesto__veil { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 60% 55% at 55% 50%, rgba(var(--bg-rgb), .72), rgba(var(--bg-rgb), .2) 70%, transparent); }
+.manifesto__inner { position: relative; height: 100%; display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: clamp(20px, 4vw, 64px); align-items: center; max-width: 1272px; margin: 0 auto; padding: 80px var(--gutter) 40px; pointer-events: none; }
+.manifesto__inner * { pointer-events: auto; }
 .manifesto__meta { display: grid; gap: 14px; align-self: center; }
 .manifesto__count { font-family: var(--display); font-weight: 700; font-size: clamp(40px, 5vw, 72px); line-height: 1; font-variant-numeric: tabular-nums; }
 .manifesto__count small { font-size: .3em; color: var(--dim); margin-left: 6px; font-weight: 500; }
@@ -497,7 +502,7 @@ p { text-wrap: pretty; }
 .manifesto__ch { display: inline-block; opacity: .1; will-change: opacity, filter, transform; }
 .manifesto__ch.is-hot { color: var(--deny); font-family: var(--ascii); font-weight: 500; }
 @media (max-width: 760px) {
-  .manifesto__pin { grid-template-columns: 1fr; align-content: center; gap: 18px; }
+  .manifesto__inner { grid-template-columns: 1fr; align-content: center; gap: 18px; }
   .manifesto__meta { grid-template-columns: auto 1fr; align-items: center; }
   .manifesto__meta .kicker { grid-column: 1 / -1; }
   .manifesto__count { font-size: 34px; }

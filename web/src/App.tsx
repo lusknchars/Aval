@@ -11,7 +11,6 @@ import Donut from './components/Donut'
 import FrameLoop from './components/FrameLoop'
 import Counter from './components/Counter'
 import LatencyBars from './components/LatencyBars'
-import CursorTrail from './components/CursorTrail'
 import TxLifecycle from './components/TxLifecycle'
 import { Rise, useCurrentSection } from './components/ScrollFx'
 import { RevealHeading, ScrollManifesto } from './components/ScrollManifesto'
@@ -109,7 +108,6 @@ export default function App() {
 
   return (
     <>
-      <CursorTrail />
       <motion.div className="progress" style={{ scaleX: progress }} aria-hidden="true" />
 
       <header className="nav">

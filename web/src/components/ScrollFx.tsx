@@ -9,9 +9,13 @@ import { useReduced } from '../lib/useReduced'
 export function useCurrentSection(ids: readonly string[]) {
   const [cur, setCur] = useState(ids[0])
   useEffect(() => {
+    // Each callback only reports the sections that changed, so keep every
+    // section's latest state and pick the last one (in page order) in the band.
+    const inBand = new Map<string, boolean>()
     const io = new IntersectionObserver((xs) => {
-      const v = xs.filter((x) => x.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-      if (v) setCur(v.target.id)
+      for (const x of xs) inBand.set(x.target.id, x.isIntersecting)
+      const hit = [...ids].reverse().find((id) => inBand.get(id))
+      if (hit) setCur(hit)
     }, { rootMargin: '-35% 0px -55% 0px', threshold: [0, 0.25, 0.5, 1] })
     ids.forEach((id) => { const el = document.getElementById(id); if (el) io.observe(el) })
     return () => io.disconnect()
