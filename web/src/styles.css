@@ -550,7 +550,7 @@ p { text-wrap: pretty; }
 .attacks__hint { text-align: center; color: var(--mute); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin: 8px 0 0; }
 @media (max-width: 860px) { .attacks__head { grid-template-columns: 1fr; gap: 12px; } .attacks__reel, .attacks__reel--loading { height: 460px !important; } }
 
-/* ── chroma current band (pipeline + lifecycle) ── */
+/* ── concentric tides band (pipeline + lifecycle) ── */
 .band { position: relative; isolation: isolate; }
 .band__bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
 .band__current { position: absolute !important; inset: 0; min-height: 0 !important; height: 100% !important; }
