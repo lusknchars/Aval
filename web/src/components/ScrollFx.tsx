@@ -5,22 +5,6 @@ import { useReduced } from '../lib/useReduced'
 /* Scroll-driven transitions between landing sections. All of them settle into
    a readable resting state, and reduced motion gets that state directly. */
 
-/** Oversized type that slides sideways as the section passes. */
-export function Divider({ text, dir = -1 }: { text: string; dir?: 1 | -1 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const reduced = useReduced()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
-  const x = useTransform(scrollYProgress, [0, 1], dir < 0 ? ['8%', '-42%'] : ['-42%', '8%'])
-  const words = Array.from({ length: 4 }, () => text)
-  return (
-    <div ref={ref} className="divider" aria-hidden="true">
-      <motion.div className="divider__track" style={reduced ? undefined : { x }}>
-        {words.map((w, i) => <span key={i} className={i % 2 ? 'is-italic' : ''}>{w}</span>)}
-      </motion.div>
-    </div>
-  )
-}
-
 /**
  * Letters ride a wave into place as the line scrolls toward the middle of the
  * screen. One scroll listener writes every letter's transform directly, so

@@ -427,13 +427,8 @@ p { text-wrap: pretty; }
 .hud .nav__status { display: inline-flex; gap: 6px; align-items: center; }
 .hud .nav__status i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink); animation: pulse 1.6s infinite; }
 
-/* ── divider: oversized moving type ───────────── */
-.divider { overflow: hidden; padding: clamp(28px, 6vw, 72px) 0; }
-.divider__track { display: flex; gap: .45em; width: max-content; font-family: var(--display); font-weight: 700; font-size: clamp(56px, 11vw, 168px); line-height: .9; text-transform: uppercase; letter-spacing: -0.02em; white-space: nowrap; }
-.divider__track .is-italic { font-style: italic; color: transparent; -webkit-text-stroke: 1px var(--ink); }
-
 /* ── slot tower (selected verdicts) ────────────── */
-.cases { padding-bottom: clamp(40px, 8vw, 120px); }
+.cases { padding-block: clamp(56px, 9vw, 120px); }
 .tower3d {
   position: relative; max-width: 1272px; margin: 0 auto; min-height: 620px; overflow: hidden; isolation: isolate;
   border-radius: 20px; border: 1px solid var(--line);

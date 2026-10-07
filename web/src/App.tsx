@@ -13,7 +13,7 @@ import Counter from './components/Counter'
 import LatencyBars from './components/LatencyBars'
 import CursorTrail from './components/CursorTrail'
 import TxLifecycle from './components/TxLifecycle'
-import { Divider, Rise, WaveText, useCurrentSection } from './components/ScrollFx'
+import { Rise, WaveText, useCurrentSection } from './components/ScrollFx'
 import SlotTower from './components/SlotTower'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
@@ -157,7 +157,6 @@ export default function App() {
         <Marquee items={['VETO', 'AVAL', 'behavioral EDR', '0.39 ms warm p50', 'local simulation', 'solana', 'agents with wallets']} />
 
         <section id="cases" className="cases">
-          <Divider text="Selected verdicts" />
           <SlotTower />
         </section>
 
@@ -204,8 +203,6 @@ export default function App() {
             </SpotCard>
           </div>
         </section>
-
-        <Divider text="Where AVAL sits" dir={1} />
 
         <section id="lifecycle" className="section">
           <Scramble as="p" text="03 / where aval sits" className="kicker" />
