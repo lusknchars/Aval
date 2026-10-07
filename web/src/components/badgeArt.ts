@@ -56,19 +56,6 @@ function stamp(ctx: CanvasRenderingContext2D, x: number, y: number, label: strin
   ctx.restore()
 }
 
-/** EMV-style chip, drawn in outline. */
-function chip(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  const g = ctx.createLinearGradient(x, y, x + 120, y + 90)
-  g.addColorStop(0, '#d8d4c8'); g.addColorStop(.5, '#8f8a7e'); g.addColorStop(1, '#cfc9ba')
-  ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(x, y, 120, 90, 14); ctx.fill()
-  ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 2
-  ctx.beginPath()
-  ctx.moveTo(x + 40, y); ctx.lineTo(x + 40, y + 90); ctx.moveTo(x + 80, y); ctx.lineTo(x + 80, y + 90)
-  ctx.moveTo(x, y + 30); ctx.lineTo(x + 40, y + 30); ctx.moveTo(x, y + 60); ctx.lineTo(x + 40, y + 60)
-  ctx.moveTo(x + 80, y + 30); ctx.lineTo(x + 120, y + 30); ctx.moveTo(x + 80, y + 60); ctx.lineTo(x + 120, y + 60)
-  ctx.stroke()
-}
-
 /** Three arcs: the "always listening" mark. */
 function signal(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
   ctx.strokeStyle = color; ctx.lineWidth = 6; ctx.lineCap = 'round'
@@ -84,18 +71,15 @@ export async function drawFront() {
   try { const logo = await loadImg('/brand/aval-lockup-dark.svg'); ctx.drawImage(logo, 56, 64, 300, 300 * 535 / 1195) } catch { /* text only */ }
   ctx.font = `400 20px ${MONO}`; ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.textAlign = 'right'
   ctx.fillText('TRANSACTION', W - 64, 118); ctx.fillText('SECURITY CARD', W - 64, 146); ctx.textAlign = 'left'
-  chip(ctx, 64, 300)
-  signal(ctx, 230, 345, 'rgba(255,255,255,.75)')
   ctx.font = `700 92px ${DISPLAY}`; ctx.fillStyle = '#ffffff'
-  ctx.fillText('PROTECTED', 58, 540)
+  ctx.fillText('PROTECTED', 58, 400)
   ctx.font = `400 22px ${MONO}`; ctx.fillStyle = 'rgba(255,255,255,.6)'
-  ctx.fillText('judged before it signs · watched 24/7', 64, 586)
-  ctx.font = `400 40px ${MONO}`; ctx.fillStyle = '#ececec'
-  ctx.fillText('AVAL  ••••  ••••  0007', 64, 690)
-  rows(ctx, 790, [
-    ['holder', 'treasury-07'],
-    ['network', 'solana · mainnet'],
-    ['valid', 'every signature'],
+  ctx.fillText('judged before it signs · watched 24/7', 64, 446)
+  rows(ctx, 590, [
+    ['agent', 'treasury-07'],
+    ['networks', 'solana · ethereum'],
+    ['checks', 'every signature'],
+    ['monitoring', '24/7 · live'],
   ])
   stamp(ctx, 64, 1060, 'ARMED', '#3ddc84', false)
   ctx.font = `400 20px ${MONO}`; ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.textAlign = 'right'
@@ -107,8 +91,6 @@ export async function drawBack() {
   await fontsReady()
   const [c, ctx] = canvas()
   ctx.fillStyle = '#0b0a0e'; ctx.fillRect(0, 0, W, H)
-  // Stripe, like the back of a bank card.
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 80, W, 120)
   grid(ctx)
   ctx.font = `400 20px ${MONO}`; ctx.fillStyle = 'rgba(255,255,255,.5)'
   ctx.fillText('LAST VERDICT · RECEIPT #36095417', 64, 280)

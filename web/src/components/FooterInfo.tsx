@@ -1,4 +1,4 @@
-import { SiGithub, SiSolana } from 'react-icons/si'
+import { SiEthereum, SiGithub, SiSolana } from 'react-icons/si'
 
 /*
  * The left side of the footer screen: who it is built for, what it runs on,
@@ -14,7 +14,10 @@ export default function FooterInfo() {
         <p className="finfo__label">Built for</p>
         <img className="finfo__st" src="/brand/superteam-brasil-white.svg" alt="Superteam Brasil" width={496} height={79} />
         <p className="finfo__label">Runs on</p>
-        <span className="finfo__sol"><SiSolana aria-hidden="true" /> Solana mainnet</span>
+        <span className="finfo__nets">
+          <span className="finfo__sol"><SiSolana aria-hidden="true" /> Solana mainnet</span>
+          <span className="finfo__sol"><SiEthereum aria-hidden="true" /> Ethereum mainnet</span>
+        </span>
       </div>
 
       <div className="finfo__slogan">

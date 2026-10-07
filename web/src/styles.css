@@ -622,6 +622,7 @@ p { text-wrap: pretty; }
 .finfo__st { width: clamp(180px, 22vw, 280px); height: auto; display: block; }
 .finfo__sol { display: inline-flex; align-items: center; gap: 12px; font-family: var(--display); font-weight: 600; font-size: clamp(18px, 1.8vw, 24px); }
 .finfo__sol svg { width: 26px; height: 26px; }
+.finfo__nets { display: flex; flex-wrap: wrap; gap: 10px 28px; }
 .finfo__slogan { border-block: 1px solid rgba(255, 255, 255, .1); padding: 24px 0; }
 .finfo__line { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(26px, 2.9vw, 42px); line-height: 1.05; letter-spacing: -.01em; color: #fff; }
 .finfo__line--dim { color: rgba(255, 255, 255, .5); }
