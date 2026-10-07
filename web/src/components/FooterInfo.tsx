@@ -23,7 +23,7 @@ export default function FooterInfo() {
       <div className="finfo__slogan">
         <p className="finfo__line">Every transaction judged before it lands.</p>
         <p className="finfo__line finfo__line--dim">Every agent watched, 24/7.</p>
-        <p className="finfo__live"><i aria-hidden="true" /> monitoring live · simulated before signing · vetoed in under a millisecond</p>
+        <p className="finfo__live"><i aria-hidden="true" /> monitoring live · simulated before signing · denied in under a millisecond</p>
       </div>
 
       <div className="finfo__team">

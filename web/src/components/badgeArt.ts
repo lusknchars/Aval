@@ -1,6 +1,6 @@
 /*
  * Art for the footer lanyard, drawn at runtime in the site's own fonts:
- * an AVAL "agent pass" for the card's front, the veto it issued for the
+ * an AVAL "agent pass" for the card's front, the deny it issued for the
  * back, and the strap texture. The agent and the transactions are the same
  * demo identities the verdicts feed shows.
  */
@@ -94,7 +94,7 @@ export async function drawBack() {
   grid(ctx)
   ctx.font = `400 20px ${MONO}`; ctx.fillStyle = 'rgba(255,255,255,.5)'
   ctx.fillText('LAST VERDICT · RECEIPT #36095417', 64, 280)
-  stamp(ctx, 64, 410, 'VETO', '#ff3b2f', true)
+  stamp(ctx, 64, 410, 'DENY', '#ff3b2f', true)
   ctx.font = `600 50px ${DISPLAY}`; ctx.fillStyle = '#ffffff'
   ctx.fillText('Drain to a fresh', 64, 530)
   ctx.fillText('wallet, stopped.', 64, 590)

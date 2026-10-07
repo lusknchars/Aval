@@ -37,12 +37,12 @@ const DECIDE = [
   '  ┌──────────────┐\n  │              │\n  │    ? ? ?     │\n  │              │\n  └──────────────┘\n   weighing…',
   '  ┌──────────────┐\n  │              │\n  │    A L L O W │\n  │              │\n  └──────────────┘\n   policy ok',
   '  ┌──────────────┐\n  │              │\n  │    ? ? ?     │\n  │              │\n  └──────────────┘\n   weighing…',
-  '  ╔══════════════╗\n  ║ ▓▓▓▓▓▓▓▓▓▓▓▓ ║\n  ║   V E T O    ║\n  ║ ▓▓▓▓▓▓▓▓▓▓▓▓ ║\n  ╚══════════════╝\n   drain blocked',
+  '  ╔══════════════╗\n  ║ ▓▓▓▓▓▓▓▓▓▓▓▓ ║\n  ║   D E N Y    ║\n  ║ ▓▓▓▓▓▓▓▓▓▓▓▓ ║\n  ╚══════════════╝\n   drain blocked',
 ]
 
 const RECEIPT = [
   '{',
-  '  "verdict":   "VETO",',
+  '  "verdict":   "DENY",',
   '  "agent":     "trader-3",',
   '  "rule":      "drain_to_fresh_wallet",',
   '  "simulated": { "slot": 371204118, "ms": 0.39 },',
@@ -156,7 +156,7 @@ export default function App() {
               </p>
             </div>
             <div className="wave__cta">
-              <ScrambleButton label="Watch it veto" href="#feed" />
+              <ScrambleButton label="Watch it deny" href="#feed" />
               <ScrambleButton label="How it works" href="#how" variant="ghost" />
             </div>
           </div>
@@ -174,7 +174,7 @@ export default function App() {
             <p>
               AVAL sits between an agent and its wallet. It replays the transaction
               on a local copy of the chain, reads the balance changes, and stamps
-              <b> ALLOW</b> or <b className="hot">VETO</b>. A drained treasury never
+              <b> ALLOW</b> or <b className="hot">DENY</b>. A drained treasury never
               has to be explained afterward.
             </p>
             <ul className="ticks">
@@ -209,7 +209,7 @@ export default function App() {
               <span className="card__n">03</span>
               <FrameLoop frames={DECIDE} ms={700} className="card__art" />
               <h3>Decide</h3>
-              <p>Behavior rules read the result. Safe calls pass, hostile ones are vetoed with a reason.</p>
+              <p>Behavior rules read the result. Safe calls pass, hostile ones are denied with a reason.</p>
             </SpotCard>
           </div>
         </section>
@@ -263,7 +263,7 @@ export default function App() {
 
         <section id="receipt" className="section split split--rev">
           <SpotCard className="receipt">
-            <div className="receipt__bar"><span>verdict.json</span><span className="hot">VETO</span></div>
+            <div className="receipt__bar"><span>verdict.json</span><span className="hot">DENY</span></div>
             <pre className="receipt__code">
               {RECEIPT.map((l, i) => (
                 <Scramble key={i} text={l} as="span" className="receipt__line" delay={i * 90} speed={18} />

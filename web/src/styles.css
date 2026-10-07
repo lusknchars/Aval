@@ -304,7 +304,7 @@ p { text-wrap: pretty; }
 .row--veto { background: linear-gradient(90deg, rgba(var(--deny-rgb), .1), transparent 70%); }
 .tag { display: inline-block; padding: 1px 7px; font-weight: 700; letter-spacing: .1em; min-width: 7ch; }
 .tag--allow { border: 1px solid var(--l2); }
-.tag--veto { background: var(--hot); color: #000; }
+.tag--deny { background: var(--hot); color: #000; }
 .term__foot { display: flex; justify-content: space-between; padding: 9px 14px; border-top: 1px solid var(--line); color: var(--l3); font-size: 11px; }
 .blink { animation: pulse 1s steps(1) infinite; }
 @media (max-width: 640px) {

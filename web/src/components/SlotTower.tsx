@@ -7,7 +7,7 @@ import { useTheme } from '../lib/theme'
 /*
  * Selected verdicts as a Solana slot tower. Slots stack up one at a time
  * (≈400 ms each on mainnet); on the fourth slot the selected case's
- * transaction either lands as a lit cube or, if AVAL vetoed it, leaves a red
+ * transaction either lands as a lit cube or, if AVAL denied it, leaves a red
  * dashed ghost: it was never signed, so no slot ever held it.
  * Background: Paper Shaders' warp dithering (Apache 2.0).
  */
@@ -140,7 +140,7 @@ export default function SlotTower() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              <b>{deny ? '✕ vetoed · never included' : '■ landed · included'}</b>
+              <b>{deny ? '✕ denied · never included' : '■ landed · included'}</b>
               <span>{deny ? 'no signature, no slot, no fee' : `slot ${(BASE_SLOT + TX_LEVEL).toLocaleString('en-US')}`}</span>
             </motion.div>
           )}
@@ -173,7 +173,7 @@ export default function SlotTower() {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 300, damping: 34 }}
                     >
-                      <p className={`tcase__rule ${k.verdict === 'DENY' ? 'deny' : 'ok'}`}>{k.verdict === 'DENY' ? 'vetoed' : 'allowed'} · {k.rule}</p>
+                      <p className={`tcase__rule ${k.verdict === 'DENY' ? 'deny' : 'ok'}`}>{k.verdict === 'DENY' ? 'denied' : 'allowed'} · {k.rule}</p>
                       <dl className="tcase__tx">
                         {k.tx.map(([a, b]) => <div key={a}><dt>{a}</dt><dd>{b}</dd></div>)}
                       </dl>

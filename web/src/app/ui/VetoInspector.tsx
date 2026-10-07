@@ -66,12 +66,12 @@ export default function VetoInspector({ entries }: { entries: Entry[] }) {
           <div>
             <h2 id="vi-title">Gate interventions</h2>
             <p className="mono-dim small">
-              {counts.deny} vetoed · {counts.flag} held this session{last ? ` · last ${when(last.at).split(' · ')[1]}` : ''}
+              {counts.deny} denied · {counts.flag} held this session{last ? ` · last ${when(last.at).split(' · ')[1]}` : ''}
             </p>
           </div>
         </div>
         <div className="seg" role="tablist" aria-label="Which interventions">
-          {([['deny', `vetoed ${counts.deny}`], ['flag', `held ${counts.flag}`], ['all', 'all']] as [Mode, string][]).map(([m, label]) => (
+          {([['deny', `denied ${counts.deny}`], ['flag', `held ${counts.flag}`], ['all', 'all']] as [Mode, string][]).map(([m, label]) => (
             <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? 'is-on' : ''} onClick={() => { setMode(m); setSel(null) }}>
               {mode === m && <motion.span layoutId="vi-mode" className="seg__hl" transition={{ type: 'spring', stiffness: 500, damping: 38 }} />}
               <span>{label}</span>
@@ -82,7 +82,7 @@ export default function VetoInspector({ entries }: { entries: Entry[] }) {
 
       {!list.length ? (
         <div className="vi__empty">
-          <p>Nothing {mode === 'flag' ? 'held' : 'vetoed'} in this session yet.</p>
+          <p>Nothing {mode === 'flag' ? 'held' : 'denied'} in this session yet.</p>
           <button type="button" className="act act--primary" onClick={() => go('evaluate')}>Run a scenario →</button>
         </div>
       ) : (

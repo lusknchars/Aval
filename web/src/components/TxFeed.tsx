@@ -14,7 +14,7 @@ type Tx = {
   id: string
   agent: string
   action: string
-  verdict: 'ALLOW' | 'VETO'
+  verdict: 'ALLOW' | 'DENY'
   reason: string
   ms: string
   digest: string
@@ -24,11 +24,11 @@ type Tx = {
 const SCRIPT: Omit<Tx, 'id' | 'ms' | 'digest' | 'state'>[] = [
   { agent: 'treasury-07', action: 'swap 420 USDC -> SOL', verdict: 'ALLOW', reason: 'within policy' },
   { agent: 'yield-bot', action: 'deposit 12.5 SOL -> vault', verdict: 'ALLOW', reason: 'known program' },
-  { agent: 'trader-3', action: 'transfer 98% balance -> 9xQe..Fv2', verdict: 'VETO', reason: 'drain to fresh wallet' },
+  { agent: 'trader-3', action: 'transfer 98% balance -> 9xQe..Fv2', verdict: 'DENY', reason: 'drain to fresh wallet' },
   { agent: 'payroll', action: 'transfer 3 x 150 USDC', verdict: 'ALLOW', reason: 'matches schedule' },
-  { agent: 'mm-alpha', action: 'approve delegate: unlimited', verdict: 'VETO', reason: 'unbounded authority' },
+  { agent: 'mm-alpha', action: 'approve delegate: unlimited', verdict: 'DENY', reason: 'unbounded authority' },
   { agent: 'treasury-07', action: 'close token account', verdict: 'ALLOW', reason: 'empty account' },
-  { agent: 'sniper-x', action: 'set authority -> 4Hk1..aa9', verdict: 'VETO', reason: 'owner change' },
+  { agent: 'sniper-x', action: 'set authority -> 4Hk1..aa9', verdict: 'DENY', reason: 'owner change' },
   { agent: 'yield-bot', action: 'harvest rewards', verdict: 'ALLOW', reason: 'within policy' },
 ]
 
@@ -41,7 +41,7 @@ export default function TxFeed() {
   )
   const [spin, setSpin] = useState(0)
   const n = useRef(0)
-  const [stats, setStats] = useState({ seen: 0, vetoed: 0 })
+  const [stats, setStats] = useState({ seen: 0, denied: 0 })
 
   useEffect(() => {
     if (reduced) return
@@ -57,7 +57,7 @@ export default function TxFeed() {
       setRows((r) => [tx, ...r].slice(0, 7))
       setTimeout(() => {
         setRows((r) => r.map((x) => (x.id === tx.id ? { ...x, state: 'done' } : x)))
-        setStats((st) => ({ seen: st.seen + 1, vetoed: st.vetoed + (tx.verdict === 'VETO' ? 1 : 0) }))
+        setStats((st) => ({ seen: st.seen + 1, denied: st.denied + (tx.verdict === 'DENY' ? 1 : 0) }))
       }, 650)
     }
     push()
@@ -72,7 +72,7 @@ export default function TxFeed() {
         <span className="term__dots" aria-hidden="true"><i /><i /><i /></span>
         <span className="term__title">aval://verdicts — live</span>
         <span className="term__meta">
-          seen <b>{stats.seen}</b> · vetoed <b className="hot">{stats.vetoed}</b>
+          seen <b>{stats.seen}</b> · denied <b className="hot">{stats.denied}</b>
         </span>
       </div>
       <div className="term__head" aria-hidden="true">
@@ -88,7 +88,7 @@ export default function TxFeed() {
               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
               exit={{ opacity: 0, transition: { duration: 0.2 } }}
               transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-              className={`row ${r.state === 'done' && r.verdict === 'VETO' ? 'row--veto' : ''}`}
+              className={`row ${r.state === 'done' && r.verdict === 'DENY' ? 'row--veto' : ''}`}
             >
               <span className="row__agent">{r.agent}</span>
               <span className="row__action">

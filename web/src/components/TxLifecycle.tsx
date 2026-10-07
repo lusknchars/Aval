@@ -139,7 +139,7 @@ effects   ${vetoed ? '−98% balance' : '−420 USDC +SOL'}
 origin    ${vetoed ? 'unexplained ✕' : 'user goal ✓'}
 manifest  ${vetoed ? 'drain pattern' : 'within policy'}`}</pre>
         <span className={`lart-stamp ${vetoed ? 'is-veto' : 'is-allow'}`}>
-          {vetoed ? <Scramble text="VETO" hover={false} speed={40} /> : <Scramble text="ALLOW" hover={false} speed={40} />}
+          {vetoed ? <Scramble text="DENY" hover={false} speed={40} /> : <Scramble text="ALLOW" hover={false} speed={40} />}
         </span>
       </div>
     ),
