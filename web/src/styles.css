@@ -304,8 +304,10 @@ p { text-wrap: pretty; }
 .blink, .term__dots, .bars__cursor { font-family: var(--ascii); }
 
 /* ── logo & theme toggle ───────────────────────── */
-.logo { display: block; height: 30px; width: auto; user-select: none; }
-:root[data-theme='light'] .logo { filter: invert(1); }
+.logo { display: block; height: 30px; user-select: none; }
+.logo img { display: block; height: 100%; width: auto; }
+.logo__light, :root[data-theme='light'] .logo__dark { display: none !important; }
+:root[data-theme='light'] .logo__light { display: block !important; }
 .themetoggle {
   display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 0;
   color: var(--dim); font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .1em; cursor: pointer;
