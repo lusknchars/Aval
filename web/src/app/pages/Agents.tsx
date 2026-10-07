@@ -7,6 +7,19 @@ import HoldButton from '../ui/HoldButton'
 import Copy from '../ui/Copy'
 import { short } from '../api/format'
 import { toast } from '../ui/Toasts'
+import AnimatedForm from '@/components/ui/animated-form'
+import { SiSolana } from 'react-icons/si'
+import { RiRobot2Line } from 'react-icons/ri'
+import { LuKeyRound, LuShieldCheck } from 'react-icons/lu'
+
+/* What registering an agent wires together: the agent, its signing key, the
+   network it acts on, and the AVAL gate in front of the signature. */
+const REGISTER_ICONS = [
+  { key: 'agent', icon: <RiRobot2Line className="text-primary size-6" /> },
+  { key: 'key', icon: <LuKeyRound className="text-primary size-6" /> },
+  { key: 'solana', icon: <SiSolana className="text-primary size-6" /> },
+  { key: 'gate', icon: <LuShieldCheck className="text-primary size-6" /> },
+]
 
 const STATUS_LABEL = { active: 'active', paused: 'paused', killed: 'killed' } as const
 
@@ -27,6 +40,26 @@ export default function Agents() {
       <PageHead kicker="operate · agent registry" title="Agents and what they may do"
         lede="Each agent signs through the gate with its own wallet, its own tools and its own flag policy. New agents start paused."
         right={<div className="inline"><Enf /><button type="button" className="act act--primary" onClick={add}>+ Register agent</button></div>} />
+
+      <section className="panel register">
+        <div className="register__copy">
+          <p className="kicker">register an agent</p>
+          <h2 className="register__title">Name it, bind its key, put the gate in front.</h2>
+          <p className="mono-dim">
+            An agent gets an id, a signing wallet and the tools it may call. From then on every transaction it
+            proposes is simulated and judged before its key is allowed to sign.
+          </p>
+          <ol className="register__steps">
+            <li><span>01</span>agent id and label</li>
+            <li><span>02</span>signing wallet, never the private key</li>
+            <li><span>03</span>allowed tools, flag policy, daily limit</li>
+          </ol>
+          <button type="button" className="act act--primary" onClick={add}>+ Register agent</button>
+        </div>
+        <div className="register__demo ui-reset" aria-hidden="true">
+          <AnimatedForm name="treasury-07" title="Register agent" secret="••••••••••••" icons={REGISTER_ICONS} />
+        </div>
+      </section>
 
       <div className="table agents" role="table" aria-label="Agents">
         <div className="table__head" role="row"><span>agent</span><span>wallet</span><span>tools</span><span>on flag</span><span>daily limit</span><span>status</span></div>

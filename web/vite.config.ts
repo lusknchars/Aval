@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
 
 // The console calls the Veto demo server through /veto, so the browser never
@@ -16,7 +17,8 @@ const proxy = {
 // Bind to 127.0.0.1: plain "localhost" lands on IPv6 only, which some
 // browsers and extensions can't reach.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: { alias: { '@': resolve(import.meta.dirname, 'src') } },
   server: { host: '127.0.0.1', port: 5191, proxy },
   preview: { host: '127.0.0.1', port: 4173, proxy },
   build: {

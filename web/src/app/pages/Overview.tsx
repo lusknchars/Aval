@@ -9,6 +9,12 @@ import Meter from '../ui/Meter'
 import Counter from '../../components/Counter'
 import Scramble from '../../components/Scramble'
 import { go } from '../router'
+import FraudCard from '@/components/ui/fraud-card'
+
+const when = (t: number) => {
+  const d = new Date(t)
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`
+}
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } }
 const rise = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 30 } } }
@@ -82,6 +88,19 @@ export default function Overview() {
               <span>subjects waiting for a human<br />across {rev?.records ?? '—'} recorded actions</span>
             </div>
           </motion.section>
+
+          <motion.div variants={rise} className="vetocard ui-reset">
+            <FraudCard
+              title="Vetoed before signing"
+              description="The last actions the gate refused. Hover to reveal them; each one was simulated and denied before any key could sign."
+              statusLabel={`${by.deny} hostile action${by.deny === 1 ? '' : 's'} vetoed this session`}
+              verb="Vetoed"
+              blockedEmails={entries.filter((e) => e.trace.decision.outcome === 'deny').slice(0, 4).map((e) => ({
+                email: e.trace.toolCall?.name ?? e.request.fixture,
+                time: `${when(e.at)} · ${short(e.trace.transaction.messageDigest, 4)}`,
+              }))}
+            />
+          </motion.div>
 
           <motion.section variants={rise} className="panel">
             <div className="panel__head"><h2>Rules that fired most</h2></div>

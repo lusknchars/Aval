@@ -93,8 +93,9 @@ body::after {
 ::selection { background: var(--ink); color: var(--bg); }
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 1px solid var(--ink); outline-offset: 4px; }
-h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 700; letter-spacing: -0.015em; text-wrap: balance; }
-h2 { font-size: clamp(34px, 5vw, 64px); line-height: 1; margin-bottom: 24px; }
+/* :where keeps this at zero specificity and out of imported components (.ui-reset). */
+:where(h1, h2, h3):where(:not(.ui-reset *)) { margin: 0; font-family: var(--display); font-weight: 700; letter-spacing: -0.015em; text-wrap: balance; }
+h2:where(:not(.ui-reset *)) { font-size: clamp(34px, 5vw, 64px); line-height: 1; margin-bottom: 24px; }
 p { text-wrap: pretty; }
 .dim { color: var(--dim); }
 .hot { color: var(--hot); }

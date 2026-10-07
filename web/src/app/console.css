@@ -7,7 +7,7 @@
   font-size: 13.5px;
 }
 .console h1 { font-size: clamp(30px, 3.6vw, 48px); line-height: 1; margin: 0; }
-.console h2 { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin: 0; }
+.console h2:where(:not(.ui-reset *)) { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin: 0; }
 .console .kicker { margin: 0 0 12px; }
 .console code { font-family: var(--mono); font-size: .95em; color: var(--ink); }
 .skip { position: absolute; left: -999px; top: 8px; z-index: 100; background: var(--ink); color: var(--bg); padding: 8px 12px; }
@@ -562,3 +562,21 @@ select.search { font-size: 14px; }
 @media (max-width: 760px) { .ctx__grid { grid-template-columns: 1fr; } }
 .ctx__policy { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0; font-size: 12px; color: var(--dim); }
 .ctx__policy b { color: var(--ink); font-weight: 500; }
+
+/* ── imported components in context ────── */
+.register { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: 32px; align-items: center; margin-bottom: 18px; overflow: hidden; }
+.register__copy { display: grid; gap: 12px; justify-items: start; }
+.register__title { font-family: var(--display) !important; font-size: clamp(22px, 2.4vw, 30px) !important; text-transform: none !important; letter-spacing: -0.01em !important; color: var(--ink) !important; font-weight: 700 !important; line-height: 1.1; max-width: 22ch; }
+.register__copy p { max-width: 58ch; margin: 0; }
+.register__steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.register__steps li { display: flex; gap: 12px; }
+.register__steps span { color: var(--mute); }
+.register__demo { display: grid; justify-items: center; padding: 8px 0 4px; }
+@media (max-width: 860px) { .register { grid-template-columns: 1fr; } }
+.vetocard { display: grid; justify-items: center; }
+.vetocard > div { max-width: 100%; }
+
+/* Imported components keep their own type; their white/black fades blend into the panel. */
+.ui-reset { font-family: var(--mono); }
+.ui-reset :is(h1, h2, h3) { margin: 0; }
+.register__demo { --color-white: var(--s1); --color-black: var(--s1); }
