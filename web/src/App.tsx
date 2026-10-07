@@ -18,6 +18,7 @@ import SmokeHeading from './components/SmokeHeading'
 import AttackReel from './components/AttackReel'
 import CurrentBand from './components/CurrentBand'
 import KnotBand from './components/KnotBand'
+import AttackOrb from './components/AttackOrb'
 import FooterBadge from './components/FooterBadge'
 import FooterInfo from './components/FooterInfo'
 import { ATTACKS } from './components/attacks'
@@ -296,6 +297,7 @@ export default function App() {
               and two of them deny.
             </p>
           </div>
+          <AttackOrb />
           <AttackReel />
           <p className="attacks__hint">hover to scrub · click an attack to open it · ← → with the keyboard</p>
         </section>
