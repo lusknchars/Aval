@@ -66,13 +66,13 @@ export default function AsciiImage({
         await img.decode()
         src = img; sw = img.naturalWidth; sh = img.naturalHeight
       } else {
-        await document.fonts.load(`${source.weight ?? 900} 200px Archivo`)
+        await document.fonts.load(`${source.weight ?? 700} 200px "Chakra Petch"`)
         const c = document.createElement('canvas')
         const ctx = c.getContext('2d')!
-        ctx.font = `${source.weight ?? 900} 200px Archivo`
+        ctx.font = `${source.weight ?? 700} 200px "Chakra Petch"`
         sw = Math.ceil(ctx.measureText(source.text).width) + 40; sh = 240
         c.width = sw; c.height = sh
-        ctx.font = `${source.weight ?? 900} 200px Archivo`
+        ctx.font = `${source.weight ?? 700} 200px "Chakra Petch"`
         // A diagonal gradient instead of flat white, so the ramp has range to show.
         const grad = ctx.createLinearGradient(0, 0, sw, sh)
         grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.55, '#9a9a9a'); grad.addColorStop(1, '#3c3c3c')

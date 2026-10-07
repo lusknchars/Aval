@@ -2,6 +2,7 @@
 export const RAMP = ' .\'`:-~=+*xo%#@'
 export const NOISE = '!<>-_\\/[]{}=+*^?#%01'
 export const BINARY = '01'
+/** Canvas ASCII face: needs a 0.6em advance and the block/box glyph sets. */
 export const MONO = '"JetBrains Mono", ui-monospace, monospace'
 
 export const pick = (set: string) => set[(Math.random() * set.length) | 0]
