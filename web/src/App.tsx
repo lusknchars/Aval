@@ -6,6 +6,7 @@ import Scramble from './components/Scramble'
 import ScrambleButton from './components/ScrambleButton'
 import Marquee from './components/Marquee'
 import TxFeed from './components/TxFeed'
+import StackStrip from './components/StackStrip'
 import SpotCard from './components/SpotCard'
 import Donut from './components/Donut'
 import FrameLoop from './components/FrameLoop'
@@ -163,6 +164,7 @@ export default function App() {
           <SlotTower />
         </section>
 
+        <div className="flip">
         <section id="feed" className="section split">
           <div className="split__copy">
             <Scramble as="p" text="01 / verdicts" className="kicker" />
@@ -181,6 +183,8 @@ export default function App() {
           </div>
           <TxFeed />
         </section>
+        <StackStrip />
+        </div>
 
         <CurrentBand>
         <section id="how" className="section">
