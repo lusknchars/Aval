@@ -482,11 +482,33 @@ p { text-wrap: pretty; }
   .tower3d__hud { top: 18px; bottom: auto; }
   .tower3d__callout { white-space: normal; text-align: center; max-width: calc(100% - 32px); top: 16%; }
 }
-/* ── wave statement ────────────────────────────── */
-.statement { max-width: 1272px; margin: 0 auto; padding: clamp(90px, 16vw, 220px) var(--gutter); }
-.wave { margin: 0 auto; max-width: 22ch; text-align: center; font-family: var(--display); font-weight: 700; font-size: clamp(34px, 6vw, 88px); line-height: 1.04; letter-spacing: -0.02em; text-wrap: balance; }
-.wave__word { display: inline-block; white-space: nowrap; margin-right: .26em; }
-.wave__ch { display: inline-block; transform-origin: 50% 100%; will-change: transform, opacity; }
+/* ── scroll manifesto (pinned, letters written by scroll) ── */
+.statement { position: relative; }
+.manifesto { position: relative; }
+.manifesto__pin { position: sticky; top: 0; height: 100svh; display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: clamp(20px, 4vw, 64px); align-items: center; max-width: 1272px; margin: 0 auto; padding: 80px var(--gutter) 40px; }
+.manifesto__meta { display: grid; gap: 14px; align-self: center; }
+.manifesto__count { font-family: var(--display); font-weight: 700; font-size: clamp(40px, 5vw, 72px); line-height: 1; font-variant-numeric: tabular-nums; }
+.manifesto__count small { font-size: .3em; color: var(--dim); margin-left: 6px; font-weight: 500; }
+.manifesto__track { height: 2px; background: var(--line); overflow: hidden; }
+.manifesto__bar { display: block; height: 100%; background: var(--ink); transform-origin: left; transform: scaleX(0); }
+.manifesto__text { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(26px, 3.3vw, 54px); line-height: 1.08; letter-spacing: -0.02em; text-wrap: balance; }
+.manifesto__line { display: block; }
+.manifesto__word { display: inline-block; white-space: nowrap; }
+.manifesto__ch { display: inline-block; opacity: .1; will-change: opacity, filter, transform; }
+.manifesto__ch.is-hot { color: var(--deny); font-family: var(--ascii); font-weight: 500; }
+@media (max-width: 760px) {
+  .manifesto__pin { grid-template-columns: 1fr; align-content: center; gap: 18px; }
+  .manifesto__meta { grid-template-columns: auto 1fr; align-items: center; }
+  .manifesto__meta .kicker { grid-column: 1 / -1; }
+  .manifesto__count { font-size: 34px; }
+}
+@media (prefers-reduced-motion: reduce) { .manifesto__ch { opacity: 1; } }
+
+/* ── heading reveal: words rise from behind a clip line ── */
+.reveal__mask { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .08em; margin-bottom: -.08em; margin-right: .26em; }
+.reveal__mask:last-child { margin-right: 0; }
+.reveal__word { display: inline-block; transform-origin: 0 100%; will-change: transform; }
+.reveal.center { text-align: center; }
 
 /* ── finale: light panel rising over the page ──── */
 #finale { padding: 0 clamp(8px, 1.5vw, 20px) clamp(8px, 1.5vw, 20px); }

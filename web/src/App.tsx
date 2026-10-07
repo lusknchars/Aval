@@ -13,7 +13,8 @@ import Counter from './components/Counter'
 import LatencyBars from './components/LatencyBars'
 import CursorTrail from './components/CursorTrail'
 import TxLifecycle from './components/TxLifecycle'
-import { Rise, WaveText, useCurrentSection } from './components/ScrollFx'
+import { Rise, useCurrentSection } from './components/ScrollFx'
+import { RevealHeading, ScrollManifesto } from './components/ScrollManifesto'
 import SlotTower from './components/SlotTower'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
@@ -163,7 +164,7 @@ export default function App() {
         <section id="feed" className="section split">
           <div className="split__copy">
             <Scramble as="p" text="01 / verdicts" className="kicker" />
-            <h2>Judged before it lands.</h2>
+            <RevealHeading text="Judged before it lands." />
             <p>
               AVAL sits between an agent and its wallet. It replays the transaction
               on a local copy of the chain, reads the balance changes, and stamps
@@ -181,7 +182,7 @@ export default function App() {
 
         <section id="how" className="section">
           <Scramble as="p" text="02 / pipeline" className="kicker" />
-          <h2 className="center">Three steps, under a millisecond.</h2>
+          <RevealHeading text="Three steps, under a millisecond." className="center" />
           <div className="cards">
             <SpotCard>
               <span className="card__n">01</span>
@@ -207,7 +208,7 @@ export default function App() {
         <section id="lifecycle" className="section">
           <Scramble as="p" text="03 / where aval sits" className="kicker" />
           <div className="life__intro">
-            <h2>Before the signature, not after the block.</h2>
+            <RevealHeading text="Before the signature, not after the block." />
             <p>
               A Solana transaction is irreversible from the moment it is signed and sent: it is forwarded to the
               leader, executed, shredded across the network and voted into the chain in well under a second.
@@ -218,7 +219,16 @@ export default function App() {
         </section>
 
         <section id="statement" className="statement">
-          <WaveText text="Agents act in milliseconds. AVAL decides in less, and only then does a key sign." />
+          <ScrollManifesto
+            kicker="why aval"
+            lines={[
+              'Autonomous agents now hold wallets.',
+              'They read emails, follow links and sign in milliseconds.',
+              'AVAL reads what every transaction would actually do,',
+              'traces each address to where it came from,',
+              'and decides before a single key signs.',
+            ]}
+          />
         </section>
 
         <section id="speed" className="section invert">
@@ -252,7 +262,7 @@ export default function App() {
           </SpotCard>
           <div className="split__copy">
             <Scramble as="p" text="05 / receipts" className="kicker" />
-            <h2>Every verdict shows its work.</h2>
+            <RevealHeading text="Every verdict shows its work." />
             <p>
               Each decision carries the simulated slot, the balance deltas and a digest
               that matches the transaction's own message digest. Anyone can check that
@@ -266,7 +276,7 @@ export default function App() {
             <div className="finale__top">
               <div>
                 <p className="kicker">the console</p>
-                <h2 className="finale__h">Run it on your own agents.</h2>
+                <RevealHeading text="Run it on your own agents." className="finale__h" />
               </div>
               <div className="finale__cta">
                 <ScrambleButton label="Open the console" href="/app/" />
