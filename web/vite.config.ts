@@ -19,6 +19,9 @@ const proxy = {
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': resolve(import.meta.dirname, 'src') } },
+  // The footer lanyard's deps load lazily; pre-bundle them at startup so the
+  // dev server never discovers them mid-session and serves a stale chunk.
+  optimizeDeps: { include: ['@react-three/fiber', '@react-three/drei', '@react-three/rapier', 'meshline'] },
   server: { host: '127.0.0.1', port: 5191, proxy },
   preview: { host: '127.0.0.1', port: 4173, proxy },
   build: {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ElementType } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type ElementType } from 'react'
 import { NOISE, pick } from '../lib/glyphs'
 import { useReduced } from '../lib/useReduced'
 
@@ -56,8 +56,11 @@ export default function Scramble({
     return () => { io.disconnect(); clearInterval(timer.current) }
   }, [text, reduced])
 
+  // Cast: three-fiber widens JSX intrinsic elements, which collapses a
+  // polymorphic `as` tag's props to never.
+  const T = Tag as ComponentType<any>
   return (
-    <Tag
+    <T
       ref={el}
       className={className}
       href={href}
@@ -66,6 +69,6 @@ export default function Scramble({
       onFocus={hover ? run : undefined}
     >
       <span aria-hidden="true">{out}</span>
-    </Tag>
+    </T>
   )
 }

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, type ElementType } from 'react'
+import { lazy, Suspense, useEffect, useRef, type ComponentType, type ElementType } from 'react'
 import type { InterferenceRibbonsHandle } from '@/components/ui/interference-ribbons'
 import { motion, useInView, useMotionValueEvent, useScroll, useSpring } from 'motion/react'
 import { NOISE } from '../lib/glyphs'
@@ -112,8 +112,10 @@ export function RevealHeading({ text, as: Tag = 'h2', className = '' }: { text: 
   const inView = useInView(ref, { once: true, margin: '0px 0px -12% 0px' })
   const show = reduced || inView
   const words = text.split(' ')
+  // Cast: three-fiber widens JSX intrinsic elements (see Scramble).
+  const T = Tag as ComponentType<any>
   return (
-    <Tag ref={ref} className={`reveal ${className}`} aria-label={text}>
+    <T ref={ref} className={`reveal ${className}`} aria-label={text}>
       {words.map((w, i) => (
         <span key={i} className="reveal__mask" aria-hidden="true">
           <motion.span
@@ -126,6 +128,6 @@ export function RevealHeading({ text, as: Tag = 'h2', className = '' }: { text: 
           </motion.span>
         </span>
       ))}
-    </Tag>
+    </T>
   )
 }

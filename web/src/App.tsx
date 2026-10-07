@@ -18,6 +18,7 @@ import SlotTower from './components/SlotTower'
 import SmokeHeading from './components/SmokeHeading'
 import AttackReel from './components/AttackReel'
 import CurrentBand from './components/CurrentBand'
+import FooterBadge from './components/FooterBadge'
 import { ATTACKS } from './components/attacks'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
@@ -310,6 +311,7 @@ export default function App() {
             </div>
             <div className="finale__screen">
               <FooterWord />
+              <FooterBadge />
             </div>
             <footer className="footer">
               <span>AVAL · built for VETO · Superteam Brasil 2026</span>

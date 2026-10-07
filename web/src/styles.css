@@ -613,6 +613,11 @@ p { text-wrap: pretty; }
 /* Inset screen holding the AVAL word, always dark (in the dark theme it reads
    as inverted against the light panel). */
 .finale__screen { position: relative; isolation: isolate; overflow: hidden; border-radius: 14px; background: #0e0d12; color: #ececec; border: 1px solid rgba(255, 255, 255, .08); padding: clamp(28px, 5vw, 72px) clamp(16px, 3vw, 40px); }
+.finale__screen { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: center; gap: 0 24px; padding-block: 0; }
+.finale__screen .outro__word { padding-block: clamp(28px, 5vw, 72px); }
+.badge { position: relative; height: clamp(440px, 46vw, 600px); margin-right: calc(-1 * clamp(16px, 3vw, 40px)); }
+.badge .lanyard-wrapper { position: absolute; inset: 0; height: 100%; }
+@media (max-width: 760px) { .finale__screen { grid-template-columns: 1fr; } .badge { height: 460px; margin: 0 calc(-1 * clamp(16px, 3vw, 40px)); } }
 .finale .footer { flex-wrap: wrap; }
 
 /* smoke heading (receipts) */

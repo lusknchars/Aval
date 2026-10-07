@@ -11,7 +11,11 @@
   },
   "dependencies": {
     "@paper-design/shaders-react": "^0.0.81",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
+    "@react-three/rapier": "^2.2.0",
     "clsx": "^2.1.1",
+    "meshline": "^3.3.1",
     "motion": "^14.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
