@@ -23,6 +23,7 @@ import { ATTACKS } from './components/attacks'
 import { AnimatePresence } from 'motion/react'
 import Logo from './components/Logo'
 import ThemeToggle from './components/ThemeToggle'
+import Preloader from './components/Preloader'
 
 
 const INTERCEPT = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
@@ -111,6 +112,7 @@ export default function App() {
 
   return (
     <>
+      <Preloader />
       <motion.div className="progress" style={{ scaleX: progress }} aria-hidden="true" />
 
       <header className="nav">

@@ -681,3 +681,20 @@ p { text-wrap: pretty; }
     radial-gradient(ellipse 70% 55% at 50% 50%, rgba(var(--bg-rgb), .3), transparent 75%); }
 .band__content > section { pointer-events: none; }
 .band__content :is(a, button, .spot, .life__bar, .life__grid, .life__cap, .life__intro p, .kicker, h2) { pointer-events: auto; }
+
+/* ── load sequence (Preloader) ──────────────────── */
+.preload { position: fixed; inset: 0; z-index: 1000; display: grid; place-content: center; justify-items: center; gap: 22px; }
+.preload__stage { position: relative; }
+.preload__ascii { display: block; }
+.preload__solid { position: absolute; inset: 0; opacity: 0; display: block; }
+.preload__label { margin: 0; font-family: var(--mono); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; opacity: .7; font-variant-numeric: tabular-nums; }
+.preload__label span { margin-left: 8px; }
+/* Expand: the overlay keeps a mark-shaped hole that grows past the screen. */
+.preload.is-open .preload__stage, .preload.is-open .preload__label { visibility: hidden; }
+.preload.is-open {
+  -webkit-mask-image: linear-gradient(#000 0 0), var(--hole); mask-image: linear-gradient(#000 0 0), var(--hole);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%, var(--hole-size) var(--hole-size); mask-size: 100% 100%, var(--hole-size) var(--hole-size);
+  -webkit-mask-position: 0 0, var(--hole-x) var(--hole-y); mask-position: 0 0, var(--hole-x) var(--hole-y);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
