@@ -9,6 +9,8 @@
 models/Llama-Prompt-Guard-2-86M/
 models/VETO-Security-Gemma3-4B-LoRA/
 *.safetensors
+models/veto-*/
+models/*.gguf
 
 # Binarios e ferramentas de terceiros
 llama/
