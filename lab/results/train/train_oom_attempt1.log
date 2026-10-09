@@ -1,0 +1,44 @@
+[transformers] The tokenizer you are loading from 'models/veto-merged-bf16' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+Loading configuration file config/mlx_lora_svm.yaml
+Loading pretrained model
+Loading datasets
+Training
+[34m╭─[0m[34m [0m[1;35mmlx_lm.lora[0m[34m [0m[34m───────────────────────────────────────────────────────────────────────────────────────────────────────[0m[34m─╮[0m
+[34m│[0m    [39mmodel        [0m   [1mmodels/veto-merged-bf16[0m                                                                           [34m│[0m
+[34m│[0m    [39mtype         [0m   [1mlora · -1 layers · rank 16[0m                                                                        [34m│[0m
+[34m│[0m    [39mdataset      [0m   [1mresults/svm_dataset[0m                                                                               [34m│[0m
+[34m│[0m    [39moptimizer    [0m   [1madam · lr 1.0e-04[0m                                                                                 [34m│[0m
+[34m│[0m    [39mbatch · iters[0m   [1m8 · 450[0m                                                                                           [34m│[0m
+[34m│[0m    [39mmax seq      [0m   [1m2,560[0m                                                                                             [34m│[0m
+[34m╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯[0m
+Trainable parameters: 1.196% (18.465M/1543.714M)
+  [1miter   train_loss     tok/s     tokens[0m
+  [38;5;244m   1[0m    [1;35mval[0m [1m1.917[0m    [38;5;244m216.79s[0m
+[1;34mtrain[0m [38;5;244m░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░[0m [1;34m  0%[0m [38;5;244m·[0m [1;34m    0[0m[38;5;244m/450[0m
+Traceback (most recent call last):
+  File "/Users/luskoliveira/veto-lab-2-dataset/.venv-mlx/bin/mlx_lm.lora", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/luskoliveira/veto-lab-2-dataset/.venv-mlx/lib/python3.14/site-packages/mlx_lm/lora.py", line 392, in main
+    run(types.SimpleNamespace(**args))
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luskoliveira/veto-lab-2-dataset/.venv-mlx/lib/python3.14/site-packages/mlx_lm/lora.py", line 364, in run
+    train_model(args, model, train_set, valid_set, training_callback)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/luskoliveira/veto-lab-2-dataset/.venv-mlx/lib/python3.14/site-packages/mlx_lm/lora.py", line 306, in train_model
+    train(
+    ~~~~~^
+        model=model,
+        ^^^^^^^^^^^^
+    ...<4 lines>...
+        training_callback=training_callback,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/luskoliveira/veto-lab-2-dataset/.venv-mlx/lib/python3.14/site-packages/mlx_lm/tuner/trainer.py", line 331, in train
+    mx.eval(state, losses, n_tokens, grad_accum)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: [METAL] Command buffer execution failed: Insufficient Memory (00000008:kIOGPUCommandBufferCallbackErrorOutOfMemory).
+real 229.60
+user 3.56
+sys 11.76

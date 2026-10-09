@@ -1,0 +1,193 @@
+[transformers] The tokenizer you are loading from 'models/veto-merged-bf16' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[1/106] gold=low pred=high fmt=risk
+[2/106] gold=high pred=high fmt=risk
+[3/106] gold=high pred=high fmt=risk
+[4/106] gold=low pred=low fmt=risk
+[5/106] gold=high pred=high fmt=risk
+[6/106] gold=low pred=low fmt=risk
+[7/106] gold=high pred=high fmt=risk
+[8/106] gold=high pred=high fmt=risk
+[9/106] gold=low pred=low fmt=risk
+[10/106] gold=low pred=high fmt=risk
+[11/106] gold=high pred=high fmt=risk
+[12/106] gold=high pred=high fmt=risk
+[13/106] gold=low pred=high fmt=risk
+[14/106] gold=high pred=high fmt=risk
+[15/106] gold=high pred=high fmt=risk
+[16/106] gold=low pred=low fmt=risk
+[17/106] gold=high pred=high fmt=risk
+[18/106] gold=low pred=low fmt=risk
+[19/106] gold=high pred=low fmt=risk
+[20/106] gold=low pred=low fmt=risk
+[21/106] gold=high pred=high fmt=risk
+[22/106] gold=low pred=low fmt=risk
+[23/106] gold=high pred=high fmt=risk
+[24/106] gold=high pred=high fmt=risk
+[25/106] gold=low pred=high fmt=risk
+[26/106] gold=high pred=high fmt=risk
+[27/106] gold=high pred=high fmt=risk
+[28/106] gold=low pred=low fmt=risk
+[29/106] gold=high pred=low fmt=risk
+[30/106] gold=low pred=high fmt=risk
+[31/106] gold=high pred=high fmt=risk
+[32/106] gold=high pred=high fmt=risk
+[33/106] gold=low pred=low fmt=risk
+[34/106] gold=high pred=high fmt=risk
+[35/106] gold=high pred=high fmt=risk
+[36/106] gold=low pred=low fmt=risk
+[37/106] gold=high pred=high fmt=risk
+[38/106] gold=high pred=low fmt=risk
+[39/106] gold=low pred=high fmt=risk
+[40/106] gold=high pred=high fmt=risk
+[41/106] gold=high pred=high fmt=risk
+[42/106] gold=low pred=low fmt=risk
+[43/106] gold=high pred=high fmt=risk
+[44/106] gold=high pred=high fmt=risk
+[45/106] gold=low pred=low fmt=risk
+[46/106] gold=high pred=high fmt=risk
+[47/106] gold=low pred=low fmt=risk
+[48/106] gold=high pred=high fmt=risk
+[49/106] gold=high pred=high fmt=risk
+[50/106] gold=low pred=low fmt=risk
+[51/106] gold=high pred=high fmt=risk
+[52/106] gold=low pred=low fmt=risk
+[53/106] gold=high pred=high fmt=risk
+[54/106] gold=low pred=low fmt=risk
+[55/106] gold=high pred=high fmt=risk
+[56/106] gold=low pred=low fmt=risk
+[57/106] gold=high pred=high fmt=risk
+[58/106] gold=low pred=high fmt=risk
+[59/106] gold=high pred=high fmt=risk
+[60/106] gold=high pred=high fmt=risk
+[61/106] gold=low pred=low fmt=risk
+[62/106] gold=high pred=high fmt=risk
+[63/106] gold=high pred=high fmt=risk
+[64/106] gold=low pred=low fmt=risk
+[65/106] gold=high pred=high fmt=risk
+[66/106] gold=high pred=high fmt=risk
+[67/106] gold=low pred=high fmt=risk
+[68/106] gold=high pred=high fmt=risk
+[69/106] gold=high pred=high fmt=risk
+[70/106] gold=low pred=high fmt=risk
+[71/106] gold=high pred=high fmt=risk
+[72/106] gold=high pred=high fmt=risk
+[73/106] gold=low pred=high fmt=risk
+[74/106] gold=high pred=high fmt=risk
+[75/106] gold=low pred=high fmt=risk
+[76/106] gold=high pred=high fmt=risk
+[77/106] gold=low pred=high fmt=risk
+[78/106] gold=high pred=high fmt=risk
+[79/106] gold=high pred=high fmt=risk
+[80/106] gold=low pred=high fmt=risk
+[81/106] gold=high pred=high fmt=risk
+[82/106] gold=high pred=high fmt=risk
+[83/106] gold=low pred=low fmt=risk
+[84/106] gold=low pred=low fmt=risk
+[85/106] gold=high pred=high fmt=risk
+[86/106] gold=low pred=low fmt=risk
+[87/106] gold=low pred=low fmt=risk
+[88/106] gold=high pred=high fmt=risk
+[89/106] gold=low pred=high fmt=risk
+[90/106] gold=high pred=high fmt=risk
+[91/106] gold=high pred=high fmt=risk
+[92/106] gold=low pred=low fmt=risk
+[93/106] gold=high pred=high fmt=risk
+[94/106] gold=low pred=low fmt=risk
+[95/106] gold=high pred=high fmt=risk
+[96/106] gold=low pred=high fmt=risk
+[97/106] gold=high pred=high fmt=risk
+[98/106] gold=high pred=high fmt=risk
+[99/106] gold=low pred=low fmt=risk
+[100/106] gold=high pred=high fmt=risk
+[101/106] gold=high pred=low fmt=risk
+[102/106] gold=low pred=low fmt=risk
+[103/106] gold=high pred=high fmt=risk
+[104/106] gold=low pred=low fmt=risk
+[105/106] gold=high pred=high fmt=risk
+[106/106] gold=low pred=low fmt=risk
+{
+ "overall": {
+  "n": 106,
+  "accuracy": 0.8208,
+  "accuracy_ci95": [
+   0.7369,
+   0.8821
+  ],
+  "invalid": 0,
+  "invalid_rate": 0.0,
+  "high_precision": 0.7945,
+  "high_recall": 0.9355,
+  "high_f1": 0.8593,
+  "tp": 58,
+  "fp": 15,
+  "fn": 4,
+  "formats": {
+   "risk": 106,
+   "decision": 0,
+   "invalid": 0
+  }
+ },
+ "per_signal": {
+  "amount_understated": {
+   "n": 14,
+   "recall": 0.7857,
+   "ci95": [
+    0.5241,
+    0.9243
+   ],
+   "named": 0.2857,
+   "named_ci95": [
+    0.1172,
+    0.5465
+   ]
+  },
+  "asset_mismatch": {
+   "n": 17,
+   "recall": 0.9412,
+   "ci95": [
+    0.7302,
+    0.9895
+   ],
+   "named": 0.9412,
+   "named_ci95": [
+    0.7302,
+    0.9895
+   ]
+  },
+  "injected_instruction": {
+   "n": 16,
+   "recall": 1.0,
+   "ci95": [
+    0.8064,
+    1.0
+   ],
+   "named": 1.0,
+   "named_ci95": [
+    0.8064,
+    1.0
+   ]
+  },
+  "none": {
+   "n": 44,
+   "specificity": 0.6591,
+   "ci95": [
+    0.5114,
+    0.7812
+   ]
+  },
+  "recipient_mismatch": {
+   "n": 15,
+   "recall": 1.0,
+   "ci95": [
+    0.7961,
+    1.0
+   ],
+   "named": 1.0,
+   "named_ci95": [
+    0.7961,
+    1.0
+   ]
+  }
+ }
+}
+wrote results/eval/tuned_mainnet.json

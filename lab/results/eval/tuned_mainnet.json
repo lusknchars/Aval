@@ -1,0 +1,1871 @@
+{
+ "name": "tuned_mainnet",
+ "model": "models/veto-merged-bf16",
+ "adapter": "models/veto-svm-lora",
+ "data": "results/svm_dataset/test_mainnet.jsonl",
+ "max_tokens": 200,
+ "decoding": "greedy (temp 0)",
+ "seconds": 173.9,
+ "overall": {
+  "n": 106,
+  "accuracy": 0.8208,
+  "accuracy_ci95": [
+   0.7369,
+   0.8821
+  ],
+  "invalid": 0,
+  "invalid_rate": 0.0,
+  "high_precision": 0.7945,
+  "high_recall": 0.9355,
+  "high_f1": 0.8593,
+  "tp": 58,
+  "fp": 15,
+  "fn": 4,
+  "formats": {
+   "risk": 106,
+   "decision": 0,
+   "invalid": 0
+  }
+ },
+ "per_signal": {
+  "amount_understated": {
+   "n": 14,
+   "recall": 0.7857,
+   "ci95": [
+    0.5241,
+    0.9243
+   ],
+   "named": 0.2857,
+   "named_ci95": [
+    0.1172,
+    0.5465
+   ]
+  },
+  "asset_mismatch": {
+   "n": 17,
+   "recall": 0.9412,
+   "ci95": [
+    0.7302,
+    0.9895
+   ],
+   "named": 0.9412,
+   "named_ci95": [
+    0.7302,
+    0.9895
+   ]
+  },
+  "injected_instruction": {
+   "n": 16,
+   "recall": 1.0,
+   "ci95": [
+    0.8064,
+    1.0
+   ],
+   "named": 1.0,
+   "named_ci95": [
+    0.8064,
+    1.0
+   ]
+  },
+  "none": {
+   "n": 44,
+   "specificity": 0.6591,
+   "ci95": [
+    0.5114,
+    0.7812
+   ]
+  },
+  "recipient_mismatch": {
+   "n": 15,
+   "recall": 1.0,
+   "ci95": [
+    0.7961,
+    1.0
+   ],
+   "named": 1.0,
+   "named_ci95": [
+    0.7961,
+    1.0
+   ]
+  }
+ },
+ "per_source": {
+  "mainnet": {
+   "n": 106,
+   "accuracy": 0.8208,
+   "accuracy_ci95": [
+    0.7369,
+    0.8821
+   ],
+   "invalid": 0,
+   "invalid_rate": 0.0,
+   "high_precision": 0.7945,
+   "high_recall": 0.9355,
+   "high_f1": 0.8593,
+   "tp": 58,
+   "fp": 15,
+   "fn": 4,
+   "formats": {
+    "risk": 106,
+    "decision": 0,
+    "invalid": 0
+   }
+  }
+ },
+ "examples": [
+  {
+   "i": 0,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent sends the swapped amount to HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC but the simulation sends it to HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC\"]}"
+  },
+  {
+   "i": 1,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent sends the swapped amount to HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC but the simulation sends it to HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC\"]}"
+  },
+  {
+   "i": 2,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset D2ReSM…QoKA but the simulation moves none of it out of the signer; it moves 19722.78746 DwWcsY…fMAv\"]}"
+  },
+  {
+   "i": 3,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 4,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is GwLb9PgsfTxsdn1Fo7kqiZADjJTgnPsKKTQV9bmorQur but the simulation sends 0.672246939 SOL to DM2johf2d2YA9Qdr8Rx35a8AkcV7BDE5DFdUVegUdyg3\"]}"
+  },
+  {
+   "i": 5,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 6,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is 4F18kK3DmEj8iZjeiFHLtTSV3jb56Qd15egaxKeMnGRt but the simulation sends 1.1999947 SOL to 49DxwnAPrtB2CpKijQpcWDqK5szLM7bNQvkuNzWtM7cT\"]}"
+  },
+  {
+   "i": 7,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.memo contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 8,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 9,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 1.00348844 SOL but the simulated outflow is 1.003488441 SOL\"]}"
+  },
+  {
+   "i": 10,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.dapp_note contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 11,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset EPjFWd…Dt1v but the simulation moves none of it out of the signer; it moves 1.00348801 SOL\"]}"
+  },
+  {
+   "i": 12,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.109873844 SOL but the simulated outflow is 0.122101088 SOL\"]}"
+  },
+  {
+   "i": 13,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.dapp_note contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 14,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.027468461 SOL but the simulated outflow is 0.030454942 SOL\"]}"
+  },
+  {
+   "i": 15,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 16,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is 85mTcJFfsh3UCidUUY8z3gVNUssWsNk8mUKchNvTQsRw but the simulation sends 100 Es9vMF…wNYB to EsP7tAbkVusthKDd8VxVdystSoyNDdoVfjWcBajr4Yce\"]}"
+  },
+  {
+   "i": 17,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 18,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 19,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 20,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is AXyAEaK9rSNpzTGfZkcM99yCSbZJVA31j5SndpvVQ4cU but the simulation sends 14.54 CASHx9…CASH to ERWR6EUnxpZbShA7HnceD83hNUnBzh3mFoPKBL2K9LYa\"]}"
+  },
+  {
+   "i": 21,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 22,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.memo contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 23,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset So11111111111111111111111111111111111111112 but the simulation moves none of it out of the signer; it moves 35.00000000 EPjFWd…Dt1v\"]}"
+  },
+  {
+   "i": 24,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is null but the simulation sends the swapped Es9vMF…wNYB to 54Vp27uLaw4wNLo5n7r4fcC6zLamoQc28xBARjss4EUJ\"]}"
+  },
+  {
+   "i": 25,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is null but the simulation sends the swapped Es9vMF…wNYB to 54Vp27uLaw4wNLo5n7r4fcC6zLamoQc28xBARjss4EUJ\"]}"
+  },
+  {
+   "i": 26,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset So11111111111111111111111111111111111111112 but the simulation moves none of it out of the signer; it moves 28.649999 Es9vMF…wNYB\"]}"
+  },
+  {
+   "i": 27,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 28,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 29,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset SOL but the simulation moves none of it out of the signer; it moves 0.506 SOL\"]}"
+  },
+  {
+   "i": 30,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset HZaMpn…LLL9 but the simulation moves none of it out of the signer; it moves 0.506 SOL\"]}"
+  },
+  {
+   "i": 31,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset SOL but the simulation moves none of it out of the signer; it moves 0.1265 SOL\"]}"
+  },
+  {
+   "i": 32,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 33,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is 87hFHwrWphN74XMaJfCKMrMXrdRpkGmEDzVuZ4pooRzU but the simulation sends 0.006 SOL to 2MpTxiCF5AUW5XR2hXs4DhGuFtqk6d3FW4XgLLCBWNoa\"]}"
+  },
+  {
+   "i": 34,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.memo contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 35,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 36,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset CASHx9…CASH but the simulation moves none of it out of the signer; it moves 0.138974 SOL\"]}"
+  },
+  {
+   "i": 37,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 38,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 12.851565 9BEcn9…PA2D but the simulated outflow is 128.51565 9BEcn9…PA2D\"]}"
+  },
+  {
+   "i": 39,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is null but the simulation sends the swapped amount to 7s1da8DduuBFqGra5bJBjpnvL5E9mGzCuMk1Qkh4or2Z\"]}"
+  },
+  {
+   "i": 40,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset 8vY4jT…YBEY but the simulation moves none of it out of the signer; it moves 12.85 9BEcn9…PA2D\"]}"
+  },
+  {
+   "i": 41,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 42,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is 4MxAeguAhFBsmEQWL6PFs2gee7hgvHzcyYCR8NZR7FWj but the simulation sends 0.015 SOL to 3g1b1xhMdGTzVGz2PGG3disgKMVD9AZxYyrUMtYud1qY\"]}"
+  },
+  {
+   "i": 43,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset Fv36gF…KaLR but the simulation moves none of it out of the signer; it moves 0.01 SOL\"]}"
+  },
+  {
+   "i": 44,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 45,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is C4vXLniH6EmXP7gjxXSyd1WKDnA8xW7kMHjRD7iQhFdv but the simulation sends 0.007288488 SOL to EDnz89pRgMCDe6vmuupFBRDFYQ1CwrBYuUv1zPqP9V3T\"]}"
+  },
+  {
+   "i": 46,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 47,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is 9NQnMTJG2tqVwu91dFngqwghCF9zfAMbmoZoY22Gy3jr but the simulation sends 24.32 EPjFWd…Dt1v to 6NUiVmsNjsi4AfsMsEiaezsaV9N4N1ZrD4jEnuWNRvyb\"]}"
+  },
+  {
+   "i": 48,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.dapp_note contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 49,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 50,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.token_name contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 51,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 52,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.token_name contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 53,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 54,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.token_description contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 55,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 56,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is 2c5n3R1tYue9LSjHTiWT2Tf1jBCj3b4odqcndMnRp9j6 but the simulation sends 0.25624968 SOL to AwAngJAMZrpdJzA3B5DF6496SCv4JasEqPTC9xHwEsY\"]}"
+  },
+  {
+   "i": 57,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset SOL but the simulation moves none of it out of the signer; it moves 0.213486827 SOL\"]}"
+  },
+  {
+   "i": 58,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset SOL but the simulation moves none of it out of the signer; it moves 0.16011512 SOL\"]}"
+  },
+  {
+   "i": 59,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.token_description contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 60,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 61,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset CSEQuU…tb2s but the simulation moves none of it out of the signer; it moves 0.000111111 SOL\"]}"
+  },
+  {
+   "i": 62,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.token_description contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 63,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 64,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is FRgGxr9THfTZXoPfSEB75q4F9fBmFiToqNyeWGSgGJoz but the simulation sends 68961.452263 HCyP86…pump to CiGqxsVZ3tQzB6uoUSMGB4GNVb8fB9VNNjw3ZgkRYAzN\"]}"
+  },
+  {
+   "i": 65,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset 6VLPHF…JfwP but the simulation moves none of it out of the signer; it moves 68961.452263 HCyP86…pump\"]}"
+  },
+  {
+   "i": 66,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.063854184 SOL but the simulated outflow is 0.082169872 SOL\"]}"
+  },
+  {
+   "i": 67,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.057468765 SOL but the simulated outflow is 0.06385407 SOL\"]}"
+  },
+  {
+   "i": 68,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.dapp_note contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 69,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.018673412 So111111…1112 but the simulated outflow is 0.021858133 So111111…1112\"]}"
+  },
+  {
+   "i": 70,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset 5K1jNs…W1Ey but the simulation moves none of it out of the signer; it moves 0.000001 SOL\"]}"
+  },
+  {
+   "i": 71,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.dapp_note contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 72,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset SOL but the simulation moves none of it out of the signer; it moves 0.30700228 EPjFWd…Dt1v\"]}"
+  },
+  {
+   "i": 73,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset SOL but the simulation moves none of it out of the signer; it moves 0.030700228 EPjFWd…Dt1v\"]}"
+  },
+  {
+   "i": 74,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.20251384 SOL but the simulated outflow is 0.20251384 SOL\"]}"
+  },
+  {
+   "i": 75,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset CF5oXA…Y9en but the simulation moves none of it out of the signer; it moves 0.20251384 SOL\"]}"
+  },
+  {
+   "i": 76,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.507 SOL but the simulated outflow is 1.014 SOL\"]}"
+  },
+  {
+   "i": 77,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.4563 SOL but the simulated outflow is 0.9126 SOL\"]}"
+  },
+  {
+   "i": 78,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset D2ReSM…QoKA but the simulation moves none of it out of the signer; it moves 0.507 SOL\"]}"
+  },
+  {
+   "i": 79,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.05204928 SOL but the simulated outflow is 0.05883152 SOL\"]}"
+  },
+  {
+   "i": 80,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset 9BEcn9…PA2D but the simulation moves none of it out of the signer; it moves 0.052049 SOL\"]}"
+  },
+  {
+   "i": 81,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.dapp_note contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 82,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 83,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 84,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.token_name contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 85,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 86,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 87,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is EDq4XSnur6QqSbFGnsoMHT3anQJgPNzmw5SyLwMAkJk9 but the simulation sends 0.401105773 SOL to 8AzwSsvviMbXXRTVBtMibAKShiuamBzNmNeLEgwwmTkd\"]}"
+  },
+  {
+   "i": 88,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 6.388801 EPjFWd…Dt1v but the simulated outflow is 12.777602 EPjFWd…Dt1v\"]}"
+  },
+  {
+   "i": 89,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 3.1944 EPjFWd…Dt1v but the simulated outflow is 31.944 EPjFWd…Dt1v\"]}"
+  },
+  {
+   "i": 90,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset F1QbL4…b8FK but the simulation moves none of it out of the signer; it moves 6.00000000 EPjFWd…Dt1v\"]}"
+  },
+  {
+   "i": 91,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 92,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "injected_instruction"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"injected_instruction\"],\"reasons\":[\"metadata.token_description contains an instruction addressed to the reviewer; treated as untrusted data\"]}"
+  },
+  {
+   "i": 93,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 94,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is 4QFNRvsK79AYd7w9a5t2bsWHJEatWrpDqTevkczcpRDs but the simulation sends 0.401100159 SOL to 7gfLu3au4S1KKUcFVsYomoyDHb7maiZ4cfZvQrW7eBC9\"]}"
+  },
+  {
+   "i": 95,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"amount_understated\"],\"reasons\":[\"intent declares 0.135173829 SOL but the simulated outflow is 0.150191659 SOL\"]}"
+  },
+  {
+   "i": 96,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset SOL but the simulation moves none of it out of the signer; it moves 0.121656446 SOL\"]}"
+  },
+  {
+   "i": 97,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "asset_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"asset_mismatch\"],\"reasons\":[\"intent declares asset Gvy91g…nE9q but the simulation moves none of it out of the signer; it moves 0.135173 SOL\"]}"
+  },
+  {
+   "i": 98,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 99,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is BNewizXtA22zfwqE9YWyDeGHne2UHR9GMMw8PqYMGgVR but the simulation sends 6.493585 EPjFWd…Dt1v to 9z63zH21kay2sNLcrPKCaPbhdimXC9JakZuEo633q1Sd\"]}"
+  },
+  {
+   "i": 100,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "amount_understated"
+    ]
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 101,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 102,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is HUDfk3M3pMEJBJkjb66Km3Ce6RZ6hYGdRtAHobhJkBVz but the simulation sends 0.00149844 SOL to 67Y1Edckt3ouM5iDZZK7GraX1E92MW21jBLmv2NS5g6Q\"]}"
+  },
+  {
+   "i": 103,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  },
+  {
+   "i": 104,
+   "source": "mainnet",
+   "gold": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ]
+   },
+   "pred": {
+    "risk": "high",
+    "signals": [
+     "recipient_mismatch"
+    ],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"high\",\"signals\":[\"recipient_mismatch\"],\"reasons\":[\"intent recipient is 73iLrtNVdEdzQ6RmcCGgetASBPNJ7Up4YgLnY9pegRk1 but the simulation sends 1.33 ENL66P…REzB to AwTxkKrszDzH8WPxqUHS1sTJna5Fagw5xio8kTXWjnfn\"]}"
+  },
+  {
+   "i": 105,
+   "source": "mainnet",
+   "gold": {
+    "risk": "low",
+    "signals": []
+   },
+   "pred": {
+    "risk": "low",
+    "signals": [],
+    "format": "risk"
+   },
+   "raw": "{\"risk\":\"low\",\"signals\":[],\"reasons\":[\"simulated effects match the stated intent\"]}"
+  }
+ ]
+}

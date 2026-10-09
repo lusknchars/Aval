@@ -237,6 +237,43 @@ python -m src.svm_dataset --effects results/svm_effects.jsonl results/svm_effect
 - Execução longa em segundo plano: `nohup ./svm/target/release/aval-svm dataset ... >> results/svm_dataset_run.log 2>&1 &`
   e acompanhe com `tail -f results/svm_dataset_run.log` ou `wc -l results/svm_effects.jsonl`.
 
+### Treino local com MLX
+
+Continua o treino do modelo de Luis (Qwen2.5-Coder-1.5B-Instruct, merged bf16, pasta `gguf-model/` do
+Drive) com LoRA no dataset acima, tudo local em Apple Silicon (M4 Pro, 48 GB), custo zero. Os comandos
+exatos estão em `scripts/train_mlx.sh` (`baseline`, `train`, `tuned`, `fuse`, `gguf`); a config LoRA em
+`config/mlx_lora_svm.yaml` (rank 16, scale 2, dropout 0.05, max_seq 2560).
+
+```bash
+/opt/homebrew/bin/python3 -m venv .venv-mlx && .venv-mlx/bin/pip install mlx-lm gdown gguf numpy pytest
+./scripts/train_mlx.sh baseline   # avalia o modelo original → results/eval/baseline_*.json
+./scripts/train_mlx.sh train      # mlx_lm.lora: todas as camadas, batch 8, lr 1e-4, --mask-prompt, --grad-checkpoint
+./scripts/train_mlx.sh tuned      # avalia base + adapter → results/eval/tuned_*.json
+./scripts/train_mlx.sh fuse       # models/veto-svm-fused (bf16)
+LLAMA_CPP=<clone do llama.cpp> ./scripts/train_mlx.sh gguf   # models/veto-svm-f16.gguf (3,1 GB)
+```
+
+- Avaliação (`src/eval_risk.py`): mesmas mensagens system+user do dataset, decodificação gulosa,
+  200 tokens. Resposta `{"risk":...}` ou decisão legada (`BLOCK`/`REVIEW` = alto, `ALLOW` = baixo);
+  o resto é inválido e conta como erro. Recall por sinal com IC de Wilson 95%.
+- Treino: val loss 1,917 → 0,106 (50) → 0,082 (100) → 0,072 (200) → **0,056 (300)** → 0,058 (350) →
+  0,072 (400). Parada antecipada em ~420 iterações; adapter final = checkpoint 300 (≈1,35 época).
+- GGUF: `mlx_lm.fuse --export-gguf` não suporta qwen2, então usamos o `convert_hf_to_gguf.py` do
+  llama.cpp. Sem `llama-quantize`/`llama-server` instalados, o arquivo fica só em f16 e não foi testado no llama.cpp.
+
+| Conjunto | Modelo | Acurácia (IC95) | Precisão alto | Recall alto | F1 | Inválidas |
+|---|---|---|---|---|---|---|
+| test_mainnet (106) | original | 39,6% (30,8–49,1) | — (nunca diz alto) | 0% | 0 | 3,8% |
+| test_mainnet (106) | ajustado | **82,1%** (73,7–88,2) | 79,5% | 93,5% | 0,86 | 0% |
+| test_synthetic (143) | original | 34,3% (27,0–42,4) | — | 0% | 0 | 15,4% |
+| test_synthetic (143) | ajustado | **91,6%** (85,9–95,1) | 100% | 86,0% | 0,93 | 0% |
+
+O modelo original responde no formato `risk` (ele aprendeu o formato pelo system prompt), mas responde
+sempre "baixo"; as inválidas são respostas cortadas no limite de 200 tokens. Ponto fraco do ajustado: no mainnet, 15 de 44 transações honestas
+(todas swaps) viram falso positivo, principalmente `amount_understated` (especificidade 66%). No sintético,
+`amount_understated` (0/6), `undeclared_close` (3/5) e `approval_exceeds_intent` (4/7) ainda escapam.
+Não medimos o esquecimento da tarefa original de Luis (não temos os dados dele).
+
 ## aval-registry — atestação on-chain dos vereditos
 
 O `aval-svm anchor` lê o arquivo de registros do VETO (JSONL, um veredito por linha), agrupa as

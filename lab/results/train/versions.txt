@@ -1,0 +1,15 @@
+# .venv-mlx (python 3.14.3)
+gdown              6.4.1
+gguf               0.19.0
+mlx                0.32.3
+mlx-lm             0.32.0
+mlx-metal          0.32.3
+numpy              2.5.3
+transformers       5.19.0
+# .venv-gguf
+gguf               0.19.0
+numpy              2.2.6
+torch              2.11.0
+transformers       4.57.6
+llama.cpp convert_hf_to_gguf.py @ 71ad0590f4808b6202f9213d166913858c73b1bc
+llama-quantize/llama-cli/llama-server: not installed
