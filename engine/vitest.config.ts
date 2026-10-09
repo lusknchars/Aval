@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    // No DOM. VETO is a server-side library.
+    // No DOM. AVAL is a server-side library.
     environment: "node",
 
     // globals: false -> describe/it/expect are imported explicitly.

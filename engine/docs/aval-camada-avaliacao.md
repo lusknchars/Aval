@@ -1,4 +1,4 @@
-˜# VETO — A camada de avaliação
+˜# AVAL — A camada de avaliação
 
 *Como a ferramenta entende o que o agente queria fazer e decide se a transação faz sentido.*
 
@@ -289,7 +289,7 @@ Cuidados que importam:
 
 **Ofuscação.** Endereço montado por concatenação no contexto, ou codificado. Não há solução completa; registrar como limitação conhecida.
 
-**Ausência total é sinal, não silêncio.** Um endereço que não aparece em nenhum chunk é mais suspeito, não menos. Foi produzido em algum lugar que o VETO não observa.
+**Ausência total é sinal, não silêncio.** Um endereço que não aparece em nenhum chunk é mais suspeito, não menos. Foi produzido em algum lugar que o AVAL não observa.
 
 ## A maior fonte de falso positivo, e como tratar
 

@@ -84,7 +84,7 @@ describe("a malformed record is refused where the bug is", () => {
 
 describe("the file store is append-only and survives a bad line", () => {
   it("reads back what it wrote, oldest first", async () => {
-    const path = join(mkdtempSync(join(tmpdir(), "veto-")), "records.jsonl");
+    const path = join(mkdtempSync(join(tmpdir(), "aval-")), "records.jsonl");
     const store = new FileRecordStore(path);
     await store.append(record({ actionId: "first", at: 1 }));
     await store.append(record({ actionId: "second", at: 2 }));
@@ -95,12 +95,12 @@ describe("the file store is append-only and survives a bad line", () => {
   });
 
   it("treats a store nobody has written to as empty, not broken", async () => {
-    const path = join(mkdtempSync(join(tmpdir(), "veto-")), "absent.jsonl");
+    const path = join(mkdtempSync(join(tmpdir(), "aval-")), "absent.jsonl");
     expect(await new FileRecordStore(path).all()).toEqual([]);
   });
 
   it("keeps the queue readable when one line is corrupt, and says so", async () => {
-    const path = join(mkdtempSync(join(tmpdir(), "veto-")), "records.jsonl");
+    const path = join(mkdtempSync(join(tmpdir(), "aval-")), "records.jsonl");
     const store = new FileRecordStore(path);
     await store.append(record({ actionId: "good" }));
     writeFileSync(path, "{ not json\n", { flag: "a" });

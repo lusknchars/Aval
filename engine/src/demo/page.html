@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>VETO pipeline</title>
+<title>AVAL pipeline</title>
 <style>
   :root {
     --bg: #0f1115; --panel: #161a21; --line: #242a34;
@@ -161,7 +161,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>VETO — the pipeline, end to end</h1>
+  <h1>AVAL — the pipeline, end to end</h1>
   <p class="sub">Type what the user asked for. Everything below is produced by the library itself; nothing is signed and nothing is sent.</p>
 
   <div class="panel agent">
@@ -172,7 +172,7 @@
     <label class="check"><input type="checkbox" id="apoison" checked />
       servir ao agente uma página com um endereço que ninguém digitou</label>
     <button id="arun">Rodar o agente</button>
-    <p class="note" id="astatus">O modelo lê, decide e constrói a transação. O VETO entra no instante em que a carteira seria chamada. Nada é assinado e nada é enviado.</p>
+    <p class="note" id="astatus">O modelo lê, decide e constrói a transação. O AVAL entra no instante em que a carteira seria chamada. Nada é assinado e nada é enviado.</p>
   </div>
 
   <details class="panel manual">
@@ -312,7 +312,7 @@ function renderCounterparties(t) {
  * Findings split by what they are ABOUT.
  *
  * A finding that says the transaction does something the tool never declared
- * is an accusation. A finding that says VETO could not check something is the
+ * is an accusation. A finding that says AVAL could not check something is the
  * absence of evidence. Both are real and both count toward the decision, but
  * printing them in one list made a transaction that did nothing objectionable
  * look accused -- which is exactly what happens on a random mainnet
@@ -338,9 +338,9 @@ function renderFindings(t) {
       <p class="note">Not a reading failure. Nobody declared what this operation was supposed to do, so there is no declaration to hold the transaction against.</p>`;
   }
   if (unread.length) {
-    html += `<div class="sub-h" style="margin-top:18px">what VETO could not read</div>${table(unread)}`;
+    html += `<div class="sub-h" style="margin-top:18px">what AVAL could not read</div>${table(unread)}`;
   } else {
-    html += `<div class="sub-h" style="margin-top:18px">what VETO could not read</div>
+    html += `<div class="sub-h" style="margin-top:18px">what AVAL could not read</div>
       <p class="note">Nothing. Every account this transaction touches was read in full.</p>`;
   }
   return html;
@@ -362,7 +362,7 @@ function renderExplanation(t) {
     <div class="pt-v">${esc(e.verdict)}</div>
     <p class="pt-s">${esc(e.summary)}</p>
 
-    ${reasons ? `<div class="sub-h" style="margin-top:16px">${e.unattributed ? "o que o VETO ainda checou, sem declaração nenhuma" : "a diferença"}</div>${reasons}` : ""}
+    ${reasons ? `<div class="sub-h" style="margin-top:16px">${e.unattributed ? "o que o AVAL ainda checou, sem declaração nenhuma" : "a diferença"}</div>${reasons}` : ""}
     ${minor}
   </div>`;
 }
@@ -450,7 +450,7 @@ async function runTheAgent() {
     $("out").innerHTML =
       renderAgent(t.agent) +
       (t.explanation ? renderReceived(t, t.agent) : "") +
-      (t.explanation ? stage("", "o veredito do VETO", renderExplanation(t)) : "") +
+      (t.explanation ? stage("", "o veredito do AVAL", renderExplanation(t)) : "") +
       (t.findings ? `<div class="deeper">abrir o detalhe técnico</div>` +
         `<details class="stage-d"><summary>onde cada contraparte se originou</summary><div class="panel">${renderCounterparties(t)}</div></details>` +
         `<details class="stage-d"><summary>os efeitos, um por um</summary><div class="panel">${renderEffects(t)}</div></details>` +
@@ -520,8 +520,8 @@ function renderRecent(data) {
     <tr><th></th><th>ver</th><th>programs</th><th>size</th><th>fee</th></tr>${rows}</table>
     <p class="note"><b>Every row is a real transaction that already landed on Solana mainnet</b>, read from block ${esc(data.slot)} through your own RPC — <i>getSlot</i> at finalized commitment, then <i>getBlock</i>, keeping only the ones that succeeded and are not votes. The explorer link opens the same signature on Solscan, so none of it has to be taken on trust.
     <br><br><b>Most will still come back FLAG.</b>
-    That is not VETO disagreeing with the chain. The chain answered "is this valid".
-    VETO answers "did the agent do what it told its user it would do", and a market-making bot
+    That is not AVAL disagreeing with the chain. The chain answered "is this valid".
+    AVAL answers "did the agent do what it told its user it would do", and a market-making bot
     has no agent, no goal and no manifest behind it, so the checks that matter cannot run.
     Re-simulating a transaction that already landed also often fails against today's state,
     which is information about the chain rather than about the tool.</p>`;

@@ -48,7 +48,7 @@ There is no weighted score anywhere to inspect, because there is none.
 ## The agent, for real
 
 The panel at the top runs an actual model. It reads, it decides, it builds the
-transaction, and VETO is called at the moment a wallet would be asked to sign.
+transaction, and AVAL is called at the moment a wallet would be asked to sign.
 Nothing is signed and nothing is sent, and no private key exists anywhere in
 that path -- the wallet is an address used as fee payer.
 

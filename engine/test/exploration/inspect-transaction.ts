@@ -52,18 +52,18 @@ type Config = { rpcUrl: string; commitment: Finality };
 // ---------------------------------------------------------------- input
 
 function readConfig(env: NodeJS.ProcessEnv): Result<Config> {
-  const url = env["VETO_RPC_URL"];
+  const url = env["AVAL_RPC_URL"];
   if (url === undefined || url === "")
-    return { ok: false, error: "VETO_RPC_URL is not set. Fill it in .env." };
+    return { ok: false, error: "AVAL_RPC_URL is not set. Fill it in .env." };
   if (!urlSchema.safeParse(url).success)
-    return { ok: false, error: "VETO_RPC_URL is not a valid http(s) URL." };
+    return { ok: false, error: "AVAL_RPC_URL is not a valid http(s) URL." };
 
-  const parsed = commitmentSchema.safeParse(env["VETO_RPC_COMMITMENT"]);
+  const parsed = commitmentSchema.safeParse(env["AVAL_RPC_COMMITMENT"]);
   if (!parsed.success) {
     return {
       ok: false,
       error:
-        "VETO_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.",
+        "AVAL_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.",
     };
   }
   const commitment = parsed.data;
@@ -72,7 +72,7 @@ function readConfig(env: NodeJS.ProcessEnv): Result<Config> {
     return {
       ok: false,
       error:
-        "VETO_RPC_COMMITMENT=processed does not work for getTransaction (only confirmed or finalized).",
+        "AVAL_RPC_COMMITMENT=processed does not work for getTransaction (only confirmed or finalized).",
     };
   }
   return { ok: true, value: { rpcUrl: url, commitment } };
@@ -593,7 +593,7 @@ async function main(): Promise<number> {
   }
   if (genesis !== MAINNET_GENESIS) {
     console.error(
-      "VETO_RPC_URL answered, but it is not mainnet (different genesis hash). Refused.",
+      "AVAL_RPC_URL answered, but it is not mainnet (different genesis hash). Refused.",
     );
     return EXIT_INPUT;
   }

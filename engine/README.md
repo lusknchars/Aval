@@ -1,9 +1,9 @@
-# VETO
+# AVAL
 
 **Behavioral detection for autonomous AI agents that operate wallets on Solana.**
 
 Wallet policy engines are firewalls: they approve anything inside the limits.
-VETO is the EDR. It catches the transaction that breaks no rule but was never
+AVAL is the EDR. It catches the transaction that breaks no rule but was never
 what the user asked for.
 
 ---
@@ -41,7 +41,7 @@ frequent than a targeted attack.
 |---|---|---|
 | Key | Where the key lives, who signs | Turnkey, Privy, Fireblocks, Crossmint, Squads |
 | Policy | What is permitted | DCP, the policy engines inside Turnkey and Privy |
-| **Coherence** | **Does this make sense given the request and the history** | **Empty — VETO** |
+| **Coherence** | **Does this make sense given the request and the history** | **Empty — AVAL** |
 
 Two structural gaps in the policy layer:
 
@@ -60,7 +60,7 @@ timestamp. That list is objective proof that the coherence layer is missing.
 
 ## How it works
 
-VETO integrates with the client's agent runtime at two points: it captures
+AVAL integrates with the client's agent runtime at two points: it captures
 context as it enters the model, and it evaluates the transaction before the
 wallet signs it.
 
@@ -133,7 +133,7 @@ positives from ambiguity.
 value, giving up authority, losing the account.
 
 **Program-agnostic**, because the types derive from the account model, not from
-instructions. A program VETO has never seen, if it grants a delegate, produces
+instructions. A program AVAL has never seen, if it grants a delegate, produces
 `DELEGATE_GRANT` all the same. This is what makes the project tractable: a
 universal IDL-based instruction decoder would never be finished.
 
@@ -166,13 +166,13 @@ For every counterparty that receives value or authority:
 | Does not appear anywhere in the context | **critical** |
 
 Absence is a signal, not silence. An address that appears nowhere was produced
-somewhere VETO does not observe.
+somewhere AVAL does not observe.
 
 ### Check E — content classification at ingestion
 
 Checks A through D operate on structure: effects, amounts, addresses, windows.
 They are blind to one thing — text that was written to manipulate the agent but
-has not yet produced a counterparty address VETO can trace. That is the gap a
+has not yet produced a counterparty address AVAL can trace. That is the gap a
 dedicated classifier closes.
 
 A small, purpose-trained classifier scores every chunk as it enters the agent's
@@ -205,7 +205,7 @@ Three distinctions matter, and they are deliberate:
    and cannot reverse a block.
 3. **It does not judge whether content is true.** It judges whether content has
    the *shape of an instruction* — imperative framing, role override, exfiltration
-   patterns. VETO still never evaluates the truthfulness of anything.
+   patterns. AVAL still never evaluates the truthfulness of anything.
 
 #### How E composes with C
 
@@ -313,7 +313,7 @@ Every figure above came from a real RPC response, not from documentation.
 Findings that directly shape the normalizer's design:
 
 - **`meta.loadedAddresses` only exists after execution.** Accounts loaded through
-  Address Lookup Tables are invisible before signing, so VETO must resolve the
+  Address Lookup Tables are invisible before signing, so AVAL must resolve the
   lookup tables itself. That is an extra RPC call inside the latency budget.
 - **`simulateTransaction`'s `accounts` option returns only the addresses you
   ask for.** The RPC performs no discovery. The normalizer must build that list
@@ -365,7 +365,7 @@ Requires Node 20+ and pnpm.
 
 ```bash
 pnpm install
-cp .env.example .env    # then fill in VETO_RPC_URL and VETO_RPC_URL_DEVNET
+cp .env.example .env    # then fill in AVAL_RPC_URL and AVAL_RPC_URL_DEVNET
 pnpm typecheck
 pnpm test
 ```
@@ -553,7 +553,7 @@ loss arrives later, on their schedule.
 
 The catalogue below is ordered by how fast it has to happen. Everything in tier 1
 is automatic and pre-authorized at onboarding; everything below it is a playbook
-that VETO can drive but the customer authorizes.
+that AVAL can drive but the customer authorizes.
 
 ### Tier 1 — Stop the bleeding (seconds, automatic)
 
@@ -587,7 +587,7 @@ attack does not only move money — it can leave loaded weapons behind.
 | Action | Mechanism | Difficulty |
 |---|---|---|
 | **Neutralize durable nonce accounts** | A transaction signed against a durable nonce never expires. A pre-signed transfer can sit in an attacker's pocket indefinitely and land weeks later. Advance or close every nonce account the agent controls | **high** |
-| **Hunt for live pre-signed transactions** | Normal transactions stay valid for roughly 150 slots (about a minute). During that window, a transaction VETO refused may already exist elsewhere, signed. Scan and, where possible, invalidate by consuming the nonce or draining the source | **high** |
+| **Hunt for live pre-signed transactions** | Normal transactions stay valid for roughly 150 slots (about a minute). During that window, a transaction AVAL refused may already exist elsewhere, signed. Scan and, where possible, invalidate by consuming the nonce or draining the source | **high** |
 | **Deactivate and close planted lookup tables** | An Address Lookup Table created by the agent can hide destination accounts from anything that inspects only the static message. Deactivate, then close after the cooldown | medium |
 | **Close attacker-controlled token accounts** | Close ATAs the agent created that serve no legitimate purpose, recovering rent and removing staging ground | medium |
 | **Revoke program upgrade authority** | If the agent ever held one, an upgrade authority is the highest-severity standing permission in the system | medium |
@@ -609,11 +609,11 @@ the same attack fires again on the next run.
 
 | Action | Mechanism | Difficulty |
 |---|---|---|
-| Sweep funds to a pre-authorized destination | Optional, opt-in. The destination is fixed by the customer in advance and **cannot be changed by VETO** | medium |
+| Sweep funds to a pre-authorized destination | Optional, opt-in. The destination is fixed by the customer in advance and **cannot be changed by AVAL** | medium |
 | Freeze token accounts | Only where the mint's freeze authority belongs to the customer | medium |
 | Unstake and recall delegated stake | Deactivate stake accounts the agent can reach | medium |
 
-Sweeping is the one action that tensions the core promise that VETO can only
+Sweeping is the one action that tensions the core promise that AVAL can only
 refuse, never move. That is why the destination is immutable and set by the
 customer before any incident, and why the capability is opt-in.
 
@@ -630,7 +630,7 @@ customer before any incident, and why the capability is opt-in.
 Tiers 1 and 2 are fast and reliable. Tier 3 is where most incident responses
 quietly fail, which is exactly why it is listed. Tier 4 depends on how deeply the
 client runtime can be instrumented, and some of it will be impossible on some
-frameworks — in which case VETO says so rather than pretending coverage.
+frameworks — in which case AVAL says so rather than pretending coverage.
 
 The point is not to undo what the agent did. It is to guarantee it cannot happen
 again, in seconds instead of hours.
@@ -641,9 +641,9 @@ again, in seconds instead of hours.
 
 Detailed design documents live in `docs/` (written in Brazilian Portuguese):
 
-- `veto-status.md` — what is settled and what is still open
-- `veto-construcao.md` — overall architecture and build order
-- `veto-camada-avaliacao.md` — the evaluation engine in detail
+- `aval-status.md` — what is settled and what is still open
+- `aval-construcao.md` — overall architecture and build order
+- `aval-camada-avaliacao.md` — the evaluation engine in detail
 - `pending.md` — what is missing in each block, tracked during construction
 - `decisions.md` — risk decisions taken, open holes, and rejected ideas
 

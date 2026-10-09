@@ -1,4 +1,4 @@
-# VETO — Documento de construção
+# AVAL — Documento de construção
 
 *Especificação técnica do POC. Como a ferramenta funciona por dentro e em que ordem construir.*
 
@@ -6,7 +6,7 @@
 
 Três regras que valem para todo o resto do documento.
 
-**Nunca comparar texto livre com texto livre.** Os dois lados da comparação são reduzidos a um vocabulário estruturado antes de se encontrarem. É isso que separa o VETO da literatura acadêmica de detecção de injection, que compara strings por similaridade semântica e sofre de falso positivo por construção.
+**Nunca comparar texto livre com texto livre.** Os dois lados da comparação são reduzidos a um vocabulário estruturado antes de se encontrarem. É isso que separa o AVAL da literatura acadêmica de detecção de injection, que compara strings por similaridade semântica e sofre de falso positivo por construção.
 
 **A decisão é determinística.** Modelo de linguagem explica e desempata, nunca decide. Motivo duplo: latência no loop do agente, e auditabilidade perante um auditor de compliance.
 
@@ -62,7 +62,7 @@ interface ContextChunk {
 }
 ```
 
-**O campo `provenance` é o mais importante de todo o sistema.** Sem ele, o detector mais valioso do VETO não existe.
+**O campo `provenance` é o mais importante de todo o sistema.** Sem ele, o detector mais valioso do AVAL não existe.
 
 É também o ponto de maior risco de integração: se o framework do agente não separa contexto confiável de conteúdo recuperado, essa separação precisa ser forçada na camada de RAG e memória. Investigar antes de escolher qual framework instrumentar.
 
@@ -80,7 +80,7 @@ Converte a transação num efeito estruturado, antes de assinar.
 
 O layout da conta de token SPL é fixo e conhecido. `amount`, `owner` e `delegate` são lidos direto dos bytes, em offsets fixos, sem IDL de programa nenhum.
 
-Isso significa que a normalização funciona contra programas que o VETO nunca viu. É o corte de escopo que torna o projeto viável — decodificar instrução por instrução exigiria o IDL de cada programa do ecossistema e nunca terminaria.
+Isso significa que a normalização funciona contra programas que o AVAL nunca viu. É o corte de escopo que torna o projeto viável — decodificar instrução por instrução exigiria o IDL de cada programa do ecossistema e nunca terminaria.
 
 Decodificação por IDL fica como enriquecimento opcional, só para melhorar a mensagem do alerta.
 
@@ -223,17 +223,17 @@ Converte `Verdict` em ação, conforme o nível de operação contratado.
 | 1 · Gate no SDK | Biblioteca local, qualquer carteira | Recusa assinar |
 | 2 · Co-assinatura | Chave separada do agente | Não aprova |
 
-**Nível 2 — caminho neutro:** Squads, por ser programa nativo e não fornecedor contratado. A chave existente do cliente vira membro, o VETO vira o segundo, threshold 2.
+**Nível 2 — caminho neutro:** Squads, por ser programa nativo e não fornecedor contratado. A chave existente do cliente vira membro, o AVAL vira o segundo, threshold 2.
 
-**Atalhos para quem já usa:** na Turnkey, o VETO é um service user exigido pelo campo `consensus` da política. Na Privy, é membro de quórum de chave. Nos dois casos o VETO não detém chave — só tem voto, e portanto só consegue recusar.
+**Atalhos para quem já usa:** na Turnkey, o AVAL é um service user exigido pelo campo `consensus` da política. Na Privy, é membro de quórum de chave. Nos dois casos o AVAL não detém chave — só tem voto, e portanto só consegue recusar.
 
 **Limite físico assumido:** agente com keypair cru na própria máquina não pode ser bloqueado por serviço externo. Wrapper de SDK é controle contra raciocínio corrompido, não contra host comprometido.
 
 ## Política de degradação
 
-Decisão obrigatória antes de qualquer cliente real: o que acontece se o VETO ficar indisponível — bloqueia tudo ou libera tudo?
+Decisão obrigatória antes de qualquer cliente real: o que acontece se o AVAL ficar indisponível — bloqueia tudo ou libera tudo?
 
-Recomendação: configurável por cliente, com padrão em *fail-open* acompanhado de alerta ruidoso. Fail-closed transforma uma queda do VETO em parada da operação do cliente, o que é uma forma de negação de serviço causada pela própria defesa.
+Recomendação: configurável por cliente, com padrão em *fail-open* acompanhado de alerta ruidoso. Fail-closed transforma uma queda do AVAL em parada da operação do cliente, o que é uma forma de negação de serviço causada pela própria defesa.
 
 # Componente 5 — Painel
 
@@ -268,7 +268,7 @@ Transação confirmada não tem rollback. A remediação contém o que resta.
 | Remover do multisig | Transação de governança no Squads | Média |
 | Varrer fundos | Opcional, destino pré-autorizado e imutável | Média |
 
-A varredura exige autoridade de movimentação, o que tensiona o argumento de *"só consigo recusar"*. Por isso o destino é fixado pelo cliente antecipadamente e não pode ser alterado pelo VETO.
+A varredura exige autoridade de movimentação, o que tensiona o argumento de *"só consigo recusar"*. Por isso o destino é fixado pelo cliente antecipadamente e não pode ser alterado pelo AVAL.
 
 # Ordem de construção
 

@@ -15,9 +15,9 @@ const FAKE_URL =
 
 describe("config", () => {
   const base = {
-    VETO_RPC_COMMITMENT: "confirmed",
-    VETO_RPC_URL_DEVNET: FAKE_URL,
-    VETO_RPC_URL: FAKE_URL,
+    AVAL_RPC_COMMITMENT: "confirmed",
+    AVAL_RPC_URL_DEVNET: FAKE_URL,
+    AVAL_RPC_URL: FAKE_URL,
   };
 
   it("reads the right variable for each network", () => {
@@ -28,20 +28,20 @@ describe("config", () => {
   });
 
   it("fails without repeating the URL in the message", () => {
-    const noUrl = readRpcConfig({ VETO_RPC_COMMITMENT: "confirmed" }, "devnet");
+    const noUrl = readRpcConfig({ AVAL_RPC_COMMITMENT: "confirmed" }, "devnet");
     expect(noUrl.ok).toBe(false);
     if (!noUrl.ok) {
-      expect(noUrl.failure.message).toContain("VETO_RPC_URL_DEVNET");
+      expect(noUrl.failure.message).toContain("AVAL_RPC_URL_DEVNET");
       expect(noUrl.failure.message).not.toContain("api-key");
     }
   });
 
   it("refuses an invalid URL and a commitment outside the enum", () => {
     expect(
-      readRpcConfig({ ...base, VETO_RPC_URL_DEVNET: "not-a-url" }, "devnet").ok,
+      readRpcConfig({ ...base, AVAL_RPC_URL_DEVNET: "not-a-url" }, "devnet").ok,
     ).toBe(false);
     expect(
-      readRpcConfig({ ...base, VETO_RPC_COMMITMENT: "recent" }, "devnet").ok,
+      readRpcConfig({ ...base, AVAL_RPC_COMMITMENT: "recent" }, "devnet").ok,
     ).toBe(false);
   });
 
@@ -167,7 +167,7 @@ describe("inner instructions arrive in two different shapes", () => {
 
   it("reads the compiled shape, where the program is an account index", () => {
     // The RPC emits this when it cannot parse the program -- which is exactly
-    // the case for a program VETO has never seen. The installed SDK rejects
+    // the case for a program AVAL has never seen. The installed SDK rejects
     // this shape, which is why the response is parsed here instead.
     const refs = normaliseInnerInstructions([
       {

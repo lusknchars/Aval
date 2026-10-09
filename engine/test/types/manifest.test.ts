@@ -8,7 +8,7 @@ import {
   type ToolManifest,
 } from "../../src/types/manifest.js";
 
-/** Transfer manifest, in the form given by veto-camada-avaliacao.md. */
+/** Transfer manifest, in the form given by aval-camada-avaliacao.md. */
 const transfer: ToolManifest = {
   tool: "transfer",
   version: "1",

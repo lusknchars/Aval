@@ -6,12 +6,12 @@
  * pipeline runs whole either way. Plugging Gemma, Prompt Guard, the OCR or
  * the corrector in is setting the variable and restarting.
  *
- *   VETO_JUDGE_URL       the customer's model, may only tighten
- *   VETO_GUARD_URL       the input classifier, labels and never drops
- *   VETO_OCR_URL         image to text, stamped `via: "ocr"`
- *   VETO_CORRECTOR_URL   a cleaner copy for the model; the original is stamped
- *   VETO_ADAPTER_TOKEN   bearer token sent to all of them, when set
- *   VETO_ADAPTER_TIMEOUT_MS   default 5000
+ *   AVAL_JUDGE_URL       the customer's model, may only tighten
+ *   AVAL_GUARD_URL       the input classifier, labels and never drops
+ *   AVAL_OCR_URL         image to text, stamped `via: "ocr"`
+ *   AVAL_CORRECTOR_URL   a cleaner copy for the model; the original is stamped
+ *   AVAL_ADAPTER_TOKEN   bearer token sent to all of them, when set
+ *   AVAL_ADAPTER_TIMEOUT_MS   default 5000
  *
  * Nothing here is logged. A URL can carry a key, and a token is a token.
  */
@@ -45,12 +45,12 @@ function url(env: Env, name: string): string | undefined {
 }
 
 export function adaptersFromEnv(env: Env): Adapters {
-  const token = env["VETO_ADAPTER_TOKEN"];
-  const timeoutRaw = env["VETO_ADAPTER_TIMEOUT_MS"];
+  const token = env["AVAL_ADAPTER_TOKEN"];
+  const timeoutRaw = env["AVAL_ADAPTER_TIMEOUT_MS"];
   const timeoutMs =
     timeoutRaw === undefined || timeoutRaw === "" ? undefined : Number(timeoutRaw);
   if (timeoutMs !== undefined && (!Number.isInteger(timeoutMs) || timeoutMs <= 0))
-    throw new Error("VETO_ADAPTER_TIMEOUT_MS must be a positive integer");
+    throw new Error("AVAL_ADAPTER_TIMEOUT_MS must be a positive integer");
 
   const shared = (target: string): HttpOptions => ({
     url: target,
@@ -58,10 +58,10 @@ export function adaptersFromEnv(env: Env): Adapters {
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
   });
 
-  const judgeUrl = url(env, "VETO_JUDGE_URL");
-  const guardUrl = url(env, "VETO_GUARD_URL");
-  const ocrUrl = url(env, "VETO_OCR_URL");
-  const correctorUrl = url(env, "VETO_CORRECTOR_URL");
+  const judgeUrl = url(env, "AVAL_JUDGE_URL");
+  const guardUrl = url(env, "AVAL_GUARD_URL");
+  const ocrUrl = url(env, "AVAL_OCR_URL");
+  const correctorUrl = url(env, "AVAL_CORRECTOR_URL");
 
   const configured: string[] = [];
   if (judgeUrl !== undefined) configured.push("judge");

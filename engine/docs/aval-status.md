@@ -1,4 +1,4 @@
-# VETO — Status do projeto
+# AVAL — Status do projeto
 
 *Documento de controle. O que está fechado, o que está aberto.*
 
@@ -8,7 +8,7 @@
 
 | | |
 |---|---|
-| Nome | VETO |
+| Nome | AVAL |
 | Categoria | Detecção comportamental para agentes autônomos on-chain |
 | Chain | Solana |
 | Frase de posicionamento | *Existe firewall para agente on-chain. Não existe EDR.* |
@@ -38,7 +38,7 @@ Padrão comum: **nenhuma política foi violada.** A ação estava autorizada. O 
 |---|---|---|
 | Chave | Onde a chave mora, quem assina | Turnkey, Privy, Fireblocks, Crossmint, Squads |
 | Política | O que é permitido | DCP, Sol CLI, engines da Turnkey e Privy |
-| **Coerência** | **Se faz sentido dado o pedido e o histórico** | **Vazio — VETO** |
+| **Coerência** | **Se faz sentido dado o pedido e o histórico** | **Vazio — AVAL** |
 
 Duas falhas estruturais da camada de política: não conhece a intenção, e avalia transação isolada quando o ataque é sequência (cem transações de 499 com teto de 500 passam todas).
 
@@ -86,11 +86,11 @@ O detector de maior valor é o de menor complexidade.
 
 **Neutralidade de carteira:** Squads é o caminho padrão para o nível 2, por ser programa nativo e não fornecedor contratado. Turnkey e Privy são atalho para quem já usa, nunca requisito.
 
-**Limite físico assumido:** agente com chave crua na máquina não pode ser bloqueado por serviço externo. Isso é pré-requisito de segurança, não exigência do VETO.
+**Limite físico assumido:** agente com chave crua na máquina não pode ser bloqueado por serviço externo. Isso é pré-requisito de segurança, não exigência do AVAL.
 
 ## Benchmark Turnkey / Privy
 
-Ambas têm mecanismo de aprovação por terceiro — `consensus` na Turnkey, quórum de chave na Privy. VETO entra como aprovador registrado, sem tocar em custódia.
+Ambas têm mecanismo de aprovação por terceiro — `consensus` na Turnkey, quórum de chave na Privy. AVAL entra como aprovador registrado, sem tocar em custódia.
 
 As condições disponíveis nas duas são todas propriedades da transação isolada: endereço, ativo, valor, cadeia, timestamp. **Essa lista é a prova objetiva de que a camada de coerência não existe.**
 
@@ -184,13 +184,13 @@ O passo 3 é o que faz a demo funcionar.
 
 ## Externo a monitorar
 
-**ERC-8004** — padrão de identidade persistente e pontuação de credibilidade para agentes on-chain, sendo finalizado na Ethereum. Ameaça se comoditizar histórico de agente; oportunidade se o VETO for quem alimenta a pontuação.
+**ERC-8004** — padrão de identidade persistente e pontuação de credibilidade para agentes on-chain, sendo finalizado na Ethereum. Ameaça se comoditizar histórico de agente; oportunidade se o AVAL for quem alimenta a pontuação.
 
 **Fornecedores de AI runtime security** — Zenity, Sweet Security, IBM. Categoria consolidada em segurança corporativa. Risco: uma delas ligar um conector de blockchain.
 
 ## Logística
 
-- Domínio e handles de "veto" — verificar disponibilidade e marca registrada
+- Domínio e handles de "aval" — verificar disponibilidade e marca registrada
 - Logo — direção visual ainda não fechada
 - Qual hackathon e qual prazo
 - Time: quem mais participa

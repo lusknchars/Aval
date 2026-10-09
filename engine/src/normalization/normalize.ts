@@ -345,7 +345,7 @@ export async function normalize(
     (address) => !observed.includes(address),
   );
   // Read off the post-state: an account whose base layout decoded fine but
-  // which carries Token-2022 extensions VETO cannot see through. Same shape
+  // which carries Token-2022 extensions AVAL cannot see through. Same shape
   // as blindSpots -- what, and on which account.
   const tokenExtensions: string[] = [];
   // And the other half of the same question: an account whose bytes changed

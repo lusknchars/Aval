@@ -4,7 +4,7 @@
  * This is the scope cut that makes the project tractable. The token account
  * layout is fixed and public, so `amount`, `owner`, `delegate` and
  * `delegatedAmount` come out of known offsets with no program IDL. A program
- * VETO has never seen, if it grants a delegate through the Token Program,
+ * AVAL has never seen, if it grants a delegate through the Token Program,
  * produces a readable delegate all the same.
  *
  * Everything here is PURE: bytes in, values out, no network, no exceptions.
@@ -161,7 +161,7 @@ const NAME_BY_ID: ReadonlyMap<number, string> = new Map(
 );
 
 /**
- * Extensions that cannot hide anything VETO needs.
+ * Extensions that cannot hide anything AVAL needs.
  *
  * An ALLOWLIST, never a blocklist of the dangerous: new types get added to
  * the program over time, and assuming an unknown one is harmless is precisely
@@ -218,7 +218,7 @@ export function extendedAccountType(
 }
 
 /**
- * Extensions on this account that VETO cannot see through, by name.
+ * Extensions on this account that AVAL cannot see through, by name.
  *
  * Empty means either no extensions at all or only harmless ones -- and that
  * distinction is the whole point: reporting every Token-2022 account made
@@ -355,7 +355,7 @@ const NAME_BY_ID_REVERSE: ReadonlyMap<string, number> = new Map(
 );
 
 /**
- * Native programs whose account data carries AUTHORITY, and which VETO does
+ * Native programs whose account data carries AUTHORITY, and which AVAL does
  * not decode.
  *
  * The account model is the reason this list has to exist at all. The diff

@@ -7,7 +7,7 @@
  * a page the customer allowlisted can be compromised. Provenance alone rates
  * that `low`. The label is what says otherwise.
  *
- * The classifier is external and VETO never runs it. It arrives as a label on
+ * The classifier is external and AVAL never runs it. It arrives as a label on
  * the chunk, stamped at capture, and this file only reads it. Two rules:
  *
  *  - The label RAISES, never lowers. A chunk labelled benign changes nothing:

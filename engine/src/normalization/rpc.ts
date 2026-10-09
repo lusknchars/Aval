@@ -64,7 +64,7 @@ export interface AccountsRead {
  * The RPC returns two different shapes. `jsonParsed` when it recognises the
  * program, carrying the program id directly; the compiled form otherwise,
  * carrying an INDEX into the account list. Both are handled, because a program
- * VETO cares about may well be one the RPC cannot parse.
+ * AVAL cares about may well be one the RPC cannot parse.
  */
 export interface InnerInstructionRef {
   readonly outerIndex: number;
@@ -219,8 +219,8 @@ export const DEFAULT_DEADLINES: Deadlines = { read: 1_500, simulate: 3_000 };
 
 const rpcUrlSchema = z.url({ protocol: /^https?$/ });
 const ENV_VAR_BY_NETWORK: Readonly<Record<Network, string>> = {
-  mainnet: "VETO_RPC_URL",
-  devnet: "VETO_RPC_URL_DEVNET",
+  mainnet: "AVAL_RPC_URL",
+  devnet: "AVAL_RPC_URL_DEVNET",
 };
 
 /** Reads and validates config. No error message ever repeats the URL value. */
@@ -239,10 +239,10 @@ export function readRpcConfig(
   if (!rpcUrlSchema.safeParse(url).success)
     return fail(`${variable} is not a valid http(s) URL.`);
 
-  const commitment = commitmentSchema.safeParse(env["VETO_RPC_COMMITMENT"]);
+  const commitment = commitmentSchema.safeParse(env["AVAL_RPC_COMMITMENT"]);
   if (!commitment.success) {
     return fail(
-      "VETO_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.",
+      "AVAL_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.",
     );
   }
   return {
@@ -770,7 +770,7 @@ export class Web3RpcClient implements RpcClient {
   }
 
   /**
-   * Parallel on purpose: resolving lookup tables is the extra call VETO makes
+   * Parallel on purpose: resolving lookup tables is the extra call AVAL makes
    * before signing, because `meta.loadedAddresses` only exists after
    * execution. Run serially, N tables would be N round trips inside the
    * decision's latency budget.

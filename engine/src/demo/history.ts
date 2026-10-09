@@ -11,7 +11,7 @@
  * before and after, which is the same diff the normalizer computes, already
  * taken by the validator.
  *
- * THIS NEVER FEEDS A VERDICT. VETO judges before signing, where history does
+ * THIS NEVER FEEDS A VERDICT. AVAL judges before signing, where history does
  * not exist yet; using it to decide would be answering a different question
  * and calling it the same one. It is here so a demo can show what a real
  * transaction did, labelled as history rather than as a prediction.

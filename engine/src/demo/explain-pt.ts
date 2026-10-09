@@ -42,7 +42,7 @@ const EFFECT_PT: Readonly<Record<string, string>> = {
 /** Plain sentences for the fixed rules. Dynamic ones are handled below. */
 const PHRASES: Readonly<Record<string, string>> = {
   "provenance.unexplained":
-    "O endereço que recebe algo não aparece em nada que o usuário escreveu, nem em nada que o agente leu. Ele surgiu de um lugar que o VETO não observa.",
+    "O endereço que recebe algo não aparece em nada que o usuário escreveu, nem em nada que o agente leu. Ele surgiu de um lugar que o AVAL não observa.",
   "provenance.untrusted_source":
     "O endereço que recebe algo só aparece em conteúdo que o agente leu de uma fonte não confiável — é a forma clássica de prompt injection: a página escolhe o destino.",
   "provenance.known_counterparty":
@@ -80,9 +80,9 @@ const PHRASES: Readonly<Record<string, string>> = {
   "coverage.unresolved_reference":
     "O manifesto aponta para um argumento que a chamada não enviou, então essa comparação não rodou.",
   "coverage.token_extensions":
-    "A conta usa extensões do Token-2022 que o VETO não lê — pode haver um transfer hook ou um delegado permanente ali, e nada disso apareceria como efeito.",
+    "A conta usa extensões do Token-2022 que o AVAL não lê — pode haver um transfer hook ou um delegado permanente ali, e nada disso apareceria como efeito.",
   "coverage.undecoded_authority_account":
-    "Uma conta de stake ou de programa atualizável mudou, e o VETO não decodifica esses bytes. Uma autoridade pode ter mudado sem aparecer.",
+    "Uma conta de stake ou de programa atualizável mudou, e o AVAL não decodifica esses bytes. Uma autoridade pode ter mudado sem aparecer.",
   "coverage.undecodable_token_account":
     "Uma conta de token não pôde ser lida, então qualquer movimento dentro dela é invisível.",
   "coverage.account_limit_exceeded":
@@ -280,7 +280,7 @@ export interface Explanation {
   /**
    * Whether there is an agent behind this transaction at all.
    *
-   * VETO is a COMPARATOR: it holds a declaration against an execution. A
+   * AVAL is a COMPARATOR: it holds a declaration against an execution. A
    * transaction pulled off a live block has no declaration, no tool call and
    * no user -- so allow/flag/deny is an answer to a question nobody asked,
    * and showing it as a judgement is the demo misrepresenting the library.
@@ -387,22 +387,22 @@ export function explainInPortuguese(
       "Esta transação não tem agente por trás: ela veio de um bloco da rede, e a declaração abaixo fui EU que li de volta dos próprios efeitos dela. Por isso os checks de efeito não declarado e de magnitude não valem nada aqui — é claro que a transação faz o que a declaração diz, se a declaração foi copiada dela. O que continua valendo é a proveniência e a rede de segurança, que não dependem de declaração nenhuma.";
   } else if (trace.declarationSource === "none") {
     summary =
-      "Esta transação não tem agente por trás e não deu para reconhecer que operação ela é. O VETO compara o que foi PROMETIDO com o que a transação FAZ, e aqui ninguém prometeu nada. Isso não é falha da ferramenta nem defeito da transação: é a pergunta não se aplicar.";
+      "Esta transação não tem agente por trás e não deu para reconhecer que operação ela é. O AVAL compara o que foi PROMETIDO com o que a transação FAZ, e aqui ninguém prometeu nada. Isso não é falha da ferramenta nem defeito da transação: é a pergunta não se aplicar.";
   } else if (unattributed) {
     summary =
-      "A declaração abaixo foi escrita à mão, não emitida por um modelo. Serve para explorar o comportamento do VETO; não é um trace de agente de verdade.";
+      "A declaração abaixo foi escrita à mão, não emitida por um modelo. Serve para explorar o comportamento do AVAL; não é um trace de agente de verdade.";
   } else if (trace.decision.outcome === "allow") {
     summary =
       "Tudo que a transação faz bate com o que foi pedido, e todo mundo que recebe algo foi explicado por alguma coisa que o usuário disse.";
   } else if (onlyMissingDeclaration) {
     summary =
-      "O VETO leu a transação inteira, sem falha nenhuma. O que falta não é leitura: é DECLARAÇÃO. Ninguém disse o que esta operação deveria fazer, então não há com o que comparar. Um bot de mercado não declara nada a ninguém — e sem declaração o VETO não assina embaixo.";
+      "O AVAL leu a transação inteira, sem falha nenhuma. O que falta não é leitura: é DECLARAÇÃO. Ninguém disse o que esta operação deveria fazer, então não há com o que comparar. Um bot de mercado não declara nada a ninguém — e sem declaração o AVAL não assina embaixo.";
   } else if (onlyGaps) {
     summary =
-      "Nada na transação contradiz o pedido. O que aconteceu foi o VETO não conseguir ler alguma coisa — e quando ele não enxerga, ele fecha em vez de abrir. Isso não é uma acusação.";
+      "Nada na transação contradiz o pedido. O que aconteceu foi o AVAL não conseguir ler alguma coisa — e quando ele não enxerga, ele fecha em vez de abrir. Isso não é uma acusação.";
   } else if (trace.decision.outcome === "deny") {
     summary =
-      "A transação faz algo que o pedido não explica, e o VETO recusou assinar.";
+      "A transação faz algo que o pedido não explica, e o AVAL recusou assinar.";
   } else {
     summary =
       "A transação faz algo que vale um humano olhar antes de assinar.";

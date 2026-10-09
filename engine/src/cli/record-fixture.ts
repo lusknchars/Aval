@@ -325,7 +325,7 @@ async function main(): Promise<number> {
   }
   if (network.value !== GENESIS_BY_NETWORK.devnet) {
     console.error(
-      "VETO_RPC_URL_DEVNET answered, but it is not devnet. Refused.",
+      "AVAL_RPC_URL_DEVNET answered, but it is not devnet. Refused.",
     );
     return 1;
   }

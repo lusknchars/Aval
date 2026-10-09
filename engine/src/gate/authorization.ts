@@ -1,7 +1,7 @@
 /**
  * The single-use authorisation that ties an ALLOW to specific bytes.
  *
- * Without it, the link between "VETO said yes" and "these bytes got signed" is
+ * Without it, the link between "AVAL said yes" and "these bytes got signed" is
  * convention. An agent can be handed an ALLOW for one transaction and put the
  * wallet's signature on another, and every record in the system would look
  * perfectly clean afterwards -- the verdict would even carry the right digest,

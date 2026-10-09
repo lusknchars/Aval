@@ -94,7 +94,7 @@ describe("the decision is what decides", () => {
   });
 
   it("refuses to sign a denied transaction, and the signer is never called", async () => {
-    // A goal that names nobody: the destination came from somewhere VETO
+    // A goal that names nobody: the destination came from somewhere AVAL
     // cannot see, which is the whole detection.
     const { context, rpc } = await honestContext("transfer-sol", {
       userGoal: "do the thing we discussed",
@@ -208,7 +208,7 @@ describe("what a FLAG does is policy, and it is recorded either way", () => {
 
 describe("the authorisation is about bytes, not about a claim", () => {
   it("refuses a different transaction presented with a valid ticket", async () => {
-    // The substitution: VETO approves one transaction, and the agent presents
+    // The substitution: AVAL approves one transaction, and the agent presents
     // another to the wallet. This is the case the whole mechanism exists for.
     const approved = await honestContext("transfer-sol");
     const other = new FixtureRpcClient(open("close-account")).transaction();

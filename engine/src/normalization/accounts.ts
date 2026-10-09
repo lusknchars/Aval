@@ -1,7 +1,7 @@
 /**
  * Resolving the accounts a transaction touches, before it is signed.
  *
- * This is where VETO pays a price the chain does not: after execution, the RPC
+ * This is where AVAL pays a price the chain does not: after execution, the RPC
  * hands back `meta.loadedAddresses` and every account is visible. Before
  * signing, addresses that came from an Address Lookup Table are just indexes.
  * They have to be resolved with an extra round trip, or the destination of a

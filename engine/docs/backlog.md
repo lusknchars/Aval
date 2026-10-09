@@ -74,11 +74,11 @@ without changing whether the thing works.
 
 ### Fase 1 — o gate, que é o que transforma parecer em portão
 3. **A2 · O gate.** Uma interface que embrulha a função de assinatura, roda a
-   pipeline e recusa no DENY. É a peça que falta para o VETO *fazer* algo em
+   pipeline e recusa no DENY. É a peça que falta para o AVAL *fazer* algo em
    vez de *dizer* algo.
 4. **A3 · Autorização de uso único amarrada ao digest.** Completa o gate: o
    assinador recusa qualquer payload cujo hash não bate com o aprovado. Hoje a
-   ligação entre "o VETO disse sim" e "estes bytes foram assinados" é por
+   ligação entre "o AVAL disse sim" e "estes bytes foram assinados" é por
    convenção.
 5. **E5 · Fixtures das operações perigosas.** Grava em devnet o congelamento,
    a troca de dono e a queima produzindo efeito real. Barato, e é o que prova
@@ -136,10 +136,10 @@ signing function, and the agent must not be able to route around it without
 removing the wallet.
 
 ### A3 · Autorização de uso único amarrada ao digest **[feito]**
-*Ideia vinda do veto-lab.* We already put `messageDigest` on the verdict; the
+*Ideia vinda do aval-lab.* We already put `messageDigest` on the verdict; the
 other half is missing. An ALLOW should mint a single-use MAC over that exact
 digest, and the signer should refuse any payload whose hash differs. That
-closes the gap between "VETO said yes" and "these bytes got signed", which
+closes the gap between "AVAL said yes" and "these bytes got signed", which
 today is closed by convention only. Chain-agnostic.
 
 ### A4 · Normalização de identificador de ferramenta **[feito]**
@@ -168,7 +168,7 @@ Per spec it never blocks alone — it raises severity and narrows scope.
 *Decided already:* inference runs on the customer's endpoint, schema/prompt/
 clamp are ours.
 
-### B3 · Veto Input Guard, check E **[feito — falta só o modelo por fora]**
+### B3 · Aval Input Guard, check E **[feito — falta só o modelo por fora]**
 Classify every captured chunk with Prompt Guard 2 (86M, runs on CPU in
 process). It **labels, never drops** — a dropped chunk destroys the record
 that explains where an address came from. Catches instruction-shaped attacks;
@@ -176,10 +176,10 @@ provenance already covers content-shaped ones. The friend's repo has a working
 FastAPI implementation of exactly this, in Python.
 
 ### B4 · Re-simulação diferencial **[livre]**
-*Ideia vinda do veto-lab.* Simulate the same transaction under several
+*Ideia vinda do aval-lab.* Simulate the same transaction under several
 perturbed contexts, fingerprint the normalised effects, and treat disagreement
 as a finding. Catches a program that behaves differently depending on context.
-VETO has no equivalent. The Solana version is re-simulating across slots and
+AVAL has no equivalent. The Solana version is re-simulating across slots and
 diffing the `EffectSet`. Cost: multiplies RPC volume, which item D4 is already
 about.
 
@@ -218,12 +218,12 @@ Cada uma é uma URL em `.env`; ausente, um stub no-op ocupa o lugar e o
 pipeline roda inteiro. O contrato de cada uma está em `src/adapters/config.ts`
 e no `.env.example`.
 
-| Camada | Variável | Recebe | Devolve | Regra que o VETO impõe |
+| Camada | Variável | Recebe | Devolve | Regra que o AVAL impõe |
 |---|---|---|---|---|
-| Juiz (Gemma) | `VETO_JUDGE_URL` | `{ record, effects, userGoal, toolCall, chunks }` | `{ tighten: null \| {to, reason}, model }` | só aperta; não simula; pulado se já DENY |
-| Guard (Prompt Guard) | `VETO_GUARD_URL` | `{ text, provenance, source? }` | `{ label, score, model }` | rotula, nunca remove; rótulo sobe, nunca desce |
-| OCR | `VETO_OCR_URL` | `{ image: base64, mimeType }` | `{ text, model }` | entra como trecho `via: "ocr"` com a origem da imagem |
-| Corretor | `VETO_CORRECTOR_URL` | `{ text }` | `{ text, model }` | só o modelo lê a cópia; endereço/valor alterado → recusado |
+| Juiz (Gemma) | `AVAL_JUDGE_URL` | `{ record, effects, userGoal, toolCall, chunks }` | `{ tighten: null \| {to, reason}, model }` | só aperta; não simula; pulado se já DENY |
+| Guard (Prompt Guard) | `AVAL_GUARD_URL` | `{ text, provenance, source? }` | `{ label, score, model }` | rotula, nunca remove; rótulo sobe, nunca desce |
+| OCR | `AVAL_OCR_URL` | `{ image: base64, mimeType }` | `{ text, model }` | entra como trecho `via: "ocr"` com a origem da imagem |
+| Corretor | `AVAL_CORRECTOR_URL` | `{ text }` | `{ text, model }` | só o modelo lê a cópia; endereço/valor alterado → recusado |
 
 Toda falha (timeout, corpo inválido, violação do contrato) vira uma linha em
 `degradations` e um finding `coverage.capture_degraded` no veredito. A
@@ -292,25 +292,25 @@ nobody has timed it. *(pending 2.7, 2.13, T.4)*
 ## E — Medição e prova
 
 ### E1 · Suíte adversarial **[livre]**
-Synthesise the attack shapes we know we miss and measure which ones VETO
+Synthesise the attack shapes we know we miss and measure which ones AVAL
 catches. Turns "accuracy" from an opinion into a number, and it is the ground
 truth we lack on the attack side. The honest-declaration sampler already
 measures the false-positive side.
 
 ### E2 · Fixtures adversariais **[livre]**
-*Ideia vinda do veto-lab.* Their Solidity fixtures name attack shapes worth
+*Ideia vinda do aval-lab.* Their Solidity fixtures name attack shapes worth
 having Solana analogues of — above all a token that emits a transfer event
 with no state change, which defeats any event-based extractor and is the
 argument for our account-diff choice. Also: time-gated behaviour, hidden
 approval, address poisoning, malicious router.
 
 ### E3 · Metodologia de medição **[livre]**
-*Ideia vinda do veto-lab.* Attacks generated vs identified vs confirmed,
+*Ideia vinda do aval-lab.* Attacks generated vs identified vs confirmed,
 false-positive rate, legitimate-task completion, and the explicit rule that a
 task failure is not an attack. Chain-agnostic and directly reusable.
 
 ### E4 · Cadeia de ids correlacionáveis **[livre]**
-*Ideia vinda do veto-lab.* `experiment_id · run_id · trace_id · intent_id ·
+*Ideia vinda do aval-lab.* `experiment_id · run_id · trace_id · intent_id ·
 incident_id`, so a whole test can be reconstructed from scenario to verdict to
 on-chain result to audit. We have `actionId` and `policyVersion` and nothing
 tying a session together.

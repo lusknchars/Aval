@@ -36,7 +36,7 @@ npm install -g pnpm
 
 ### Runtime dependencies
 
-| Package | Version | Role in VETO |
+| Package | Version | Role in AVAL |
 |---|---|---|
 | `@solana/web3.js` | `^1.99.0` | `simulateTransaction` with `accounts` and `innerInstructions` — the heart of the normalizer. Also `VersionedTransaction`, `PublicKey`, `AccountInfo`. |
 | `@solana/spl-token` | `^0.4.15` | `ACCOUNT_SIZE`, `AccountLayout`, `TOKEN_PROGRAM_ID`. Used to **decode bytes offline**, never to make RPC calls. This is the "fixed layout, no IDL" scope cut. |
@@ -208,9 +208,9 @@ cp .env.example .env
 
 | Variable | Required | Where to get it |
 |---|---|---|
-| `VETO_RPC_URL` | yes | [dashboard.helius.dev](https://dashboard.helius.dev) → free account → **Endpoints** → copy the **mainnet** URL |
-| `VETO_RPC_URL_DEVNET` | yes | Same panel, devnet endpoint. Used by the fixture recorder. |
-| `VETO_RPC_COMMITMENT` | no | Leave it at `confirmed`. `processed` is faster and less stable; `finalized` is too slow for an agent's decision loop. |
+| `AVAL_RPC_URL` | yes | [dashboard.helius.dev](https://dashboard.helius.dev) → free account → **Endpoints** → copy the **mainnet** URL |
+| `AVAL_RPC_URL_DEVNET` | yes | Same panel, devnet endpoint. Used by the fixture recorder. |
+| `AVAL_RPC_COMMITMENT` | no | Leave it at `confirmed`. `processed` is faster and less stable; `finalized` is too slow for an agent's decision loop. |
 
 **Why Helius and not the public RPC.** `api.mainnet-beta.solana.com` rate-limits
 aggressively and does not guarantee `innerInstructions` or the `accounts`

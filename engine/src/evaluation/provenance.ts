@@ -25,7 +25,7 @@ import type { Finding, Severity } from "../types/verdict.js";
  * How an address came to be in this transaction, worst case first.
  *
  * `unexplained` is worse than it sounds: an address that appears in no chunk
- * at all was produced somewhere VETO does not observe. Absence is a signal,
+ * at all was produced somewhere AVAL does not observe. Absence is a signal,
  * not silence.
  */
 export type Origin =
@@ -218,7 +218,7 @@ export function classifyAddress(
   }
 
   // Appearing only in untrusted context is the fingerprint of indirect prompt
-  // injection. Appearing nowhere is worse: it was produced somewhere VETO
+  // injection. Appearing nowhere is worse: it was produced somewhere AVAL
   // does not observe at all.
   return {
     address,

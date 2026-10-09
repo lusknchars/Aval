@@ -140,7 +140,7 @@ export interface Trace {
   /**
    * What the transaction ACTUALLY did when it landed, when it already has.
    *
-   * History, never a prediction, and never part of the verdict: VETO judges
+   * History, never a prediction, and never part of the verdict: AVAL judges
    * before signing, where this does not exist yet.
    */
   readonly history: {

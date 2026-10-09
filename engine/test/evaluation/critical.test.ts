@@ -141,7 +141,7 @@ function withExtensions(entries: readonly [number, number][]): Buffer {
   return data;
 }
 
-describe("bytes VETO does not read", () => {
+describe("bytes AVAL does not read", () => {
   it("reports Token-2022 extensions on an account it did read", () => {
     // The account decoded fine: mint, owner, amount and delegate are all
     // correct. What is unread is everything the extensions add -- a transfer
@@ -274,7 +274,7 @@ describe("the fee nothing else looks at", () => {
   });
 });
 
-describe("changes VETO produced no effect for", () => {
+describe("changes AVAL produced no effect for", () => {
   it("reports a stake account whose bytes moved", () => {
     // The diff reports what it reads: lamports, and the two token layouts.
     // A stake account's authorities are neither, so handing over the

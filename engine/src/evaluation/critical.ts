@@ -177,10 +177,10 @@ export function coverageFindings(set: EffectSet): readonly Finding[] {
     });
   }
 
-  // An address the transaction uses and VETO cannot even name. This is the
+  // An address the transaction uses and AVAL cannot even name. This is the
   // one that matters: not observing a readonly account is normal, not knowing
   // an account exists is not.
-  // Bytes VETO does not read, on accounts it did read. A transfer hook or a
+  // Bytes AVAL does not read, on accounts it did read. A transfer hook or a
   // permanent delegate lives there, and neither would ever become an effect.
   // FLAG rather than DENY because most extensions are benign metadata --
   // which is calibration, not a consequence of anything.
@@ -210,7 +210,7 @@ export function coverageFindings(set: EffectSet): readonly Finding[] {
       detail: {
         accounts: set.coverage.opaqueChanges.length,
         sample: set.coverage.opaqueChanges.slice(0, 3),
-        note: "state changed in a program that holds authority and that VETO does not decode: a staker, withdrawer or upgrade authority could have moved unseen",
+        note: "state changed in a program that holds authority and that AVAL does not decode: a staker, withdrawer or upgrade authority could have moved unseen",
       },
     });
   }
@@ -274,7 +274,7 @@ export function coverageFindings(set: EffectSet): readonly Finding[] {
     });
   }
 
-  // A writable account VETO asked about and did not get back.
+  // A writable account AVAL asked about and did not get back.
   //
   // Only when something actually ran. A failed or unavailable simulation has
   // no post-state for anything, and that fact already has its own finding --

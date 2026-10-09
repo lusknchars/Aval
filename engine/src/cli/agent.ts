@@ -169,7 +169,7 @@ async function main(): Promise<number> {
   });
   const pt = explainInPortuguese(trace, new Map([[WRAPPED_SOL, 9]]));
 
-  rule("VETO, AT THE MOMENT OF SIGNING");
+  rule("AVAL, AT THE MOMENT OF SIGNING");
   console.log(`  \x1b[1m${pt.verdict}\x1b[0m\n`);
   console.log(`  ${pt.summary}\n`);
   console.log("  o que acontece on-chain");

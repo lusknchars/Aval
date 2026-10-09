@@ -3,7 +3,7 @@
  *
  *   pnpm exec tsx --env-file=.env test/exploration/read-account.ts <address>
  *
- * Not a test (it does not end in .test.ts) and not VETO code. It only
+ * Not a test (it does not end in .test.ts) and not AVAL code. It only
  * validates the RPC connection and shows what getAccountInfo returns.
  *
  * Exit codes:
@@ -31,26 +31,26 @@ type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 
 // No error message repeats the value it received: the URL carries the key.
 function readConfig(env: NodeJS.ProcessEnv): Result<Config> {
-  const url = env["VETO_RPC_URL_DEVNET"];
+  const url = env["AVAL_RPC_URL_DEVNET"];
   if (url === undefined || url === "") {
     return {
       ok: false,
-      error: "VETO_RPC_URL_DEVNET is not set. Fill it in .env.",
+      error: "AVAL_RPC_URL_DEVNET is not set. Fill it in .env.",
     };
   }
   if (!urlSchema.safeParse(url).success) {
     return {
       ok: false,
-      error: "VETO_RPC_URL_DEVNET is not a valid http(s) URL.",
+      error: "AVAL_RPC_URL_DEVNET is not a valid http(s) URL.",
     };
   }
 
-  const commitment = commitmentSchema.safeParse(env["VETO_RPC_COMMITMENT"]);
+  const commitment = commitmentSchema.safeParse(env["AVAL_RPC_COMMITMENT"]);
   if (!commitment.success) {
     return {
       ok: false,
       error:
-        "VETO_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.",
+        "AVAL_RPC_COMMITMENT missing or invalid. Use processed, confirmed or finalized.",
     };
   }
 
@@ -116,7 +116,7 @@ async function main(): Promise<number> {
   }
   if (genesis !== DEVNET_GENESIS) {
     console.error(
-      "VETO_RPC_URL_DEVNET answered, but it is not devnet (different genesis hash). Refused.",
+      "AVAL_RPC_URL_DEVNET answered, but it is not devnet (different genesis hash). Refused.",
     );
     return EXIT_INPUT;
   }

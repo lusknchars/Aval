@@ -80,7 +80,7 @@ function parseArgs(argv: readonly string[]): Args | string {
  * A user goal that names every counterparty: the honest baseline.
  *
  * `silent` produces the same call with a goal that names nobody -- the shape
- * of an agent that picked the destination somewhere VETO cannot see.
+ * of an agent that picked the destination somewhere AVAL cannot see.
  */
 function honestContext(
   set: EffectSet,

@@ -2,15 +2,15 @@
  * Context captured inside the client's agent runtime.
  *
  * `provenance` is the single most important field in the system: without it,
- * VETO's highest-value detector does not exist. An address that appears only
+ * AVAL's highest-value detector does not exist. An address that appears only
  * in a `retrieved` chunk is the fingerprint of indirect prompt injection.
  *
  * Everything here is UNTRUSTED INPUT. It comes from the client's process, not
- * from VETO, which is why every type has a Zod schema: if `provenance` arrives
+ * from AVAL, which is why every type has a Zod schema: if `provenance` arrives
  * malformed, the provenance check degrades silently -- the worst possible
  * failure mode for this project.
  *
- * Origin is NEVER declared by the agent. It is assigned by VETO's
+ * Origin is NEVER declared by the agent. It is assigned by AVAL's
  * instrumentation at the moment each piece of content enters the runtime. The
  * agent is not a trusted source about its own decision.
  */
@@ -54,7 +54,7 @@ export type SourceTrust = z.infer<typeof sourceTrustSchema>;
  * destroys the record that explains where an address came from, and a dropped
  * chunk can never be shown to the person who has to decide. The classifier is
  * external -- Prompt Guard today, anything tomorrow -- and this is the whole
- * of what VETO asks of it: a label, a confidence and a name.
+ * of what AVAL asks of it: a label, a confidence and a name.
  */
 export const guardLabelSchema = z.enum(["benign", "injection", "jailbreak"]);
 export type GuardLabel = z.infer<typeof guardLabelSchema>;
@@ -94,7 +94,7 @@ export const toolCallSchema = z.object({
 export type ToolCall = z.infer<typeof toolCallSchema>;
 
 /**
- * Everything VETO receives about one action, before evaluating it.
+ * Everything AVAL receives about one action, before evaluating it.
  *
  * The transaction arrives already deserialized. The SDK boundary (wire format,
  * base64) belongs to the capture layer, not to this contract.

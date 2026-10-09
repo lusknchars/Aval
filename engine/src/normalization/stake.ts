@@ -2,7 +2,7 @@
  * The stake account, read from its bytes.
  *
  * Until this file existed a stake account was an "authority-bearing program
- * VETO does not decode": any change to its bytes was reported as an opaque
+ * AVAL does not decode": any change to its bytes was reported as an opaque
  * change, and the one thing that matters -- the WITHDRAWER authority moving
  * to somebody else, which is how stake gets stolen -- looked exactly like an
  * ordinary deactivate. Both are "the data changed".

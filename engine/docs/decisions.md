@@ -30,7 +30,7 @@ Implementation gaps per block live in `pending.md`.
 ## Types — `effects.ts`
 
 6. `EffectSet` is **flat**, against the category-grouped shape in
-   `veto-construcao.md`. Category views became derived functions.
+   `aval-construcao.md`. Category views became derived functions.
 7. Three fields added beyond the spec: `slot`, `coverage`, `simulation`. They
    come from what the exploration scripts found.
 8. `SimulationOutcome` is a discriminated union — it forces "failed" and
@@ -128,7 +128,7 @@ Implementation gaps per block live in `pending.md`.
 
 ## Product and policy decisions (settled with the project owner)
 
-40. **Degradation is fail-open with a loud alert.** When VETO cannot evaluate —
+40. **Degradation is fail-open with a loud alert.** When AVAL cannot evaluate —
     RPC down, rate limited, timeout — the transaction is allowed, a critical
     `coverage` finding is recorded and the customer is alerted immediately.
     Fail-closed would turn an outage of ours into an outage of the customer's
@@ -154,7 +154,7 @@ Implementation gaps per block live in `pending.md`.
     and the reason is versioned with the manifest and visible in review.
 46. **The CLI stays on `tsx`.** No `bin` entry, no build step, until somebody
     outside the project wants to install it.
-47. **Only `veto-construcao.md` gets translated** of the three specification
+47. **Only `aval-construcao.md` gets translated** of the three specification
     documents. It is the architecture one, the one a technical reviewer would
     open. The other two stay in Portuguese.
 48. **Check B compares the SUM of what a pattern matched, not each effect.**
@@ -404,7 +404,7 @@ Implementation gaps per block live in `pending.md`.
 80. **The evaluation CLI takes a real transaction, not only a fixture**
     (`--signature`, `--tx`). Until then the deterministic layer could be run
     against recorded scenarios or measured in bulk, and there was no way to ask
-    "what would VETO say about THIS transaction" -- which is the first thing
+    "what would AVAL say about THIS transaction" -- which is the first thing
     anyone wants. A real transaction carries no tool call, so the declaration a
     truthful agent would have made is read back out of its own effects, by the
     same strict classifier the bulk sampler uses.
@@ -426,7 +426,7 @@ Implementation gaps per block live in `pending.md`.
 85. **History never feeds a verdict.** A transaction that already landed has
     its real effects recorded in the block, and the demo shows them, because
     re-simulating a landed transaction usually fails and "cannot know" is a
-    wall. But VETO judges BEFORE signing, where history does not exist; using
+    wall. But AVAL judges BEFORE signing, where history does not exist; using
     it to decide would be answering a different question and calling it the
     same one.
 86. **An empty effect list is never written as "it does nothing".** It has two

@@ -137,7 +137,7 @@ describe("classifying where an address came from", () => {
   });
 
   it("treats an address that appears nowhere as unexplained, not as safe", () => {
-    // Absence is a signal: it was produced somewhere VETO does not observe.
+    // Absence is a signal: it was produced somewhere AVAL does not observe.
     const verdict = classifyAddress(
       ATTACKER,
       contextWith("rebalance", []),

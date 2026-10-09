@@ -239,17 +239,17 @@ function permission(
   if (decision === "deny")
     return {
       permitted: false,
-      reason: "VETO denied this transaction; nothing was signed",
+      reason: "AVAL denied this transaction; nothing was signed",
     };
   if (onFlag === "sign") return { permitted: true, reason: "" };
   if (onFlag === "hold")
     return {
       permitted: false,
-      reason: "VETO flagged this transaction and is holding it for review",
+      reason: "AVAL flagged this transaction and is holding it for review",
     };
   return {
     permitted: false,
-    reason: "VETO flagged this transaction and this operator refuses flags",
+    reason: "AVAL flagged this transaction and this operator refuses flags",
   };
 }
 
@@ -258,7 +258,7 @@ function permission(
  * not enforce it itself.
  *
  * This is where the mechanism becomes real. `raw` is the wallet's own signing
- * function and knows nothing about VETO; the wrapper recomputes the digest of
+ * function and knows nothing about AVAL; the wrapper recomputes the digest of
  * the bytes in front of it and refuses anything that does not match the ticket.
  * Put the wrapper as close to the key as the integration allows: every layer
  * between it and the key is a layer that could substitute bytes.

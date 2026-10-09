@@ -9,12 +9,12 @@ import bs58 from "bs58";
 import { z } from "zod";
 
 /**
- * Environment smoke test. It tests nothing about VETO -- it proves the
+ * Environment smoke test. It tests nothing about AVAL -- it proves the
  * foundation stands. No network calls anywhere.
  */
 describe("environment", () => {
   it("compares bigint correctly in expect", () => {
-    // Every token amount in VETO is a bigint. If the runner did not compare
+    // Every token amount in AVAL is a bigint. If the runner did not compare
     // bigint properly, every balance test would be a silent false positive.
     const u64Max = 18_446_744_073_709_551_615n;
     expect(u64Max).toEqual(2n ** 64n - 1n);

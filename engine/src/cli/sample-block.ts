@@ -66,7 +66,7 @@ function parseArgs(argv: readonly string[]): Args | string {
 }
 
 /**
- * The effects VETO exists to catch. Counting how often they show up in traffic
+ * The effects AVAL exists to catch. Counting how often they show up in traffic
  * nobody designed for us is the point of sampling at all: a detector that
  * never fires on real data is untested, and one that fires constantly is
  * useless.

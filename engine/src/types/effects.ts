@@ -1,5 +1,5 @@
 /**
- * The effect vocabulary: the core of VETO.
+ * The effect vocabulary: the core of AVAL.
  *
  * Everything a transaction does is expressed in these types, and everything a
  * tool manifest expects is expressed in the same ones. That makes "what the
@@ -264,7 +264,7 @@ export type SimulationOutcome =
   | { readonly status: "unavailable"; readonly reason: string };
 
 /**
- * Which accounts VETO was actually able to observe.
+ * Which accounts AVAL was actually able to observe.
  *
  * `simulateTransaction` with the `accounts` option returns ONLY the addresses
  * asked for -- the RPC performs no discovery. If the normalizer does not ask
@@ -277,7 +277,7 @@ export interface AccountCoverage {
   /** Accounts with state before AND after, from which effects could be derived. */
   readonly observed: readonly string[];
   /**
-   * Writable accounts VETO asked about and did not get back.
+   * Writable accounts AVAL asked about and did not get back.
    *
    * A real gap, not an inventory. Readonly accounts are never observed and
    * that is the design, not a blind spot -- counting them here made the
@@ -296,7 +296,7 @@ export interface AccountCoverage {
    */
   readonly blindSpots: readonly string[];
   /**
-   * Observed accounts carrying Token-2022 extension bytes VETO does not
+   * Observed accounts carrying Token-2022 extension bytes AVAL does not
    * decode.
    *
    * Separate from a blind spot: the account WAS read and its base layout is
@@ -307,7 +307,7 @@ export interface AccountCoverage {
   readonly tokenExtensions: readonly string[];
   /**
    * Observed accounts whose bytes changed, owned by a program that holds
-   * AUTHORITY and that VETO does not decode.
+   * AUTHORITY and that AVAL does not decode.
    *
    * The diff can only report what it reads. An account outside the token
    * layouts changes and produces no effect at all -- which downstream is

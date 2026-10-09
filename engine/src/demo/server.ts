@@ -105,7 +105,7 @@ async function judged(
   return applyOpinion(verdict, result, judge.name);
 }
 
-const RECORD_DIR = process.env["VETO_RECORD_DIR"] ?? ".veto";
+const RECORD_DIR = process.env["AVAL_RECORD_DIR"] ?? ".aval";
 mkdirSync(RECORD_DIR, { recursive: true });
 const recordStore = new FileRecordStore(join(RECORD_DIR, "records.jsonl"));
 const approvalStore = new FileApprovalStore(join(RECORD_DIR, "approvals.jsonl"));
@@ -151,7 +151,7 @@ const requestSchema = z.object({
  * A real agent run, in the browser.
  *
  * A model actually chooses the tool and the arguments; the transaction is
- * built from what it chose; and VETO is called at the moment a wallet would
+ * built from what it chose; and AVAL is called at the moment a wallet would
  * be asked to sign. The only thing invented here is the page the agent reads
  * under `poison`, which is invented on purpose: it is the attack.
  *
@@ -591,7 +591,7 @@ function main(): number {
   });
 
   server.listen(port, "127.0.0.1", () => {
-    console.log(`VETO demo on http://127.0.0.1:${port}`);
+    console.log(`AVAL demo on http://127.0.0.1:${port}`);
     console.log("nothing is signed and nothing is sent");
     console.log(
       adapters.configured.length === 0
