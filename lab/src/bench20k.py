@@ -643,6 +643,233 @@ def cmd_prices(a):
     print(json.dumps({k: res[k] for k in ("fetched_at", "mints_requested", "errors")}), f"priced: {len(prices)}")
 
 
+# ---------- final report (HTML, PT-BR) ----------
+
+SET_PT = {"real_traffic": "Tráfego real", "attack_real_tx": "Transação real, intenção forjada",
+          "attack_constructed": "Construídos (VM local)"}
+
+
+def collection_stats(log_path):
+    """Calls (summed over resumed runs), blocks, scanned and kept from the collector log."""
+    import re
+    runs, cur, last = [], {}, None
+    pat = re.compile(r"kept (\d+)/\d+ — scanned (\d+) \(failed (\d+), no signer effect (\d+), errored (\d+)\) — "
+                     r"blocks (\d+) \(block errors (\d+), duplicates skipped (\d+)\) — calls (\d+)")
+    try:
+        lines = open(log_path, encoding="utf-8", errors="replace").read().splitlines()
+    except OSError:
+        return {}
+    for line in lines:
+        if line.startswith("dataset: upstream"):
+            if cur:
+                runs.append(cur)
+            cur = {}
+        m = pat.search(line)
+        if m:
+            k = ("kept", "scanned", "failed", "no_effect", "errored", "blocks", "block_errors", "duplicates", "calls")
+            cur = dict(zip(k, map(int, m.groups())))
+            last = cur["kept"]
+    if cur:
+        runs.append(cur)
+    tot = {k: sum(r.get(k, 0) for r in runs) for k in ("scanned", "failed", "no_effect", "errored", "blocks", "block_errors", "calls")}
+    tot["kept"] = last
+    tot["runs"] = len(runs)
+    tot["http_429"] = sum("429" in line for line in lines)
+    return tot
+
+
+def report_rows(out, prices):
+    """One row per case: final decision (A/B/C), model answers, USD at the final prices."""
+    dec, model, base = {}, {}, {}
+    for e in ab.read_jsonl(out / "events.jsonl"):
+        {"decision": dec, "model": model, "baseline": base}.get(e.get("type"), {})[e.get("case_id")] = e
+    rows = []
+    for c in ab.read_jsonl(out / "cases.jsonl"):
+        d = dec.get(c["case_id"])
+        if d is None:
+            continue
+        m = model.get(c["case_id"])
+        b = base.get(c["case_id"])
+        pred = {"risk": m["risk"], "signals": m["signals"], "format": m["format"]} if m else None
+        c_ = ab.layer_c(pred)
+        final, by = (c_["decision"], "C") if ab.RANK[c_["decision"]] > ab.RANK[d["decision"]] else (d["decision"], d["layer"])
+        usd, missing = ab.usd_value(c["record"], prices)
+        rows.append({"case_id": c["case_id"], "set": c["set"], "kind": c["kind"], "expected": c["expected"],
+                     "source": c["source"], "tx_digest": c["tx_digest"], "ab": d["decision"], "ab_by": d["layer"],
+                     "A": d["layers"]["A"], "B": d["layers"]["B"], "final": final, "by": by,
+                     "tuned": pred, "original": {"risk": b["risk"], "signals": b["signals"]} if b else None,
+                     "lat": {"A": d["latency_ms"]["A"], "B": d["latency_ms"]["B"], "C": m["latency_ms"] if m else None},
+                     "usd": usd, "usd_missing": missing, "metadata": c.get("metadata", {}),
+                     "intent_action": c["intent"]["action"]})
+    return rows
+
+
+def _lat(vals):
+    return {"n": len(vals), "p50": ab.percentile(vals, 50), "p95": ab.percentile(vals, 95),
+            "mean": sum(vals) / len(vals) if vals else None}
+
+
+def render_report(rows, meta, prices_meta, coll, synth_us):
+    E, card, table, usd, pct, ms = ab._e, ab.card, ab.table, ab._usd, ab._pct, ab._ms
+    now = datetime.now().strftime("%d/%m/%Y %H:%M")
+    by_set = defaultdict(list)
+    for r in rows:
+        by_set[r["set"]].append(r)
+    rt, ar, ac = by_set["real_traffic"], by_set["attack_real_tx"], by_set["attack_constructed"]
+    parts = []
+    P = parts.append
+    mm = (meta or {}).get("mainnet", {})
+    P(f"<h1>Relatório AVAL — Benchmark Solana 20k</h1><div class='sub'>Gerado em {now} · {len(rt)} transações reais da "
+      f"mainnet + suíte de ataques ({len(ar)} transações reais com intenção forjada, {sum(r['expected'] == BLOCK for r in ac)} "
+      f"ataques construídos e {sum(r['expected'] == ALLOW for r in ac)} gêmeos honestos) · seed {meta.get('seed')} · modelo: "
+      f"base bf16 de Luis + LoRA veto-svm iter 300 (guloso)</div>")
+
+    # ---- Headline 1: real traffic ----
+    n = len(rt)
+    blocked = [r for r in rt if r["final"] == BLOCK]
+    review = [r for r in rt if r["final"] == REVIEW]
+    lat_ab = [r["lat"]["A"] + r["lat"]["B"] for r in rt]
+    lat_c = [r["lat"]["C"] for r in rt if r["lat"]["C"] is not None]
+    lab, lc = _lat(lat_ab), _lat(lat_c)
+    P(f"<h2>1. Tráfego real (mainnet, {n} transações)</h2>")
+    P("<p class='note'>Cada transação real da mainnet, simulada pelo aval-svm, com a intenção honesta derivada dos seus "
+      "efeitos. Todas deveriam ser aprovadas: aqui se mede o atrito que o Aval impõe ao uso normal.</p><div class='cards'>")
+    P(card(f"{len(blocked)}", f"falsos positivos (BLOCK) · taxa {pct(len(blocked) / n if n else None, 2)}", "red" if blocked else "green"))
+    answered = sum(r["tuned"] is not None for r in rt)
+    if answered < n:
+        P(f"</div><p class='note red'>Parcial: a IA respondeu {answered} de {n} transações.</p><div class='cards'>")
+    P(card(f"{len(review)}", f"REVIEW (IA levantou risco) · {pct(len(review) / n if n else None, 1)}"))
+    P(card(f"{n - len(blocked) - len(review)}", f"aprovadas direto · {pct((n - len(blocked) - len(review)) / n if n else None, 1)}", "green"))
+    P(card(ms(lab["p50"]), f"latência A+B p50 (p95 {ms(lab['p95'])})"))
+    P(card(ms(lc["p50"]), f"latência da IA p50 (p95 {ms(lc['p95'])})"))
+    thr_ab = 1000 / lab["p50"] if lab["p50"] else None
+    thr_c = 1000 / lc["p50"] if lc["p50"] else None
+    P(card(f"{thr_ab:,.0f}/s".replace(",", ".") if thr_ab else "—", f"vazão A+B por núcleo · IA {thr_c:.2f}/s".replace(".", ",") if thr_c else "vazão A+B"))
+    P("</div>")
+    body = []
+    kinds = Counter(r["kind"] for r in rt)
+    for k, cnt in kinds.most_common():
+        rs = [r for r in rt if r["kind"] == k]
+        f = Counter(r["final"] for r in rs)
+        body.append([E(ab._type_name(k)), cnt, f[ALLOW], f[REVIEW], f'<span class="{"red" if f[BLOCK] else ""}">{f[BLOCK]}</span>',
+                     pct(f[REVIEW] / cnt, 1)])
+    P("<h3>Por tipo de transação</h3>")
+    P(table(["Tipo (intenção derivada)", "Transações", "ALLOW", "REVIEW", "BLOCK (FP)", "Taxa de REVIEW"], body))
+    sig = Counter(s for r in review for s in (r["tuned"] or {}).get("signals", []) or ["(sem sinal)"])
+    P("<h3>Por que a IA pediu REVIEW</h3>")
+    P(table(["Sinal nomeado pela IA", "Casos"], [[E(ab.ATTACK_PT.get(k, k)), v] for k, v in sig.most_common()]) if sig else "<p>Nenhum.</p>")
+    v_ok = sum(r["usd"] or 0 for r in rt if r["final"] == ALLOW)
+    v_rev = sum(r["usd"] or 0 for r in review)
+    v_blk = sum(r["usd"] or 0 for r in blocked)
+    priced = sum(r["usd"] is not None and not r["usd_missing"] for r in rt)
+    P(f"<p class='note'>Valor movimentado (cotação CoinGecko de {E(prices_meta.get('fetched_at', '—'))}): aprovadas "
+      f"{usd(v_ok)}, em REVIEW {usd(v_rev)}, bloqueadas {usd(v_blk)}. {priced} de {n} transações com todas as cotações; "
+      f"tokens sem cotação contam US$ 0.</p>")
+    mc = coll or {}
+    P(f"<p class='note'>Coleta: blocos finalizados recentes via Helius (plano grátis, 9 req/s), {mc.get('blocks', '—')} blocos, "
+      f"{mc.get('scanned', '—')} transações simuladas ({mc.get('failed', '—')} falharam na simulação contra o estado atual, "
+      f"{mc.get('no_effect', '—')} sem efeito no signatário), {mc.get('kept', '—')} registros, {mc.get('calls', '—')} chamadas RPC "
+      f"({mc.get('http_429', 0)} respostas 429 refeitas). Filtros: {mm.get('records', '—')} registros → {mm.get('usable', '—')} "
+      f"utilizáveis; descartes {E(json.dumps(mm.get('skipped', {}), ensure_ascii=False))}; teto de {mm.get('payer_cap')} por "
+      f"pagador ({mm.get('payer_cap_dropped', 0)} descartadas por ele, {mm.get('payers', '—')} pagadores distintos). "
+      f"{mm.get('attack_real_tx', 0)} registros sorteados antes foram para a suíte de ataques (conjuntos disjuntos).</p>")
+
+    # ---- Headline 2: attack suite ----
+    P("<h2>2. Suíte de ataques</h2>")
+    P("<p class='note'>Ataques nunca se misturam com o tráfego real. Duas fontes, mostradas lado a lado: transações "
+      "construídas na VM local e transações reais da mainnet com uma intenção forjada.</p>")
+    body = []
+    for name, rs in (("attack_constructed", [r for r in ac if r["expected"] == BLOCK]), ("attack_real_tx", ar)):
+        f = Counter(r["final"] for r in rs)
+        val = sum(r["usd"] or 0 for r in rs if r["final"] == BLOCK)
+        body.append([f"<b>{E(SET_PT[name])}</b>", len(rs), f'<span class="green">{f[BLOCK]}</span>', f[REVIEW],
+                     f'<span class="{"red" if f[ALLOW] else "green"}">{f[ALLOW]}</span>',
+                     pct(f[BLOCK] / len(rs) if rs else None, 2), usd(val) if name == "attack_real_tx" else "sem cotação"])
+    P(table(["Conjunto", "Ataques", "Bloqueados", "REVIEW", "Não bloqueados (ALLOW)", "Taxa de bloqueio", "Valor protegido"], body))
+    twins = [r for r in ac if r["expected"] == ALLOW]
+    tf = Counter(r["final"] for r in twins)
+    P(f"<p class='note'>Gêmeos honestos dos construídos: {len(twins)} casos, {tf[BLOCK]} BLOCK (falso positivo), "
+      f"{tf[REVIEW]} REVIEW, {tf[ALLOW]} ALLOW.</p>")
+    P("<h3>Por tipo de ataque</h3>")
+    body = []
+    for k in sd.MUTATIONS:
+        row = [E(ab.ATTACK_PT.get(k, k))]
+        for rs in ([r for r in ac if r["kind"] == k], [r for r in ar if r["kind"] == k]):
+            f = Counter(r["final"] for r in rs)
+            whys = Counter(r["by"] or "—" for r in rs if r["final"] == BLOCK)
+            row += [len(rs), f"{f[BLOCK]} <small>({', '.join(f'{a}:{b}' for a, b in sorted(whys.items()))})</small>" if rs else "—",
+                    f[ALLOW] + f[REVIEW] if rs else "—"]
+        body.append(row)
+    P(table(["Tipo", "Construídos", "Bloqueados (camada)", "Escaparam", "Reais forjados", "Bloqueados (camada)", "Escaparam"], body))
+    missed = [r for r in ac + ar if r["expected"] == BLOCK and r["final"] != BLOCK]
+    P("<h3>Ataques não bloqueados</h3>")
+    P(table(["Caso", "Conjunto", "Tipo", "Final", "IA"], [[r["case_id"], E(SET_PT[r["set"]]), E(ab._type_name(r["kind"])), r["final"],
+                                                       E((r["tuned"] or {}).get("risk", "sem resposta"))] for r in missed[:200]])
+      if missed else "<p>Nenhum.</p>")
+
+    # ---- Model (non-circular) ----
+    P("<h2>IA de intenção (medida não circular)</h2>")
+    body = []
+    for name, rs in (("real_traffic", rt), ("attack_real_tx", ar), ("attack_constructed", ac)):
+        for exp in (ALLOW, BLOCK):
+            g = [r for r in rs if r["expected"] == exp]
+            if not g:
+                continue
+            t = [r for r in g if r["tuned"]]
+            o = [r for r in g if r["original"]]
+            ok = lambda r, k: (r[k]["risk"] == "high") == (exp == BLOCK)  # noqa: E731
+            named = sum(r["kind"] in r["tuned"]["signals"] for r in t) if exp == BLOCK else None
+            body.append([E(SET_PT[name]), exp, len(g), f"{sum(ok(r, 'tuned') for r in t)}/{len(t)} ({pct(sum(ok(r, 'tuned') for r in t) / len(t) if t else None)})",
+                         "—" if named is None else f"{named} ({pct(named / len(t) if t else None)})",
+                         f"{sum(ok(r, 'original') for r in o)}/{len(o)} ({pct(sum(ok(r, 'original') for r in o) / len(o) if o else None)})"])
+    P(table(["Conjunto", "Esperado", "Casos", "IA ajustada: acertos", "IA ajustada: nomeou o sinal", "IA original (amostra): acertos"], body))
+    P("<p class='note'>Acerto da IA sozinha: <i>high</i> em ataques, <i>low</i> em legítimas. A IA original foi rodada só "
+      "numa amostra estratificada de 2.000 casos (proporcional por conjunto × esperado).</p>")
+
+    # ---- Latency ----
+    P("<h2>Latência</h2>")
+    L = [("Camada A — comparação intenção x efeitos simulados (código)", _lat([r["lat"]["A"] for r in rows])),
+         ("Camada B — detector de injeção (código)", _lat([r["lat"]["B"] for r in rows])),
+         ("Camada C — IA de intenção (MLX, Apple M4 Pro)", _lat([r["lat"]["C"] for r in rows if r["lat"]["C"] is not None])),
+         ("Simulação aval-svm (construídos, estado em memória)", _lat([v / 1000 for v in synth_us]))]
+    P(table(["Etapa", "Casos medidos", "p50", "p95", "Média"], [[E(k), v["n"], ms(v["p50"]), ms(v["p95"]), ms(v["mean"])] for k, v in L]))
+    P("<p class='note'>A simulação das transações da mainnet não é cronometrada aqui: na coleta ela inclui a busca de "
+      "estado no RPC sob o limite de 9 req/s do plano grátis, o que mede a fila e não o Aval.</p>")
+
+    # ---- How to read ----
+    P("<h2>Como ler estes números</h2><ul class='read'>")
+    P("<li><b>Dois números, nunca somados.</b> O tráfego real mede atrito (falsos positivos e REVIEW em uso normal); a "
+      "suíte de ataques mede proteção. Uma “acurácia geral” misturando os dois dependeria só da proporção escolhida.</li>")
+    P("<li><b>A Camada A é circular por construção.</b> Os rótulos dos ataques de intenção x efeito vêm da mesma lógica de "
+      "comparação (<code>label()</code>) que a Camada A executa; o mesmo vale para a Camada B e o padrão de injeção. Os "
+      "bloqueios delas mostram o mecanismo funcionando de ponta a ponta em transações reais simuladas, não habilidade "
+      "independente.</li>")
+    P("<li><b>A IA é a medida não circular.</b> A tabela da IA mostra o que o modelo acerta sozinho, sem ver o rótulo.</li>")
+    P("<li><b>Zero falso positivo no tráfego real é esperado pela construção</b>: a intenção honesta é derivada dos próprios "
+      "efeitos simulados. O que esse conjunto testa de fato é se metadados comuns e a IA geram atrito (REVIEW).</li>")
+    P("<li><b>REVIEW</b> não é BLOCK: é a IA levantando risco sem confirmação do código (regra “o LLM opina, o código "
+      "decide”: <i>high</i> + <code>injected_instruction</code> → BLOCK; outro <i>high</i> → REVIEW).</li>")
+    P("<li><b>Dados novos.</b> Nenhuma transação de arquivos anteriores (treino e benchmark de 1000) entra aqui; os ataques "
+      "construídos usam seed 9001 (treino 42, benchmark anterior 777); as injeções vêm só de <code>TEST_ONLY_INJECTIONS</code>.</li>")
+    P("<li><b>Nada foi assinado nem enviado.</b> Tudo é simulação; custo zero (plano grátis do RPC).</li>")
+    P("</ul>")
+    return ab.PAGE.replace("{{BODY}}", "\n".join(parts)).replace("<title>Relatório AVAL Solana</title>",
+                                                                 "<title>Relatório AVAL Solana 20k</title>")
+
+
+def cmd_report(a):
+    out = Path(a.out)
+    prices_meta = json.loads((out / "prices.json").read_text()) if (out / "prices.json").exists() else {"prices": {}}
+    meta = json.loads((out / "cases_meta.json").read_text())
+    rows = report_rows(out, prices_meta.get("prices", {}))
+    coll = collection_stats(out / "collect.log")
+    synth_us = [r["sim_us"] for r in ab.read_jsonl(out / "synth_sim_timings.jsonl")]
+    (out / "relatorio_aval_20k.html").write_text(render_report(rows, meta, prices_meta, coll, synth_us), encoding="utf-8")
+    write_atomic(out / "report_stats.json", {"collection": coll, "cases": len(rows),
+                                             "by_set_final": {s: dict(Counter(f"{r['expected']}->{r['final']}" for r in rows if r["set"] == s)) for s in SETS}})
+    print(json.dumps({"collection": coll, "rows": len(rows)}, ensure_ascii=False))
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--out", default=str(OUT))
@@ -673,8 +900,10 @@ def main(argv=None):
         else:
             m.add_argument("--n", type=int, default=2000)
     sub.add_parser("prices")
+    sub.add_parser("report")
     a = p.parse_args(argv)
-    {"cases": cmd_cases, "stream": cmd_stream, "model": cmd_model, "baseline": cmd_baseline, "prices": cmd_prices}[a.cmd](a)
+    {"cases": cmd_cases, "stream": cmd_stream, "model": cmd_model, "baseline": cmd_baseline, "prices": cmd_prices,
+     "report": cmd_report}[a.cmd](a)
 
 
 if __name__ == "__main__":
