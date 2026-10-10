@@ -69,6 +69,9 @@ enum Cmd {
         /// Stop cleanly (resumable) after this many upstream requests.
         #[arg(long)]
         max_calls: Option<u64>,
+        /// Simulations in flight at once within a block.
+        #[arg(long, default_value_t = 1)]
+        concurrency: usize,
         /// Effects files whose transactions must not be collected again.
         #[arg(long, num_args = 1..)]
         exclude: Vec<PathBuf>,
@@ -231,8 +234,8 @@ async fn main() -> anyhow::Result<()> {
         Cmd::Dataset { upstream, input: Some(input), backfill_decimals: true, out, delay_ms, .. } => {
             aval_svm::dataset::backfill_decimals(&input, &out, &upstream, delay_ms).await?
         }
-        Cmd::Dataset { upstream, target, out, delay_ms, max_blocks, per_block, with_tx, max_calls, exclude, .. } => {
-            aval_svm::dataset::run(&aval_svm::dataset::Args { upstream, target, out, delay_ms, max_blocks, per_block, with_tx, max_calls, exclude }).await?
+        Cmd::Dataset { upstream, target, out, delay_ms, max_blocks, per_block, with_tx, max_calls, concurrency, exclude, .. } => {
+            aval_svm::dataset::run(&aval_svm::dataset::Args { upstream, target, out, delay_ms, max_blocks, per_block, with_tx, max_calls, concurrency, exclude }).await?
         }
         Cmd::DatasetSynth { count, out, seed, timings } => aval_svm::synth::run(count, &out, seed, timings.as_deref()).await?,
         Cmd::Shadow { upstream, count, slot, out, delay_ms } => aval_svm::shadow::run(&upstream, count, slot, &out, delay_ms).await?,

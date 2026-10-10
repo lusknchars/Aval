@@ -17,6 +17,7 @@ use solana_transaction::versioned::VersionedTransaction;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::{BufRead, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
+use futures::StreamExt;
 use std::time::Duration;
 
 /// Who signs the transaction and which programs its top-level instructions call.
@@ -355,6 +356,8 @@ pub struct Args {
     pub with_tx: bool,
     /// Stop cleanly (resumable) once this many upstream requests were sent.
     pub max_calls: Option<u64>,
+    /// Simulations in flight at once within a block (upstream latency, not CPU, is the bottleneck).
+    pub concurrency: usize,
     /// Effects files whose digests are skipped (never kept again).
     pub exclude: Vec<PathBuf>,
 }
@@ -452,16 +455,31 @@ pub async fn run(a: &Args) -> anyhow::Result<()> {
             .filter_map(|t| t["transaction"][0].as_str().map(String::from))
             .filter(|b64| decode(b64, Encoding::Base64).is_ok_and(|d| !is_vote(&d.tx)))
             .collect()).unwrap_or_default();
+        // Pick the block's sample first, then simulate it `concurrency` at a time; results are
+        // handled in sample order, so the file and the counters do not depend on timing.
+        let mut picked: Vec<(&String, TxMeta)> = Vec::new();
         for i in sample_indices(txs.len(), a.per_block) {
-            if st.kept >= a.target { break; }
-            if budget_spent(used(), a.max_calls) { out_of_budget = true; break; }
             let b64 = &txs[i];
             let Ok(d) = decode(b64, Encoding::Base64) else { continue };
             if seen.contains(&d.digest) { st.duplicate += 1; continue; }
-            let meta = tx_meta(&d.tx);
-            tokio::time::sleep(Duration::from_millis(a.delay_ms)).await;
+            picked.push((b64, tx_meta(&d.tx)));
+        }
+        let engine_ref = &engine;
+        let delay = a.delay_ms;
+        let max_calls = a.max_calls;
+        let sims = futures::stream::iter(picked.into_iter().map(|(b64, meta)| async move {
+            // Over budget: skip the simulation (no upstream call); the run stops after this block.
+            if budget_spent(used(), max_calls) { return (b64, meta, None); }
+            tokio::time::sleep(Duration::from_millis(delay)).await;
+            (b64, meta, Some(simulate_with_retry(engine_ref, b64).await))
+        })).buffered(a.concurrency.max(1));
+        futures::pin_mut!(sims);
+        while let Some((b64, meta, sim)) = sims.next().await {
+            // Dropping the stream cancels what is still in flight.
+            if st.kept >= a.target { break; }
+            let Some(sim) = sim else { out_of_budget = true; continue };
             st.scanned += 1;
-            match simulate_with_retry(&engine, b64).await {
+            match sim {
                 Ok(report) => {
                     let failed = report.outcome.err.is_some();
                     match build_record(&report, meta, s, a.with_tx.then_some(b64.as_str())) {
