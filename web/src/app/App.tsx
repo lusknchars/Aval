@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useRoute } from './router'
 import { useEngine } from './api/engine'
 import Overview from './pages/Overview'
+import Live from './pages/Live'
 import Evaluate from './pages/Evaluate'
 import Actions from './pages/Actions'
 import TraceView from './pages/TraceView'
@@ -38,6 +39,7 @@ function PageLoading({ label }: { label: string }) {
 
 const NAV = [
   { group: 'monitor', items: [
+    { k: 'live', label: 'Live gate', g: '◉' },
     { k: 'overview', label: 'Overview', g: '◇' },
     { k: 'monitoring', label: 'Monitoring', g: '∿' },
     { k: 'actions', label: 'Actions', g: '≡' },
@@ -64,11 +66,12 @@ export default function App() {
   const reduced = useReduced()
   const cfg = useConfig()
   const pending = diff(cfg.history[0].config, cfg.draft).length
-  const [page = 'overview', arg, arg2] = route
-  const key = route.join('/') || 'overview'
+  const [page = 'live', arg, arg2] = route
+  const key = route.join('/') || 'live'
 
   let view
-  if (page === 'evaluate') view = <Evaluate preset={arg} />
+  if (page === 'live') view = <Live />
+  else if (page === 'evaluate') view = <Evaluate preset={arg} />
   else if (page === 'actions' && arg) view = <TraceView id={arg} />
   else if (page === 'actions') view = <Actions />
   else if (page === 'review') view = <Review />
