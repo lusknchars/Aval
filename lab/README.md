@@ -274,6 +274,22 @@ sempre "baixo"; as inválidas são respostas cortadas no limite de 200 tokens. P
 `amount_understated` (0/6), `undeclared_close` (3/5) e `approval_exceeds_intent` (4/7) ainda escapam.
 Não medimos o esquecimento da tarefa original de Luis (não temos os dados dele).
 
+### Benchmark de 1000 transações (Aval completo)
+
+`scripts/run_benchmark.sh` (passos `collect`, `synth`, `cases`, `model`, `prices`, `report`, `pdf`) roda a decisão
+do Aval em 1000 transações **nunca usadas no treino**: 400 da mainnet (coletadas de novo, digests do treino
+removidos) e 600 sintéticas (`dataset-synth --seed 777`; o treino usou 42). Uma transação = um caso: intenção
+honesta (espera ALLOW) ou uma mutação (espera BLOCK), 500/500; injeções só com `TEST_ONLY_INJECTIONS`.
+Código em `src/aval_benchmark.py`: camada A (simulação + `label()`), B (`INJECTION_PATTERN` nos metadados),
+C (IA ajustada; só aumenta o risco: `high` + `injected_instruction` → BLOCK, outro `high` → REVIEW).
+Saída em `results/benchmark/` (fora do git): `cases.jsonl`, `rows.jsonl`, `summary.json`, `relatorio_aval_1000.{html,pdf}`.
+
+Rodada de 2026-10-09: pipeline completo 500/500 ataques bloqueados, 0 legítimas bloqueadas, 68 legítimas em
+REVIEW (60 swaps da mainnet). **A Camada A é circular por construção** (os rótulos saem da mesma comparação),
+então esses 100% mostram o mecanismo, não habilidade; a medida independente é a IA sozinha: ajustada 81,1%
+(precisão 0,85, recall 0,76, taxa FP 13,6%; mainnet 72,8%, sintético 86,7%), original 50% (sempre "baixo").
+Latência p50/p95: A e B ~0,01 ms, simulação sintética 0,03/0,06 ms, IA 1,3/2,5 s (MLX, M4 Pro).
+
 ## aval-registry — atestação on-chain dos vereditos
 
 O `aval-svm anchor` lê o arquivo de registros do VETO (JSONL, um veredito por linha), agrupa as

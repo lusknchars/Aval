@@ -76,6 +76,9 @@ enum Cmd {
         out: PathBuf,
         #[arg(long, default_value_t = 42)]
         seed: u64,
+        /// Also write the engine simulation time of each record (JSONL: tx_digest, sim_us).
+        #[arg(long)]
+        timings: Option<PathBuf>,
     },
     /// Anchor Merkle roots of new record lines in the aval_registry program.
     Anchor {
@@ -225,7 +228,7 @@ async fn main() -> anyhow::Result<()> {
         Cmd::Dataset { upstream, target, out, delay_ms, max_blocks, per_block, with_tx, .. } => {
             aval_svm::dataset::run(&aval_svm::dataset::Args { upstream, target, out, delay_ms, max_blocks, per_block, with_tx }).await?
         }
-        Cmd::DatasetSynth { count, out, seed } => aval_svm::synth::run(count, &out, seed).await?,
+        Cmd::DatasetSynth { count, out, seed, timings } => aval_svm::synth::run(count, &out, seed, timings.as_deref()).await?,
         Cmd::Shadow { upstream, count, slot, out, delay_ms } => aval_svm::shadow::run(&upstream, count, slot, &out, delay_ms).await?,
         Cmd::Serve { config } => {
             let c = Config::load(Some(&config))?;
@@ -291,7 +294,7 @@ mod tests {
     #[test]
     fn dataset_synth_defaults() {
         match Cli::try_parse_from(["aval-svm", "dataset-synth"]).unwrap().cmd {
-            Cmd::DatasetSynth { count, out, seed } => {
+            Cmd::DatasetSynth { count, out, seed, .. } => {
                 assert_eq!((count, seed), (300, 42));
                 assert_eq!(out, std::path::PathBuf::from("results/svm_effects_synth.jsonl"));
             }

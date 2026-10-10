@@ -211,6 +211,12 @@ pub fn scenario(case: Case, rng: &mut Rng) -> Scenario {
 
 /// Records for `count` scenarios (cases in rotation) and how many failed to simulate.
 pub async fn generate(count: usize, seed: u64) -> anyhow::Result<(Vec<EffectRecord>, usize)> {
+    let (timed, failed) = generate_timed(count, seed).await?;
+    Ok((timed.into_iter().map(|(r, _)| r).collect(), failed))
+}
+
+/// Like `generate`, with the wall-clock time of each engine simulation (microseconds).
+pub async fn generate_timed(count: usize, seed: u64) -> anyhow::Result<(Vec<(EffectRecord, u64)>, usize)> {
     let mut rng = Rng::new(seed);
     let engine = Engine::new(Cache::new(MemSource::new(1), Duration::from_secs(3600)), Pool::new(2, 1000));
     let (mut out, mut failed) = (Vec::with_capacity(count), 0usize);
@@ -219,12 +225,14 @@ pub async fn generate(count: usize, seed: u64) -> anyhow::Result<(Vec<EffectReco
         for (k, a) in &sc.accounts { engine.cache().source().insert(*k, a.clone()); }
         let raw = bincode::serialize(&sc.tx)?;
         let d = decode(&B64.encode(&raw), Encoding::Base64)?;
+        let t0 = std::time::Instant::now();
         let report = engine.simulate(d, true).await?;
+        let micros = u64::try_from(t0.elapsed().as_micros()).unwrap_or(u64::MAX);
         match build_record(&report, tx_meta(&sc.tx), 0, None) {
             Some(mut rec) => {
                 rec.source = "synthetic".into();
                 rec.case = Some(sc.case.name().into());
-                out.push(rec);
+                out.push((rec, micros));
             }
             None => failed += 1,
         }
@@ -232,14 +240,21 @@ pub async fn generate(count: usize, seed: u64) -> anyhow::Result<(Vec<EffectReco
     Ok((out, failed))
 }
 
-pub async fn run(count: usize, out: &Path, seed: u64) -> anyhow::Result<()> {
-    let (records, failed) = generate(count, seed).await?;
+/// Writes the records to `out`; with `timings`, also one `{"tx_digest", "sim_us"}` line per record.
+pub async fn run(count: usize, out: &Path, seed: u64, timings: Option<&Path>) -> anyhow::Result<()> {
+    let (records, failed) = generate_timed(count, seed).await?;
     if let Some(dir) = out.parent() { std::fs::create_dir_all(dir)?; }
     let mut f = std::fs::File::create(out)?;
     let mut per_case = std::collections::BTreeMap::<String, usize>::new();
-    for r in &records {
+    for (r, _) in &records {
         writeln!(f, "{}", serde_json::to_string(r)?)?;
         *per_case.entry(r.case.clone().unwrap_or_default()).or_default() += 1;
+    }
+    if let Some(t) = timings {
+        let mut tf = std::fs::File::create(t)?;
+        for (r, us) in &records {
+            writeln!(tf, "{}", serde_json::json!({"tx_digest": r.tx_digest, "sim_us": us}))?;
+        }
     }
     println!("dataset-synth: {} records ({failed} failed simulations) → {}", records.len(), out.display());
     for (c, n) in per_case { println!("  {c}: {n}"); }
@@ -366,5 +381,16 @@ mod tests {
         assert_eq!(cases.len(), CASES.len());
         let digests: std::collections::HashSet<_> = records.iter().map(|r| r.tx_digest.clone()).collect();
         assert_eq!(digests.len(), 24);
+    }
+
+    #[tokio::test]
+    async fn timed_generation_matches_plain_and_times_every_record() {
+        let (plain, _) = generate(12, 5).await.unwrap();
+        let (timed, failed) = generate_timed(12, 5).await.unwrap();
+        assert_eq!(failed, 0);
+        let a: Vec<_> = plain.iter().map(|r| r.tx_digest.clone()).collect();
+        let b: Vec<_> = timed.iter().map(|(r, _)| r.tx_digest.clone()).collect();
+        assert_eq!(a, b);
+        assert!(timed.iter().all(|(_, us)| *us > 0));
     }
 }

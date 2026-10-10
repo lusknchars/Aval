@@ -40,3 +40,5 @@ registry/.anchor/
 registry/.localnet/
 registry/node_modules/
 *-keypair.json
+results/bench_effects_*.jsonl
+results/benchmark/
