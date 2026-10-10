@@ -71,7 +71,7 @@ export default function Live() {
       .then(({ trace, source }) => {
         const ms = Math.round((performance.now() - t0) * 100) / 100
         const r: Run = { id: `live-${Date.now().toString(36)}`, job, trace, source, ms, at: Date.now() }
-        const entry: Entry = { id: r.id, at: r.at, request: job.req, trace, source, ms }
+        const entry: Entry = { id: r.id, at: r.at, request: job.req, trace, source, ms, agent: job.agent }
         store.add(entry)
         setError(null)
         setRun(r)

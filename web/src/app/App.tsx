@@ -4,6 +4,7 @@ import { useRoute } from './router'
 import { useEngine } from './api/engine'
 import Overview from './pages/Overview'
 import Live from './pages/Live'
+import Issues from './pages/Issues'
 import Evaluate from './pages/Evaluate'
 import Actions from './pages/Actions'
 import TraceView from './pages/TraceView'
@@ -41,6 +42,7 @@ const NAV = [
   { group: 'monitor', items: [
     { k: 'live', label: 'Live gate', g: '◉' },
     { k: 'overview', label: 'Overview', g: '◇' },
+    { k: 'issues', label: 'Issues', g: '⚑' },
     { k: 'monitoring', label: 'Monitoring', g: '∿' },
     { k: 'actions', label: 'Actions', g: '≡' },
     { k: 'review', label: 'Review', g: '◎' },
@@ -71,6 +73,7 @@ export default function App() {
 
   let view
   if (page === 'live') view = <Live />
+  else if (page === 'issues') view = <Issues id={arg} />
   else if (page === 'evaluate') view = <Evaluate preset={arg} />
   else if (page === 'actions' && arg) view = <TraceView id={arg} />
   else if (page === 'actions') view = <Actions />

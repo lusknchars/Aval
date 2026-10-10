@@ -141,4 +141,6 @@ export interface Entry {
   trace: Trace
   source: 'live' | 'snapshot'
   ms: number
+  /** Which agent proposed it (the Live gate's agents); absent for Scenario Lab runs. */
+  agent?: string
 }

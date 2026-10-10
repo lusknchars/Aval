@@ -6,13 +6,17 @@ import { ago, short } from '../api/format'
 import { DecisionBadge, SevCounts } from '../ui/Decision'
 import Scramble from '../../components/Scramble'
 import { go } from '../router'
+import FeedChart, { type Range } from '../ui/FeedChart'
+import { agentOf } from '../api/issues'
 
 const FILTERS: (Decision | 'all')[] = ['all', 'deny', 'flag', 'allow']
 
 export default function Actions() {
   const entries = useEntries()
   const [f, setF] = useState<Decision | 'all'>('all')
-  const rows = entries.filter((e) => f === 'all' || e.trace.decision.outcome === f)
+  const [range, setRange] = useState<Range>(null)
+  const inRange = range ? entries.filter((e) => e.at >= range.from && e.at <= range.to) : entries
+  const rows = inRange.filter((e) => f === 'all' || e.trace.decision.outcome === f)
 
   return (
     <div className="page">
@@ -26,15 +30,17 @@ export default function Actions() {
             <button key={x} role="tab" aria-selected={f === x} className={f === x ? 'is-on' : ''} onClick={() => setF(x)}>
               {f === x && <motion.span layoutId="seg-hl" className="seg__hl" transition={{ type: 'spring', stiffness: 500, damping: 38 }} />}
               <span>{x}</span>
-              <em>{x === 'all' ? entries.length : entries.filter((e) => e.trace.decision.outcome === x).length}</em>
+              <em>{x === 'all' ? inRange.length : inRange.filter((e) => e.trace.decision.outcome === x).length}</em>
             </button>
           ))}
         </div>
       </header>
 
+      <FeedChart entries={entries} range={range} onRange={setRange} />
+
       <div className="table" role="table" aria-label="Evaluated actions">
         <div className="table__head" role="row">
-          <span>verdict</span><span>tool</span><span>digest</span><span>simulation</span><span>findings</span><span>source</span><span>when</span>
+          <span>verdict</span><span>agent · tool</span><span>digest</span><span>simulation</span><span>findings</span><span>source</span><span>when</span>
         </div>
         <AnimatePresence initial={false}>
           {rows.map((e, i) => (
@@ -50,7 +56,7 @@ export default function Actions() {
               onClick={() => go(`actions/${e.id}`)}
             >
               <span><DecisionBadge d={e.trace.decision.outcome} /></span>
-              <span className="strong">{e.trace.toolCall?.name ?? e.request.fixture}</span>
+              <span className="strong">{e.agent ? <><span className="mono-dim">{agentOf(e)} · </span>{e.trace.toolCall?.name ?? e.request.fixture}</> : e.trace.toolCall?.name ?? e.request.fixture}</span>
               <span className="mono-dim">{short(e.trace.transaction.messageDigest, 6)}</span>
               <span className={`sim sim--${e.trace.transaction.simulation}`}>{e.trace.transaction.simulation}</span>
               <span><SevCounts counts={e.trace.decision.counts} /></span>
@@ -59,7 +65,7 @@ export default function Actions() {
             </motion.button>
           ))}
         </AnimatePresence>
-        {!rows.length && <p className="empty">No {f} verdicts yet.</p>}
+        {!rows.length && <p className="empty">{range ? 'Nothing in that window.' : `No ${f} verdicts yet.`}</p>}
       </div>
       <button type="button" className="link link--muted" onClick={() => store.clear()}>reset session log</button>
     </div>

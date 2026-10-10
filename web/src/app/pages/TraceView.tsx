@@ -6,6 +6,7 @@ import { DecisionStamp, SevChip, SevCounts } from '../ui/Decision'
 import Copy from '../ui/Copy'
 import Meter from '../ui/Meter'
 import Scramble from '../../components/Scramble'
+import Storyline from '../ui/Storyline'
 import { useReduced } from '../../lib/useReduced'
 
 /* How an effect sits against the tool's manifest. */
@@ -101,6 +102,14 @@ function Trace({ e }: { e: Entry }) {
           </motion.li>
         ))}
       </ol>
+
+      <section className="panel trace__story">
+        <div className="panel__head">
+          <h2>What happened</h2>
+          <span className="mono-dim">read top to bottom</span>
+        </div>
+        <Storyline e={e} />
+      </section>
 
       <div className="trace__grid">
         <div className="stack">
