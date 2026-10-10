@@ -334,6 +334,17 @@ pub fn progress(slot: u64, s: &Stats, target: usize) -> String {
         s.kept, s.scanned, s.failed, s.no_effect, s.errored, s.blocks, s.block_errors, s.duplicate)
 }
 
+/// `progress` plus the upstream calls used (and the budget, when one is set).
+pub fn progress_calls(slot: u64, s: &Stats, target: usize, calls: u64, max_calls: Option<u64>) -> String {
+    let budget = max_calls.map(|m| format!("/{m}")).unwrap_or_default();
+    format!("{} — calls {calls}{budget}", progress(slot, s, target))
+}
+
+/// True once the call budget is used up (no budget = never).
+pub fn budget_spent(calls: u64, max_calls: Option<u64>) -> bool {
+    max_calls.is_some_and(|m| calls >= m)
+}
+
 pub struct Args {
     pub upstream: String,
     pub target: usize,
@@ -342,6 +353,10 @@ pub struct Args {
     pub max_blocks: usize,
     pub per_block: usize,
     pub with_tx: bool,
+    /// Stop cleanly (resumable) once this many upstream requests were sent.
+    pub max_calls: Option<u64>,
+    /// Effects files whose digests are skipped (never kept again).
+    pub exclude: Vec<PathBuf>,
 }
 
 const RETRIES: u32 = 4;
@@ -390,7 +405,13 @@ fn short(s: &str) -> String {
 pub async fn run(a: &Args) -> anyhow::Result<()> {
     let mut seen = seen_digests(&a.out)?;
     let mut st = Stats { kept: seen.len(), ..Stats::default() };
-    println!("dataset: upstream {} → {} ({} already kept, target {})", host_only(&a.upstream), a.out.display(), st.kept, a.target);
+    let mut excluded = 0usize;
+    for p in &a.exclude {
+        for d in seen_digests(p)? { excluded += usize::from(seen.insert(d)); }
+    }
+    println!("dataset: upstream {} → {} ({} already kept, target {}, {excluded} digests excluded from {} files, max calls {})",
+        host_only(&a.upstream), a.out.display(), st.kept, a.target, a.exclude.len(),
+        a.max_calls.map(|m| m.to_string()).unwrap_or_else(|| "unlimited".into()));
     if st.kept >= a.target {
         println!("target already reached");
         return Ok(());
@@ -402,7 +423,11 @@ pub async fn run(a: &Args) -> anyhow::Result<()> {
     let engine = Engine::new(cache, Pool::new(4, 5000));
     let mut slot = first_slot(&up, RETRIES).await?;
     let mut tried = 0usize;
+    let calls0 = crate::upstream::calls_made();
+    let used = || crate::upstream::calls_made() - calls0;
+    let mut out_of_budget = false;
     while st.kept < a.target && st.blocks < a.max_blocks && tried < a.max_blocks * 4 {
+        if budget_spent(used(), a.max_calls) { out_of_budget = true; break; }
         tried += 1;
         let s = slot;
         slot = slot.saturating_sub(1);
@@ -429,6 +454,7 @@ pub async fn run(a: &Args) -> anyhow::Result<()> {
             .collect()).unwrap_or_default();
         for i in sample_indices(txs.len(), a.per_block) {
             if st.kept >= a.target { break; }
+            if budget_spent(used(), a.max_calls) { out_of_budget = true; break; }
             let b64 = &txs[i];
             let Ok(d) = decode(b64, Encoding::Base64) else { continue };
             if seen.contains(&d.digest) { st.duplicate += 1; continue; }
@@ -460,9 +486,13 @@ pub async fn run(a: &Args) -> anyhow::Result<()> {
                 Err(_) => st.failed += 1,
             }
         }
-        println!("{}", progress(s, &st, a.target));
+        println!("{}", progress_calls(s, &st, a.target, used(), a.max_calls));
+        if out_of_budget { break; }
     }
-    println!("done: {}", progress(slot + 1, &st, a.target));
+    if out_of_budget {
+        println!("stopped: call budget reached ({} calls); rerun to resume", used());
+    }
+    println!("done: {}", progress_calls(slot + 1, &st, a.target, used(), a.max_calls));
     println!("details: {}", a.out.display());
     Ok(())
 }
@@ -718,6 +748,16 @@ mod tests {
         assert_eq!(host_only("https://x.quiknode.pro/SECRET/"), "x.quiknode.pro");
         assert_eq!(host_only("not a url"), "<invalid url>");
         assert_eq!(short("error sending request for url (https://h/?api-key=SECRET)"), "error sending request for url <url>");
+    }
+
+    #[test]
+    fn call_budget() {
+        assert!(!budget_spent(10, None));
+        assert!(!budget_spent(9, Some(10)));
+        assert!(budget_spent(10, Some(10)));
+        let st = Stats { kept: 4, ..Stats::default() };
+        assert!(progress_calls(5, &st, 30, 77, Some(100)).ends_with("— calls 77/100"));
+        assert!(progress_calls(5, &st, 30, 77, None).ends_with("— calls 77"));
     }
 
     #[test]

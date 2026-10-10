@@ -66,6 +66,12 @@ enum Cmd {
         backfill_decimals: bool,
         #[arg(long = "in")]
         input: Option<PathBuf>,
+        /// Stop cleanly (resumable) after this many upstream requests.
+        #[arg(long)]
+        max_calls: Option<u64>,
+        /// Effects files whose transactions must not be collected again.
+        #[arg(long, num_args = 1..)]
+        exclude: Vec<PathBuf>,
     },
     /// Build token-permission transactions locally (approve, set_authority, close, transfer) and
     /// simulate them over an in-memory state (no network). Same JSONL schema, source "synthetic".
@@ -225,8 +231,8 @@ async fn main() -> anyhow::Result<()> {
         Cmd::Dataset { upstream, input: Some(input), backfill_decimals: true, out, delay_ms, .. } => {
             aval_svm::dataset::backfill_decimals(&input, &out, &upstream, delay_ms).await?
         }
-        Cmd::Dataset { upstream, target, out, delay_ms, max_blocks, per_block, with_tx, .. } => {
-            aval_svm::dataset::run(&aval_svm::dataset::Args { upstream, target, out, delay_ms, max_blocks, per_block, with_tx }).await?
+        Cmd::Dataset { upstream, target, out, delay_ms, max_blocks, per_block, with_tx, max_calls, exclude, .. } => {
+            aval_svm::dataset::run(&aval_svm::dataset::Args { upstream, target, out, delay_ms, max_blocks, per_block, with_tx, max_calls, exclude }).await?
         }
         Cmd::DatasetSynth { count, out, seed, timings } => aval_svm::synth::run(count, &out, seed, timings.as_deref()).await?,
         Cmd::Shadow { upstream, count, slot, out, delay_ms } => aval_svm::shadow::run(&upstream, count, slot, &out, delay_ms).await?,
@@ -275,6 +281,21 @@ mod tests {
                 assert_eq!((target, delay_ms, max_blocks, per_block, with_tx), (1000, 300, 400, 8, false));
                 assert_eq!(out, std::path::PathBuf::from("results/svm_effects.jsonl"));
             }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn dataset_budget_and_exclude_flags() {
+        match Cli::try_parse_from(["aval-svm", "dataset", "--upstream", "http://u", "--max-calls", "380000", "--exclude", "a.jsonl", "b.jsonl"]).unwrap().cmd {
+            Cmd::Dataset { max_calls, exclude, .. } => {
+                assert_eq!(max_calls, Some(380_000));
+                assert_eq!(exclude, vec![std::path::PathBuf::from("a.jsonl"), std::path::PathBuf::from("b.jsonl")]);
+            }
+            _ => unreachable!(),
+        }
+        match Cli::try_parse_from(["aval-svm", "dataset", "--upstream", "http://u"]).unwrap().cmd {
+            Cmd::Dataset { max_calls, exclude, .. } => assert_eq!((max_calls, exclude.len()), (None, 0)),
             _ => unreachable!(),
         }
     }
