@@ -358,6 +358,16 @@ def openapi_schema():
                 "responses": {"200": {"description": "Decisao e trilha das camadas", "content": {"application/json": {"schema": response}}},
                               "400": {"description": "Entrada invalida"}, "503": {"description": "Backend indisponivel"}},
             }},
+            "/v1/benchmark/summary": {"get": {
+                "summary": "Totais ao vivo do benchmark Aval 20k (summary.json); {} se ainda nao existe",
+                "operationId": "benchmarkSummary", "responses": {"200": {"description": "Resumo por conjunto"}},
+            }},
+            "/v1/benchmark/events": {"get": {
+                "summary": "Eventos do benchmark por offset de linha (events.jsonl)", "operationId": "benchmarkEvents",
+                "parameters": [{"name": "since", "in": "query", "schema": {"type": "integer", "minimum": 0, "default": 0}},
+                               {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 100}}],
+                "responses": {"200": {"description": "{events, next, total}"}, "400": {"description": "Parametros invalidos"}},
+            }},
             "/v1/agent/run": {"post": {
                 "summary": "Protege o prompt e executa o agente", "operationId": "runAgent",
                 "requestBody": {"required": True, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentRequest"}}}},
@@ -432,6 +442,88 @@ def recent_audit(limit=200):
                         "decisions": dict(decisions)}, "requests": rows}
 
 
+BENCH_DIR = Path(os.environ.get("AVAL_BENCH_DIR") or ROOT / "results" / "bench20k")
+BENCH_EVENTS_MAX = 1000
+
+
+def benchmark_summary(bench_dir=None):
+    """summary.json do benchmark em streaming; ausente ou ilegivel -> {} (nunca erro)."""
+    try:
+        data = json.loads((Path(bench_dir or BENCH_DIR) / "summary.json").read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+class EventLines:
+    """Indice incremental (offset em bytes de cada linha completa) de um JSONL que so cresce."""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.lock = threading.Lock()
+        self.starts, self.scanned = [], 0
+
+    def _refresh(self):
+        try:
+            size = self.path.stat().st_size
+        except OSError:
+            self.starts, self.scanned = [], 0
+            return
+        if size < self.scanned:  # arquivo recriado: recomeca
+            self.starts, self.scanned = [], 0
+        if size == self.scanned:
+            return
+        with self.path.open("rb") as stream:
+            stream.seek(self.scanned)
+            data = stream.read(size - self.scanned)
+        pos = 0
+        while True:
+            nl = data.find(b"\n", pos)
+            if nl < 0:
+                break  # linha ainda sendo escrita: fica para a proxima leitura
+            self.starts.append(self.scanned + pos)
+            pos = nl + 1
+        self.scanned += pos
+
+    def read(self, since, limit):
+        with self.lock:
+            self._refresh()
+            total = len(self.starts)
+            if since >= total:
+                return [], since, total
+            end_line = min(total, since + limit)
+            stop = self.starts[end_line] if end_line < total else self.scanned
+            try:
+                with self.path.open("rb") as stream:
+                    stream.seek(self.starts[since])
+                    chunk = stream.read(stop - self.starts[since])
+            except OSError:
+                return [], since, total
+        events = []
+        for line in chunk.split(b"\n"):
+            if line.strip():
+                try:
+                    events.append(json.loads(line))
+                except ValueError:
+                    continue
+        return events, end_line, total
+
+
+BENCH_EVENTS = {}
+
+
+def benchmark_events(since=0, limit=100, bench_dir=None):
+    """Eventos a partir da linha `since` (no maximo `limit` <= 1000) e o offset seguinte."""
+    path = Path(bench_dir or BENCH_DIR) / "events.jsonl"
+    index = BENCH_EVENTS.setdefault(str(path), EventLines(path))
+    limit = max(1, min(int(limit), BENCH_EVENTS_MAX))
+    try:
+        events, nxt, total = index.read(max(0, int(since)), limit)
+    except Exception:
+        events, nxt, total = [], max(0, int(since)), 0
+    return {"events": events, "next": nxt, "total": total}
+
+
 def solana_report():
     if not SOLANA_REPORT_PATH.exists():
         return None
@@ -469,6 +561,18 @@ class Handler(BaseHTTPRequestHandler):
             if report is None:
                 return self.reply(404, {"error": "relatório Solana ainda não foi gerado"})
             return self.reply(200, report)
+        if route == "/v1/benchmark/summary":
+            return self.reply(200, benchmark_summary())
+        if route == "/v1/benchmark/events":
+            query = parse_qs(parsed_url.query)
+            try:
+                since = int(query.get("since", ["0"])[0])
+                limit = int(query.get("limit", ["100"])[0])
+            except ValueError:
+                return self.reply(400, {"error": "since e limit devem ser inteiros"})
+            if since < 0 or limit < 1:
+                return self.reply(400, {"error": "since >= 0 e limit >= 1"})
+            return self.reply(200, benchmark_events(since, limit))
         if route == "/docs":
             data = SWAGGER_HTML.encode("utf-8")
             self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -483,7 +587,8 @@ class Handler(BaseHTTPRequestHandler):
                                     "swagger": "/docs", "admin": "/admin", "openapi": "/openapi.json",
                                     "llm_url": PIPELINE.config.get("llm_url") if PIPELINE else None,
                                     "ablation_mode": PIPELINE.config.get("ablation_mode", "full") if PIPELINE else None,
-                                    "routes": ["/v1/transactions/verify", "/v1/agent/run"]})
+                                    "routes": ["/v1/transactions/verify", "/v1/agent/run",
+                                               "/v1/benchmark/summary", "/v1/benchmark/events"]})
         return self.reply(404, {"error": "not found"})
 
     def do_POST(self):
@@ -517,18 +622,21 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     global PIPELINE, GUARD_SERVER
-    from . import guard_server
     parser = argparse.ArgumentParser(description="API unica do pipeline VETO")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8070)
     parser.add_argument("--guard-model", default=str(ROOT / "models" / "Llama-Prompt-Guard-2-86M"))
     parser.add_argument("--guard-threshold", type=float, default=0.9)
     parser.add_argument("--blacklist", default=None)
+    parser.add_argument("--no-guard", action="store_true",
+                        help="sobe sem o Prompt Guard (rotas de leitura, ex. /v1/benchmark/*; verify/agent respondem 503)")
     args = parser.parse_args()
-    GUARD_SERVER = guard_server
-    GUARD_SERVER.THRESHOLD = args.guard_threshold
-    GUARD_SERVER.TOKENIZER = GUARD_SERVER.AutoTokenizer.from_pretrained(args.guard_model, local_files_only=True)
-    GUARD_SERVER.MODEL = GUARD_SERVER.AutoModelForSequenceClassification.from_pretrained(args.guard_model, local_files_only=True).eval()
+    if not args.no_guard:
+        from . import guard_server
+        GUARD_SERVER = guard_server
+        GUARD_SERVER.THRESHOLD = args.guard_threshold
+        GUARD_SERVER.TOKENIZER = GUARD_SERVER.AutoTokenizer.from_pretrained(args.guard_model, local_files_only=True)
+        GUARD_SERVER.MODEL = GUARD_SERVER.AutoModelForSequenceClassification.from_pretrained(args.guard_model, local_files_only=True).eval()
     PIPELINE = VetoPipeline(blacklist_path=args.blacklist)
     print(f"VETO API pronta em http://{args.host}:{args.port}", flush=True)
     ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()

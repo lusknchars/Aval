@@ -777,6 +777,14 @@ def cmd_report(a):
 
 
 def main(argv=None):
+    import sys
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if "--stream" in argv:
+        # 20k streaming benchmark (results/bench20k): deterministic layers per case, live summary.
+        from src import bench20k
+        rest = [x for x in argv if x != "--stream"]
+        out = [x for i, x in enumerate(rest) if x == "--out" or (i and rest[i - 1] == "--out")]
+        return bench20k.main(out + ["stream"] + [x for x in rest if x not in out])
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("cases")

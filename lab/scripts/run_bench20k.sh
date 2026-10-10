@@ -15,7 +15,7 @@ step=${1:-}
 collect() {
   # 9 req/s (limite do plano: 10), orçamento de chamadas; retomável (digests já gravados são pulados).
   . ./.env.helius
-  AVAL_MAX_RPS=${AVAL_MAX_RPS:-9} $SVM dataset --target ${TARGET:-26000} \
+  AVAL_MAX_RPS=${AVAL_MAX_RPS:-9} $SVM dataset --target ${TARGET:-28000} \
     --out $RAW --delay-ms 0 --per-block 100 --concurrency ${CONCURRENCY:-4} --max-blocks 100000 --max-calls ${MAX_CALLS:-380000} \
     --exclude results/svm_effects.jsonl results/svm_effects.v2.jsonl results/bench_effects_mainnet.jsonl \
       results/bench_effects_mainnet.v2.jsonl results/svm_effects_synth.jsonl results/bench_effects_synth.jsonl

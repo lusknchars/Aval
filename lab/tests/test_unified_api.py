@@ -1,7 +1,16 @@
 import unittest
 from unittest.mock import patch
 
-from src.unified_api import ADMIN_HTML, VetoPipeline, openapi_schema
+import json
+import tempfile
+import threading
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+
+from src import unified_api
+from src.unified_api import ADMIN_HTML, VetoPipeline, benchmark_events, benchmark_summary, openapi_schema
 
 
 WALLET = "0x" + "a" * 40
@@ -87,6 +96,78 @@ class TestUnifiedAPI(unittest.TestCase):
         self.assertEqual(response["decision"], "ALLOW")
         ai.assert_not_called()
         self.assertEqual(response["layers"][2]["reason"], "ABLATION_SKIPPED")
+
+
+class TestBenchmarkEndpoints(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def write_events(self, n, tail=""):
+        with open(self.dir / "events.jsonl", "a", encoding="utf-8") as f:
+            for i in range(n):
+                f.write(json.dumps({"type": "decision", "case_id": f"c{i}"}) + "\n")
+            f.write(tail)
+
+    def test_absent_files_are_empty_not_errors(self):
+        self.assertEqual(benchmark_summary(self.dir / "nope"), {})
+        self.assertEqual(benchmark_events(0, 10, self.dir / "nope"), {"events": [], "next": 0, "total": 0})
+        (self.dir / "summary.json").write_text("{broken")
+        self.assertEqual(benchmark_summary(self.dir), {})
+
+    def test_events_by_line_offset_skip_partial_last_line(self):
+        self.write_events(5, tail='{"type":"deci')
+        r = benchmark_events(0, 2, self.dir)
+        self.assertEqual(([e["case_id"] for e in r["events"]], r["next"], r["total"]), (["c0", "c1"], 2, 5))
+        r = benchmark_events(r["next"], 1000, self.dir)
+        self.assertEqual(([e["case_id"] for e in r["events"]], r["next"]), (["c2", "c3", "c4"], 5))
+        self.assertEqual(benchmark_events(5, 10, self.dir)["events"], [])
+        with open(self.dir / "events.jsonl", "a") as f:
+            f.write('sion","case_id":"c5"}\nnot json\n')
+        r = benchmark_events(5, 10, self.dir)
+        self.assertEqual(([e["case_id"] for e in r["events"]], r["next"], r["total"]), (["c5"], 7, 7))
+
+    def test_limit_is_capped_at_1000(self):
+        self.write_events(1500)
+        r = benchmark_events(0, 5000, self.dir)
+        self.assertEqual((len(r["events"]), r["next"]), (1000, 1000))
+
+    def test_http_routes(self):
+        self.write_events(3)
+        (self.dir / "summary.json").write_text(json.dumps({"cases_total": 3}))
+        server = ThreadingHTTPServer(("127.0.0.1", 0), unified_api.Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+
+        def get(path):
+            try:
+                with urllib.request.urlopen(base + path, timeout=5) as r:
+                    return r.status, json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                return e.code, json.loads(e.read())
+        old = unified_api.BENCH_DIR
+        try:
+            unified_api.BENCH_DIR = self.dir
+            self.assertEqual(get("/v1/benchmark/summary"), (200, {"cases_total": 3}))
+            status, body = get("/v1/benchmark/events?since=1&limit=1")
+            self.assertEqual((status, body["next"], body["events"][0]["case_id"]), (200, 2, "c1"))
+            self.assertEqual(get("/v1/benchmark/events?since=x")[0], 400)
+            self.assertEqual(get("/v1/benchmark/events?since=-1")[0], 400)
+            unified_api.BENCH_DIR = self.dir / "missing"
+            self.assertEqual(get("/v1/benchmark/summary"), (200, {}))
+            self.assertEqual(get("/v1/benchmark/events")[1]["events"], [])
+        finally:
+            unified_api.BENCH_DIR = old
+            server.shutdown()
+            server.server_close()
+
+    def test_openapi_lists_benchmark_routes(self):
+        paths = openapi_schema()["paths"]
+        self.assertIn("/v1/benchmark/summary", paths)
+        self.assertIn("/v1/benchmark/events", paths)
 
 
 if __name__ == "__main__":
