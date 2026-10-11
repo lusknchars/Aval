@@ -589,7 +589,7 @@ def cmd_baseline(a):
     out = Path(a.out)
     events_path = out / "events.jsonl"
     cases = list(ab.read_jsonl(out / "cases.jsonl"))
-    sample = stratified_sample(cases, a.n)
+    sample = stratified_sample(cases, a.n, min_per_stratum=a.min_per_stratum)
     done = {e["case_id"] for e in ab.read_jsonl(events_path) if e.get("type") == "baseline"}
     model, tok, sampler = _load_model(a.model, None)
     print(f"{now_iso()} baseline: {len(sample)} cases, {len(done)} done", flush=True)
@@ -674,7 +674,8 @@ def collection_stats(log_path):
     tot = {k: sum(r.get(k, 0) for r in runs) for k in ("scanned", "failed", "no_effect", "errored", "blocks", "block_errors", "calls")}
     tot["kept"] = last
     tot["runs"] = len(runs)
-    tot["http_429"] = sum("429" in line for line in lines)
+    tot["http_429"] = sum("HTTP 429" in line for line in lines)
+    tot["decode_errors"] = sum("error decoding response body" in line for line in lines)
     return tot
 
 
@@ -709,7 +710,39 @@ def _lat(vals):
             "mean": sum(vals) / len(vals) if vals else None}
 
 
-def render_report(rows, meta, prices_meta, coll, synth_us):
+def headline(rows, synth_us=()):
+    """The four separate headline numbers: (a) real traffic, (b) attacks on real txs, (c) constructed + twins, (d) latency."""
+    by_set = defaultdict(list)
+    for r in rows:
+        by_set[r["set"]].append(r)
+    rt, ar, ac = by_set["real_traffic"], by_set["attack_real_tx"], by_set["attack_constructed"]
+    scored = [r for r in rt if r["tuned"] is not None]
+    fc = lambda rs, key="final": Counter(r[key] for r in rs)  # noqa: E731
+    share = lambda k, n: round(k / n, 4) if n else None  # noqa: E731
+    att_c = [r for r in ac if r["expected"] == BLOCK]
+    twins = [r for r in ac if r["expected"] == ALLOW]
+    swaps = [r for r in scored if r["kind"] == "legit:swap"]
+    return {
+        "real_traffic": {
+            "n": len(rt), "false_blocks": fc(rt)[BLOCK],
+            "code_only": {"n": len(rt), "allow": fc(rt, "ab")[ALLOW], "block": fc(rt, "ab")[BLOCK],
+                          "allow_share": share(fc(rt, "ab")[ALLOW], len(rt))},
+            "with_model": {"n": len(scored), "allow": fc(scored)[ALLOW], "review": fc(scored)[REVIEW], "block": fc(scored)[BLOCK],
+                           "allow_share": share(fc(scored)[ALLOW], len(scored)), "review_share": share(fc(scored)[REVIEW], len(scored))},
+            "final_all": {"allow": fc(rt)[ALLOW], "review": fc(rt)[REVIEW], "block": fc(rt)[BLOCK],
+                          "allow_share": share(fc(rt)[ALLOW], len(rt)), "review_share": share(fc(rt)[REVIEW], len(rt))},
+            "swap_review": {"n": len(swaps), "review": fc(swaps)[REVIEW], "share": share(fc(swaps)[REVIEW], len(swaps))}},
+        "attack_real_tx": {"n": len(ar), "blocked": fc(ar)[BLOCK], "review": fc(ar)[REVIEW], "allowed": fc(ar)[ALLOW]},
+        "attack_constructed": {"attacks": len(att_c), "blocked": fc(att_c)[BLOCK], "review": fc(att_c)[REVIEW],
+                               "allowed": fc(att_c)[ALLOW], "twins": len(twins), "twins_allow": fc(twins)[ALLOW],
+                               "twins_review": fc(twins)[REVIEW], "twins_block": fc(twins)[BLOCK]},
+        "latency_ms": {"A+B": _lat([r["lat"]["A"] + r["lat"]["B"] for r in rows]),
+                       "model": _lat([r["lat"]["C"] for r in rows if r["lat"]["C"] is not None]),
+                       "sim_constructed": _lat([v / 1000 for v in synth_us])},
+    }
+
+
+def render_report(rows, meta, prices_meta, coll, synth_us, snapshot=None):
     E, card, table, usd, pct, ms = ab._e, ab.card, ab.table, ab._usd, ab._pct, ab._ms
     now = datetime.now().strftime("%d/%m/%Y %H:%M")
     by_set = defaultdict(list)
@@ -719,10 +752,39 @@ def render_report(rows, meta, prices_meta, coll, synth_us):
     parts = []
     P = parts.append
     mm = (meta or {}).get("mainnet", {})
-    P(f"<h1>Relatório AVAL — Benchmark Solana 20k</h1><div class='sub'>Gerado em {now} · {len(rt)} transações reais da "
+    title = "Relatório AVAL — Benchmark Solana (demo, snapshot)" if snapshot else "Relatório AVAL — Benchmark Solana 20k"
+    cut = f" · retrato congelado em {E(snapshot['cutoff'])} (execução em andamento)" if snapshot else ""
+    P(f"<h1>{title}</h1><div class='sub'>Gerado em {now}{cut} · {len(rt)} transações reais da "
       f"mainnet + suíte de ataques ({len(ar)} transações reais com intenção forjada, {sum(r['expected'] == BLOCK for r in ac)} "
       f"ataques construídos e {sum(r['expected'] == ALLOW for r in ac)} gêmeos honestos) · seed {meta.get('seed')} · modelo: "
       f"base bf16 de Luis + LoRA veto-svm iter 300 (guloso)</div>")
+
+    # ---- Headline: four separate numbers ----
+    h = headline(rows, synth_us)
+    hr, ha, hc, hl = h["real_traffic"], h["attack_real_tx"], h["attack_constructed"], h["latency_ms"]
+    P("<h2>Resumo: quatro números separados</h2>")
+    P("<div class='cards'>")
+    P(card(f"{hr['false_blocks']} bloqueios indevidos", f"(a) tráfego real: {hr['n']} transações da mainnet",
+           "red" if hr["false_blocks"] else "green"))
+    P(card(f"{ha['blocked']}/{ha['n']}", "(b) ataques em transações reais bloqueados", "green" if ha["blocked"] == ha["n"] else "red"))
+    P(card(f"{hc['blocked']}/{hc['attacks']}", f"(c) ataques construídos bloqueados · gêmeos honestos aprovados "
+           f"{hc['twins_allow']}/{hc['twins']}", "green" if hc["blocked"] == hc["attacks"] else "red"))
+    P("</div>")
+    cw = hr["with_model"]
+    P(table(["(a) Tráfego real", "Transações", "ALLOW automático", "REVIEW", "BLOCK (falso)"],
+            [["Só código (camadas A + B), todas", hr["code_only"]["n"], f"{hr['code_only']['allow']} ({pct(hr['code_only']['allow_share'], 1)})",
+              "—", hr["code_only"]["block"]],
+             ["Com a IA (casos que a IA já avaliou)", cw["n"], f"{cw['allow']} ({pct(cw['allow_share'], 1)})",
+              f"{cw['review']} ({pct(cw['review_share'], 1)})", cw["block"]],
+             ["Decisão final, todas (sem IA ainda = só código)", hr["n"], f"{hr['final_all']['allow']} ({pct(hr['final_all']['allow_share'], 1)})",
+              f"{hr['final_all']['review']} ({pct(hr['final_all']['review_share'], 1)})", hr["final_all"]["block"]]]))
+    P(f"<p class='note'>A IA avaliou {cw['n']} de {hr['n']} transações reais ({pct(cw['n'] / hr['n'] if hr['n'] else None, 1)}) "
+      f"e {sum(r['tuned'] is not None for r in rows)} de {len(rows)} casos no total; os demais mostram o resultado só do código.</p>")
+    P(table(["(d) Latência", "Casos", "p50", "p95"],
+            [["Camadas A + B (código)", hl["A+B"]["n"], ms(hl["A+B"]["p50"]), ms(hl["A+B"]["p95"])],
+             ["IA de intenção (MLX, Apple M4 Pro)", hl["model"]["n"], ms(hl["model"]["p50"]), ms(hl["model"]["p95"])],
+             ["Simulação aval-svm (construídos, estado em memória)", hl["sim_constructed"]["n"], ms(hl["sim_constructed"]["p50"]),
+              ms(hl["sim_constructed"]["p95"])]]))
 
     # ---- Headline 1: real traffic ----
     n = len(rt)
@@ -733,11 +795,12 @@ def render_report(rows, meta, prices_meta, coll, synth_us):
     lab, lc = _lat(lat_ab), _lat(lat_c)
     P(f"<h2>1. Tráfego real (mainnet, {n} transações)</h2>")
     P("<p class='note'>Cada transação real da mainnet, simulada pelo aval-svm, com a intenção honesta derivada dos seus "
-      "efeitos. Todas deveriam ser aprovadas: aqui se mede o atrito que o Aval impõe ao uso normal.</p><div class='cards'>")
-    P(card(f"{len(blocked)}", f"falsos positivos (BLOCK) · taxa {pct(len(blocked) / n if n else None, 2)}", "red" if blocked else "green"))
+      "efeitos. Todas deveriam ser aprovadas: aqui se mede o atrito que o Aval impõe ao uso normal.</p>")
     answered = sum(r["tuned"] is not None for r in rt)
     if answered < n:
-        P(f"</div><p class='note red'>Parcial: a IA respondeu {answered} de {n} transações.</p><div class='cards'>")
+        P(f"<p class='note red'>Parcial: a IA respondeu {answered} de {n} transações; as demais contam só o código.</p>")
+    P("<div class='cards'>")
+    P(card(f"{len(blocked)}", f"falsos positivos (BLOCK) · taxa {pct(len(blocked) / n if n else None, 2)}", "red" if blocked else "green"))
     P(card(f"{len(review)}", f"REVIEW (IA levantou risco) · {pct(len(review) / n if n else None, 1)}"))
     P(card(f"{n - len(blocked) - len(review)}", f"aprovadas direto · {pct((n - len(blocked) - len(review)) / n if n else None, 1)}", "green"))
     P(card(ms(lab["p50"]), f"latência A+B p50 (p95 {ms(lab['p95'])})"))
@@ -769,7 +832,7 @@ def render_report(rows, meta, prices_meta, coll, synth_us):
     P(f"<p class='note'>Coleta: blocos finalizados recentes via Helius (plano grátis, 9 req/s), {mc.get('blocks', '—')} blocos, "
       f"{mc.get('scanned', '—')} transações simuladas ({mc.get('failed', '—')} falharam na simulação contra o estado atual, "
       f"{mc.get('no_effect', '—')} sem efeito no signatário), {mc.get('kept', '—')} registros, {mc.get('calls', '—')} chamadas RPC "
-      f"({mc.get('http_429', 0)} respostas 429 refeitas). Filtros: {mm.get('records', '—')} registros → {mm.get('usable', '—')} "
+      f"({mc.get('http_429', 0)} respostas 429 e {mc.get('decode_errors', 0)} respostas truncadas, refeitas). Filtros: {mm.get('records', '—')} registros → {mm.get('usable', '—')} "
       f"utilizáveis; descartes {E(json.dumps(mm.get('skipped', {}), ensure_ascii=False))}; teto de {mm.get('payer_cap')} por "
       f"pagador ({mm.get('payer_cap_dropped', 0)} descartadas por ele, {mm.get('payers', '—')} pagadores distintos). "
       f"{mm.get('attack_real_tx', 0)} registros sorteados antes foram para a suíte de ataques (conjuntos disjuntos).</p>")
@@ -823,8 +886,10 @@ def render_report(rows, meta, prices_meta, coll, synth_us):
                          "—" if named is None else f"{named} ({pct(named / len(t) if t else None)})",
                          f"{sum(ok(r, 'original') for r in o)}/{len(o)} ({pct(sum(ok(r, 'original') for r in o) / len(o) if o else None)})"])
     P(table(["Conjunto", "Esperado", "Casos", "IA ajustada: acertos", "IA ajustada: nomeou o sinal", "IA original (amostra): acertos"], body))
-    P("<p class='note'>Acerto da IA sozinha: <i>high</i> em ataques, <i>low</i> em legítimas. A IA original foi rodada só "
-      "numa amostra estratificada de 2.000 casos (proporcional por conjunto × esperado).</p>")
+    n_base = sum(r["original"] is not None for r in rows)
+    P("<p class='note'>Acerto da IA sozinha: <i>high</i> em ataques, <i>low</i> em legítimas. "
+      + (f"A IA original foi rodada só numa amostra estratificada de {n_base} casos (proporcional por conjunto × esperado, "
+         "com piso por estrato).</p>" if n_base else "IA original: pendente (ainda não rodada).</p>"))
 
     # ---- Latency ----
     P("<h2>Latência</h2>")
@@ -837,6 +902,29 @@ def render_report(rows, meta, prices_meta, coll, synth_us):
       "estado no RPC sob o limite de 9 req/s do plano grátis, o que mede a fila e não o Aval.</p>")
 
     # ---- How to read ----
+    # ---- Limitations ----
+    P("<h2>Limitações</h2><ul class='read'>")
+    if snapshot:
+        P(f"<li><b>Não são 20 mil transações.</b> Este é um retrato congelado de uma execução em andamento: "
+          f"{hr['n']} transações reais e {ha['n']} ataques em transações reais até {E(snapshot['cutoff'])}. "
+          f"O relatório final (meta ≥ 20 mil transações reais) sai quando a coleta e a IA terminarem.</li>")
+    P("<li><b>Como os ataques foram feitos.</b> Nenhum ataque é um golpe real observado na mainnet. Os “reais forjados” são "
+      "transações reais legítimas cuja intenção declarada foi alterada por código (destinatário, valor, ativo, approve ou "
+      "autoridade escondidos, injeção nos metadados). Os “construídos” são transações de permissão de token montadas na VM "
+      "local (seed 9001) com os programas SPL reais. As injeções usam só os modelos reservados para teste.</li>")
+    P("<li><b>A checagem de rótulo é circular.</b> O gabarito dos ataques sai da mesma função de comparação "
+      "(<code>label()</code>) que a Camada A executa, e o detector da Camada B usa o mesmo padrão que gerou as injeções. "
+      "Os 100% de bloqueio mostram o mecanismo funcionando em transações reais simuladas, não habilidade independente de "
+      "detecção. Pelo mesmo motivo, 0 falso positivo do código no tráfego real é esperado: a intenção honesta é derivada dos "
+      "próprios efeitos.</li>")
+    sw = hr["swap_review"]
+    P(f"<li><b>A IA pede REVIEW demais em swaps.</b> Nos swaps reais que ela avaliou, {sw['review']} de {sw['n']} "
+      f"({pct(sw['share'], 1)}) foram para REVIEW — quase sempre alegando valor menor que o real ou troca de destinatário, "
+      "o que não acontece (o código confirma). É atrito de UX, não bloqueio: pela regra da equipe a IA só levanta risco, "
+      "e sem <code>injected_instruction</code> isso vira REVIEW, nunca BLOCK.</li>")
+    P("<li><b>Simulação contra estado atual.</b> Cada transação foi re-simulada contra o estado de agora; as que falham nessa "
+      "repetição (a maioria, por estado já consumido) ficam fora da amostra, o que favorece tipos de transação estáveis.</li>")
+    P("</ul>")
     P("<h2>Como ler estes números</h2><ul class='read'>")
     P("<li><b>Dois números, nunca somados.</b> O tráfego real mede atrito (falsos positivos e REVIEW em uso normal); a "
       "suíte de ataques mede proteção. Uma “acurácia geral” misturando os dois dependeria só da proporção escolhida.</li>")
@@ -859,12 +947,15 @@ def render_report(rows, meta, prices_meta, coll, synth_us):
 
 def cmd_report(a):
     out = Path(a.out)
+    snapshot = {"cutoff": a.snapshot} if a.snapshot else None
     prices_meta = json.loads((out / "prices.json").read_text()) if (out / "prices.json").exists() else {"prices": {}}
     meta = json.loads((out / "cases_meta.json").read_text())
     rows = report_rows(out, prices_meta.get("prices", {}))
     coll = collection_stats(out / "collect.log")
     synth_us = [r["sim_us"] for r in ab.read_jsonl(out / "synth_sim_timings.jsonl")]
-    (out / "relatorio_aval_20k.html").write_text(render_report(rows, meta, prices_meta, coll, synth_us), encoding="utf-8")
+    html_path = Path(a.html) if a.html else out / "relatorio_aval_20k.html"
+    html_path.write_text(render_report(rows, meta, prices_meta, coll, synth_us, snapshot), encoding="utf-8")
+    write_atomic(html_path.with_suffix(".headline.json"), headline(rows, synth_us))
     write_atomic(out / "report_stats.json", {"collection": coll, "cases": len(rows),
                                              "by_set_final": {s: dict(Counter(f"{r['expected']}->{r['final']}" for r in rows if r["set"] == s)) for s in SETS}})
     print(json.dumps({"collection": coll, "rows": len(rows)}, ensure_ascii=False))
@@ -899,8 +990,11 @@ def main(argv=None):
             m.add_argument("--follow", action="store_true")
         else:
             m.add_argument("--n", type=int, default=2000)
+            m.add_argument("--min-per-stratum", type=int, default=50)
     sub.add_parser("prices")
-    sub.add_parser("report")
+    rp = sub.add_parser("report")
+    rp.add_argument("--html", help="output HTML (default <out>/relatorio_aval_20k.html)")
+    rp.add_argument("--snapshot", help="cutoff label: renders the demo/snapshot variant")
     a = p.parse_args(argv)
     {"cases": cmd_cases, "stream": cmd_stream, "model": cmd_model, "baseline": cmd_baseline, "prices": cmd_prices,
      "report": cmd_report}[a.cmd](a)
