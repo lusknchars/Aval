@@ -28,6 +28,8 @@ import { useReduced } from '../lib/useReduced'
 
 // Monitoring pulls in recharts (~half the console's bundle), so it loads on first visit.
 const Monitoring = lazy(() => import('./pages/Monitoring'))
+// Replay bundles the benchmark export, so it loads on first visit too.
+const Replay = lazy(() => import('./pages/Replay'))
 
 function PageLoading({ label }: { label: string }) {
   return (
@@ -46,6 +48,7 @@ const NAV = [
     { k: 'monitoring', label: 'Monitoring', g: '∿' },
     { k: 'actions', label: 'Actions', g: '≡' },
     { k: 'review', label: 'Review', g: '◎' },
+    { k: 'replay', label: 'Replay', g: '↻' },
   ] },
   { group: 'operate', items: [
     { k: 'evaluate', label: 'Scenario Lab', g: '▷' },
@@ -80,6 +83,7 @@ export default function App() {
   else if (page === 'review') view = <Review />
   else if (page === 'overview' && arg === 'inspect' && arg2) view = <Inspect id={arg2} />
   else if (page === 'monitoring') view = <Suspense fallback={<PageLoading label="monitoring" />}><Monitoring /></Suspense>
+  else if (page === 'replay') view = <Suspense fallback={<PageLoading label="replay" />}><Replay focus={arg === 'focus'} /></Suspense>
   else if (page === 'policy') view = <Policy />
   else if (page === 'manifests') view = <Manifests />
   else if (page === 'lists') view = <Lists />
