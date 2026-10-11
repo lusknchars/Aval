@@ -117,6 +117,25 @@ class Streaming(unittest.TestCase):
             self.assertEqual(summary["sets"]["real_traffic"]["fp"], 0)
             self.assertEqual(summary["sets"]["attack_real_tx"]["fn"], 0)
 
+    def test_model_sample_policy_counts_only_wanted_cases(self):
+        policy = {"seed": 7, "sample": {"real_traffic": 0.5}}
+        ids = [f"rt-{i:04d}" for i in range(400)]
+        wanted = [i for i in ids if bk.model_wanted(i, "real_traffic", policy)]
+        self.assertTrue(150 < len(wanted) < 250)
+        self.assertTrue(all(bk.model_wanted(f"ar-{i}", "attack_real_tx", policy) for i in range(50)))
+        self.assertEqual(wanted, [i for i in ids if bk.model_wanted(i, "real_traffic", policy)])  # seeded, stable
+        s = bk.Summary(policy)
+        for i in ids:
+            s.add({"type": "decision", "case_id": i, "set": "real_traffic", "kind": "legit:swap", "expected": ab.ALLOW,
+                   "decision": ab.ALLOW, "layer": None, "latency_ms": {"A": 0.01, "B": 0.01}, "usd": None})
+        s.add({"type": "model", "case_id": ids[0], "risk": "low", "signals": [], "format": "risk", "latency_ms": 1})
+        expected = len(set(wanted) | {ids[0]})
+        self.assertEqual(s.model_expected(), expected)
+        out = s.build(len(ids))
+        self.assertEqual(out["model_expected"], expected)
+        self.assertEqual(out["sets"]["real_traffic"]["model"]["expected"], expected)
+        self.assertEqual(out["model_policy"], policy)
+
     def test_stratified_sample_covers_every_stratum(self):
         cases = ([{"case_id": f"r{i}", "set": "real_traffic", "expected": ab.ALLOW} for i in range(900)]
                  + [{"case_id": f"a{i}", "set": "attack_real_tx", "expected": ab.BLOCK} for i in range(100)])

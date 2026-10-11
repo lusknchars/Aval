@@ -354,6 +354,9 @@ pub struct Args {
     pub max_blocks: usize,
     pub per_block: usize,
     pub with_tx: bool,
+    /// Read the newest finalized block each time (fresh state: fewer replays fail) instead of
+    /// walking back from the start slot.
+    pub follow_tip: bool,
     /// Stop cleanly (resumable) once this many upstream requests were sent.
     pub max_calls: Option<u64>,
     /// Simulations in flight at once within a block (upstream latency, not CPU, is the bottleneck).
@@ -363,6 +366,12 @@ pub struct Args {
 }
 
 const RETRIES: u32 = 4;
+
+/// Following the tip: the newest finalized slot when it is past every slot read so far, otherwise
+/// the slot below the previous one (the tip has not moved, or its slot had no block).
+pub fn pick_slot(tip: u64, newest: Option<u64>, prev: u64) -> u64 {
+    if newest.is_none_or(|n| tip > n) { tip } else { prev.saturating_sub(1) }
+}
 
 /// getBlock params. Mainnet blocks carry v1 transactions: asking for less fails the whole block (-32015).
 pub fn block_params(slot: u64) -> Value {
@@ -425,6 +434,8 @@ pub async fn run(a: &Args) -> anyhow::Result<()> {
     let cache = Cache::new(up.clone(), Duration::from_millis(2000)).with_program_ttl(Duration::from_secs(600));
     let engine = Engine::new(cache, Pool::new(4, 5000));
     let mut slot = first_slot(&up, RETRIES).await?;
+    let mut prev = slot.saturating_add(1);
+    let mut newest: Option<u64> = None;
     let mut tried = 0usize;
     let calls0 = crate::upstream::calls_made();
     let used = || crate::upstream::calls_made() - calls0;
@@ -432,8 +443,17 @@ pub async fn run(a: &Args) -> anyhow::Result<()> {
     while st.kept < a.target && st.blocks < a.max_blocks && tried < a.max_blocks * 4 {
         if budget_spent(used(), a.max_calls) { out_of_budget = true; break; }
         tried += 1;
-        let s = slot;
-        slot = slot.saturating_sub(1);
+        let s = if a.follow_tip {
+            match call_with_retry(&up, "getSlot", json!([{"commitment": "finalized"}]), RETRIES).await.ok().and_then(|v| v.as_u64()) {
+                Some(tip) => pick_slot(tip, newest, prev),
+                None => prev.saturating_sub(1),
+            }
+        } else {
+            prev.saturating_sub(1)
+        };
+        prev = s;
+        newest = Some(newest.map_or(s, |n| n.max(s)));
+        slot = s;
         // Skipped slots come back at once; pace block reads too so they do not hit the per-method limit.
         tokio::time::sleep(Duration::from_millis(a.delay_ms)).await;
         let block = call_with_retry(&up, "getBlock", block_params(s), RETRIES).await;
@@ -510,7 +530,7 @@ pub async fn run(a: &Args) -> anyhow::Result<()> {
     if out_of_budget {
         println!("stopped: call budget reached ({} calls); rerun to resume", used());
     }
-    println!("done: {}", progress_calls(slot + 1, &st, a.target, used(), a.max_calls));
+    println!("done: {}", progress_calls(slot, &st, a.target, used(), a.max_calls));
     println!("details: {}", a.out.display());
     Ok(())
 }
@@ -766,6 +786,18 @@ mod tests {
         assert_eq!(host_only("https://x.quiknode.pro/SECRET/"), "x.quiknode.pro");
         assert_eq!(host_only("not a url"), "<invalid url>");
         assert_eq!(short("error sending request for url (https://h/?api-key=SECRET)"), "error sending request for url <url>");
+    }
+
+    #[test]
+    fn following_the_tip_reads_the_newest_block_then_walks_back_while_it_stands_still() {
+        assert_eq!(pick_slot(100, None, 101), 100);
+        // The tip moved past everything read: jump to it (fresh state), even far ahead.
+        assert_eq!(pick_slot(130, Some(100), 100), 130);
+        // Tip unchanged (or its slot was empty): the slot below the previous one, never a repeat.
+        assert_eq!(pick_slot(130, Some(130), 130), 129);
+        assert_eq!(pick_slot(130, Some(130), 129), 128);
+        assert_eq!(pick_slot(131, Some(130), 128), 131);
+        assert_eq!(pick_slot(5, Some(9), 0), 0);
     }
 
     #[test]

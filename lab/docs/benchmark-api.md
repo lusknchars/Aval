@@ -113,13 +113,15 @@ amostra estratificada de 2.000 casos e só depois que a IA ajustada termina. Nã
 ## `GET /v1/benchmark/summary`
 
 Reescrito de forma atômica a cada 500 eventos (e a cada minuto enquanto só a IA avança). `{}` antes
-do primeiro. `done: true` quando todos os casos têm decisão e resposta da IA.
+do primeiro. `done: true` quando todos os casos têm decisão e a IA respondeu todos os de `model_expected`.
 
 | Campo | Significado |
 | --- | --- |
 | `updated_at`, `done`, `events` | horário, fim do benchmark, eventos lidos |
 | `cases_total`, `cases_decided` | casos gerados até agora / com evento `decision` |
-| `model_done`, `model_progress` | casos com evento `model` / fração (0–1) |
+| `model_done`, `model_progress` | casos com evento `model` / fração (0–1) de `model_expected` |
+| `model_expected` | casos que a IA deve avaliar: todos, ou (com `model_policy`) os já avaliados + a amostra |
+| `model_policy` | `null` = a IA avalia todos os casos. Objeto = a IA ficou atrás e, desde `since`, avalia só uma amostra semeada por conjunto: `{"seed", "sample": {"real_traffic": 0.6, ...}, "since", "already_scored", "reason"}` (conjunto ausente = 100%). Todo caso continua com o resultado só do código. |
 | `baseline_done` | casos da amostra já respondidos pela IA original |
 | `throughput.deterministic_cases_per_s` | vazão das camadas A+B (1000 / p50 de A+B em ms) |
 | `throughput.model_cases_per_s` | vazão da IA (1000 / p50 da IA em ms) |
@@ -141,7 +143,7 @@ Em `sets.<set>` (contagens usam a decisão **final**; sem resposta da IA ainda, 
 | `decided_by` | contagem por camada que decidiu (`A`, `B`, `C`, `—` = ninguém, aprovado) |
 | `by_kind` | `{kind: {BLOCK, ALLOW, REVIEW}}` |
 | `latency_ms.{A,B,C}` | `{n, p50, p95}` em ms |
-| `model.{done,progress}` | progresso da IA neste conjunto |
+| `model.{done,expected,progress}` | progresso da IA neste conjunto (`progress` = done / expected) |
 
 Exemplo real (recortado a um conjunto):
 ```json

@@ -51,6 +51,22 @@ CONSTRUCTED_EVERY = 3
 SUMMARY_EVERY = 500
 SETS = ("real_traffic", "attack_real_tx", "attack_constructed")
 BLOCK, REVIEW, ALLOW = ab.BLOCK, ab.REVIEW, ab.ALLOW
+MODEL_POLICY = "model_policy.json"
+
+
+def load_policy(out):
+    """Model sampling policy written by the model worker when it falls behind (None = every case)."""
+    try:
+        return json.loads((Path(out) / MODEL_POLICY).read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def model_wanted(case_id, set_, policy):
+    """Whether the model scores this case: all of them, or a seeded per-set sample under a policy."""
+    if not policy:
+        return True
+    return _h(policy["seed"], "model", case_id) < policy["sample"].get(set_, 1.0)
 
 
 def _h(seed, *parts):
@@ -349,7 +365,8 @@ def decision_event(case, usd):
 class Summary:
     """Live totals from the events (decision + model), per set."""
 
-    def __init__(self):
+    def __init__(self, policy=None):
+        self.policy = policy
         self.dec, self.model, self.base = {}, {}, {}
         self.events = 0
         self.started = time.time()
@@ -374,6 +391,11 @@ class Summary:
         if ab.RANK[c["decision"]] > ab.RANK[d["decision"]]:
             return c["decision"], "C"
         return d["decision"], d["layer"]
+
+    def model_expected(self, ids=None):
+        """Cases the model is meant to score: already scored, plus the policy's sample."""
+        ids = self.dec if ids is None else ids
+        return sum(cid in self.model or model_wanted(cid, self.dec[cid]["set"], self.policy) for cid in ids)
 
     def build(self, n_cases, cases_meta=None, done=False):
         sets = {}
@@ -424,7 +446,8 @@ class Summary:
                        "decided_by": dict(by_layer), "by_kind": {k: dict(v) for k, v in sorted(by_kind.items())},
                        "latency_ms": {k: {"n": len(v), "p50": ab.percentile(v, 50), "p95": ab.percentile(v, 95)}
                                       for k, v in lat.items()},
-                       "model": {"done": n_model, "progress": round(n_model / n, 4) if n else None}}
+                       "model": {"done": n_model, "expected": self.model_expected(ids),
+                                 "progress": round(n_model / self.model_expected(ids), 4) if self.model_expected(ids) else None}}
         decided = len(self.dec)
         n_model = len(self.model)
         elapsed = time.time() - self.started
@@ -432,7 +455,9 @@ class Summary:
         c_ms = [m["latency_ms"] for m in self.model.values() if m.get("latency_ms") is not None]
         return {"updated_at": now_iso(), "done": done, "events": self.events, "cases_total": n_cases,
                 "cases_decided": decided, "model_done": n_model,
-                "model_progress": round(n_model / n_cases, 4) if n_cases else None,
+                "model_progress": round(n_model / self.model_expected(), 4) if self.model_expected() else None,
+                "model_expected": self.model_expected(),
+                "model_policy": self.policy,
                 "baseline_done": len(self.base),
                 "throughput": {"deterministic_cases_per_s": round(1000 / ab.percentile(ab_ms, 50), 1) if ab_ms and ab.percentile(ab_ms, 50) else None,
                                "model_cases_per_s": round(1000 / ab.percentile(c_ms, 50), 3) if c_ms else None},
@@ -451,7 +476,7 @@ def cmd_stream(a):
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     events_path = out / "events.jsonl"
-    summary = Summary()
+    summary = Summary(load_policy(out))
     ev_tail = Tail(events_path)
     for e in ev_tail.read():
         summary.add(e)
@@ -500,7 +525,8 @@ def cmd_stream(a):
                 since_summary = 0
                 last_write = time.time()
         cases_done = (out / CASES_DONE).exists() and not case_tail.read_pending()
-        model_done = len(summary.model) >= n_cases or not a.wait_model
+        summary.policy = load_policy(out)
+        model_done = not a.wait_model or (len(decided) >= n_cases and len(summary.model) >= summary.model_expected())
         if cases_done and model_done and len(decided) >= n_cases:
             write_summary(done=True)
             print(f"{now_iso()} stream: done — {len(decided)} cases, {len(summary.model)} model events", flush=True)
@@ -548,6 +574,12 @@ def cmd_model(a):
     out = Path(a.out)
     events_path = out / "events.jsonl"
     done = {e["case_id"] for e in ab.read_jsonl(events_path) if e.get("type") == "model"}
+    policy = load_policy(out)
+    if a.sample:
+        sample = {k: float(v) for k, v in (x.split("=") for x in a.sample.split(","))}
+        policy = {"seed": SEED, "sample": sample, "since": now_iso(), "already_scored": len(done),
+                  "reason": a.reason or "model throughput below case arrival rate"}
+        write_atomic(out / MODEL_POLICY, policy)
     model, tok, sampler = _load_model(a.model, a.adapter)
     tail = Tail(out / "cases.jsonl")
     print(f"{now_iso()} model: {len(done)} already answered", flush=True)
@@ -555,7 +587,7 @@ def cmd_model(a):
     while True:
         cases = tail.read()
         for c in cases:
-            if c["case_id"] in done:
+            if c["case_id"] in done or not model_wanted(c["case_id"], c["set"], policy):
                 continue
             pred, ms, text = _ask(model, tok, sampler, c, a.max_tokens)
             append_lines(events_path, [model_event(c, pred, ms, text)])
@@ -742,7 +774,7 @@ def headline(rows, synth_us=()):
     }
 
 
-def render_report(rows, meta, prices_meta, coll, synth_us, snapshot=None):
+def render_report(rows, meta, prices_meta, coll, synth_us, snapshot=None, policy=None):
     E, card, table, usd, pct, ms = ab._e, ab.card, ab.table, ab._usd, ab._pct, ab._ms
     now = datetime.now().strftime("%d/%m/%Y %H:%M")
     by_set = defaultdict(list)
@@ -780,6 +812,12 @@ def render_report(rows, meta, prices_meta, coll, synth_us, snapshot=None):
               f"{hr['final_all']['review']} ({pct(hr['final_all']['review_share'], 1)})", hr["final_all"]["block"]]]))
     P(f"<p class='note'>A IA avaliou {cw['n']} de {hr['n']} transações reais ({pct(cw['n'] / hr['n'] if hr['n'] else None, 1)}) "
       f"e {sum(r['tuned'] is not None for r in rows)} de {len(rows)} casos no total; os demais mostram o resultado só do código.</p>")
+    if policy:
+        P(f"<p class='note'>Decisão registrada: a IA (~0,6 caso/s) ficou atrás da chegada de casos, então a partir de "
+          f"{E(policy.get('since', '—'))} ela avaliou só uma amostra semeada (seed {policy.get('seed')}) por conjunto: "
+          f"{E(', '.join(f'{SET_PT.get(k, k)} {v:.0%}' for k, v in policy.get('sample', {}).items()))} (os demais 100%). "
+          f"Os {policy.get('already_scored', 0)} casos avaliados antes continuam. Todo caso tem o resultado só do código; "
+          "as linhas “com a IA” valem só para os casos avaliados por ela.</p>")
     P(table(["(d) Latência", "Casos", "p50", "p95"],
             [["Camadas A + B (código)", hl["A+B"]["n"], ms(hl["A+B"]["p50"]), ms(hl["A+B"]["p95"])],
              ["IA de intenção (MLX, Apple M4 Pro)", hl["model"]["n"], ms(hl["model"]["p50"]), ms(hl["model"]["p95"])],
@@ -954,7 +992,7 @@ def cmd_report(a):
     coll = collection_stats(out / "collect.log")
     synth_us = [r["sim_us"] for r in ab.read_jsonl(out / "synth_sim_timings.jsonl")]
     html_path = Path(a.html) if a.html else out / "relatorio_aval_20k.html"
-    html_path.write_text(render_report(rows, meta, prices_meta, coll, synth_us, snapshot), encoding="utf-8")
+    html_path.write_text(render_report(rows, meta, prices_meta, coll, synth_us, snapshot, load_policy(out)), encoding="utf-8")
     write_atomic(html_path.with_suffix(".headline.json"), headline(rows, synth_us))
     write_atomic(out / "report_stats.json", {"collection": coll, "cases": len(rows),
                                              "by_set_final": {s: dict(Counter(f"{r['expected']}->{r['final']}" for r in rows if r["set"] == s)) for s in SETS}})
@@ -988,6 +1026,8 @@ def main(argv=None):
         if name == "model":
             m.add_argument("--adapter", default="models/veto-svm-lora")  # adapters.safetensors = iter 300
             m.add_argument("--follow", action="store_true")
+            m.add_argument("--sample", help="seeded per-set sample from now on, e.g. real_traffic=0.5,attack_constructed=0.5")
+            m.add_argument("--reason")
         else:
             m.add_argument("--n", type=int, default=2000)
             m.add_argument("--min-per-stratum", type=int, default=50)

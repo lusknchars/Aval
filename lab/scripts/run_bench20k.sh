@@ -13,10 +13,11 @@ mkdir -p $OUT
 step=${1:-}
 
 collect() {
-  # 9 req/s (limite do plano: 10), orçamento de chamadas; retomável (digests já gravados são pulados).
+  # 8 req/s (limite do plano: 10), orçamento de chamadas; retomável (digests já gravados são pulados).
+  # --follow-tip: sempre o bloco finalizado mais novo (estado fresco: menos replays falham).
   . ./.env.helius
-  AVAL_MAX_RPS=${AVAL_MAX_RPS:-9} $SVM dataset --target ${TARGET:-28000} \
-    --out $RAW --delay-ms 0 --per-block 100 --concurrency ${CONCURRENCY:-4} --max-blocks 100000 --max-calls ${MAX_CALLS:-380000} \
+  AVAL_MAX_RPS=${AVAL_MAX_RPS:-8} $SVM dataset --target ${TARGET:-32000} \
+    --out $RAW --delay-ms 0 --per-block ${PER_BLOCK:-150} --concurrency ${CONCURRENCY:-16} --follow-tip --max-blocks 100000 --max-calls ${MAX_CALLS:-380000} \
     --exclude results/svm_effects.jsonl results/svm_effects.v2.jsonl results/bench_effects_mainnet.jsonl \
       results/bench_effects_mainnet.v2.jsonl results/svm_effects_synth.jsonl results/bench_effects_synth.jsonl
 }
