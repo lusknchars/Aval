@@ -19,6 +19,7 @@ import Inspect from './pages/Inspect'
 import { ChangeBar } from './config/ui'
 import { useConfig } from './config/store'
 import { diff } from './config/impact'
+import { COMPANY } from './config/company'
 import CommandPalette from './ui/CommandPalette'
 import Toasts from './ui/Toasts'
 import Scramble from '../components/Scramble'
@@ -100,6 +101,7 @@ export default function App() {
           <Logo className="rail__logo" label="AVAL" />
           <em>console</em>
         </a>
+        <span className="rail__org" title={`Workspace: ${COMPANY.name}, ${COMPANY.city}. A made-up company for the demo.`}>{COMPANY.name}{COMPANY.fictional && <small>fictional</small>}</span>
         <nav className="rail__nav" aria-label="Console">
           {NAV.map((grp) => (
             <div key={grp.group} className="rail__group">
@@ -122,11 +124,11 @@ export default function App() {
           <span>Search</span><kbd>⌘K</kbd>
         </button>
         <ThemeToggle className="rail__theme" />
-        <div className={`rail__engine engine engine--${engine}`}>
+        <div className={`rail__engine engine engine--${engine === 'no-fixtures' ? 'offline' : engine}`}>
           <i aria-hidden="true" />
           <span>
-            {engine === 'live' ? 'engine live' : engine === 'offline' ? 'engine offline' : 'checking…'}
-            <small>{engine === 'offline' ? 'showing recorded verdicts' : 'veto demo · /veto'}</small>
+            {engine === 'live' ? 'engine live' : engine === 'offline' ? 'engine offline' : engine === 'no-fixtures' ? 'engine lacks fixtures' : 'checking…'}
+            <small>{engine === 'offline' || engine === 'no-fixtures' ? 'showing recorded verdicts' : 'veto demo · /veto'}</small>
           </span>
         </div>
       </aside>

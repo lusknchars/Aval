@@ -1,6 +1,7 @@
 /*
- * The fictional company the benchmark replay is dressed in. Everything that
- * names it lives here, so it can be swapped without touching the page.
+ * The fictional company the console is dressed in: the Live gate's agents on
+ * shift, the agent registry and the benchmark replay. Everything that names it
+ * lives here, so it can be swapped without touching the pages.
  * The transactions are the benchmark's; only the company and its agents are made up.
  */
 
@@ -13,12 +14,15 @@ export const COMPANY = {
 
 export type AgentId = 'mm-alpha' | 'dca-bot' | 'yield-router' | 'treasury'
 
-export const AGENTS: { id: AgentId; job: string }[] = [
-  { id: 'mm-alpha', job: 'market making · swaps' },
-  { id: 'dca-bot', job: 'recurring buys · swaps and transfers' },
-  { id: 'yield-router', job: 'token accounts, approvals, deposits' },
-  { id: 'treasury', job: 'SOL/USDC transfers · payroll and suppliers' },
+export const AGENTS: { id: AgentId; label: string; job: string }[] = [
+  { id: 'mm-alpha', label: 'Market maker', job: 'market making · swaps' },
+  { id: 'dca-bot', label: 'Recurring buys', job: 'recurring buys · swaps and transfers' },
+  { id: 'yield-router', label: 'Vault router', job: 'token accounts, approvals, deposits' },
+  { id: 'treasury', label: 'Payroll and suppliers', job: 'SOL/USDC transfers · payroll and suppliers' },
 ]
+
+/* One quiet line naming the workspace, for headers and the sidebar. */
+export const COMPANY_TAG = `${COMPANY.name}${COMPANY.fictional ? ' · fictional' : ''}`
 
 /* A stable number from the short digest ("06ddb13c…5af7"), for even splits. */
 const hashOf = (digest: string | null) => parseInt((digest ?? '0').slice(0, 8), 16) || 0

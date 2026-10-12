@@ -7,7 +7,8 @@ import { FIXTURES, SNAPSHOT_TRACES } from './fixtures'
  * localStorage so a reload keeps the session; storage can be unavailable
  * (private windows), in which case the log just lives in memory.
  */
-const KEY = 'aval.console.entries.v1'
+// v2: entries now carry Cerrado Capital's agents; v1 held the old generic rota.
+const KEY = 'aval.console.entries.v2'
 const MAX = 60
 
 function seed(): Entry[] {

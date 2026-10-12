@@ -29,14 +29,37 @@ export async function ping(): Promise<boolean> {
   try { await call('/review'); return true } catch { return false }
 }
 
-export async function evaluate(req: EvalRequest): Promise<{ trace: Trace; source: Source }> {
+/* The engine is up but its checkout lacks the fixture file (e.g. "could not
+   read fixture: ENOENT ..."): it never judged this transaction, so the
+   recorded verdict stands in, labeled as such. */
+const isMissingFixture = (e: unknown) => e instanceof EngineError && /could not read fixture|ENOENT/i.test(e.message)
+
+/* Whether the engine last answered "no such fixture"; the rail reads it so it
+   never says "engine live" while every verdict on screen is a recording. */
+let fixturesMissing = false
+const fixtureSubs = new Set<() => void>()
+function setFixturesMissing(v: boolean) {
+  if (v !== fixturesMissing) { fixturesMissing = v; fixtureSubs.forEach((f) => f()) }
+}
+export const fixtureHealth = {
+  missing: () => fixturesMissing,
+  subscribe(f: () => void) { fixtureSubs.add(f); return () => { fixtureSubs.delete(f) } },
+}
+
+/** Why a snapshot answered instead of the engine. */
+export type SnapshotWhy = 'offline' | 'no-fixture'
+
+export async function evaluate(req: EvalRequest): Promise<{ trace: Trace; source: Source; why?: SnapshotWhy }> {
   try {
-    return { trace: await call<Trace>('/evaluate', { method: 'POST', body: JSON.stringify(req) }), source: 'live' }
+    const trace = await call<Trace>('/evaluate', { method: 'POST', body: JSON.stringify(req) })
+    setFixturesMissing(false)
+    return { trace, source: 'live' }
   } catch (e) {
-    if (e instanceof EngineError) throw e
+    if (e instanceof EngineError && !isMissingFixture(e)) throw e
+    if (isMissingFixture(e)) setFixturesMissing(true)
     const snap = SNAPSHOT_TRACES[req.fixture]
     if (!snap) throw new Error(`No snapshot for ${req.fixture}`)
-    return { trace: structuredClone(snap), source: 'snapshot' }
+    return { trace: structuredClone(snap), source: 'snapshot', why: isMissingFixture(e) ? 'no-fixture' : 'offline' }
   }
 }
 

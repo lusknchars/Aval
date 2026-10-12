@@ -32,6 +32,8 @@
 .rail__brand { display: grid; gap: 6px; padding: 4px 8px; justify-items: start; }
 .rail__logo { height: 34px; }
 .rail__brand em { font: 400 10px var(--mono); letter-spacing: .2em; color: var(--dim); text-transform: uppercase; font-style: normal; }
+.rail__org { display: grid; margin-top: -16px; padding: 0 8px; font: 400 10.5px/1.45 var(--mono); color: var(--dim); }
+.rail__org small { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
 .rail__theme { margin-top: auto; padding: 4px 10px; }
 .rail__k { margin-top: 0 !important; }
 .rail__nav { display: grid; gap: 2px; }
@@ -60,7 +62,7 @@ kbd { font: 500 10.5px var(--mono); border: 1px solid var(--l2); border-bottom-w
 @media (max-width: 860px) {
   .shell { grid-template-columns: 1fr; }
   .rail { position: sticky; height: auto; flex-direction: row; align-items: center; padding: 10px 16px; gap: 12px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
-  .rail__brand em, .rail__engine small, .rail__k span, .rail__engine span, .rail__theme .themetoggle__label { display: none; }
+  .rail__brand em, .rail__org, .rail__engine small, .rail__k span, .rail__engine span, .rail__theme .themetoggle__label { display: none; }
   .rail__logo { height: 24px; }
   .rail__theme { margin: 0; padding: 0 4px; }
   .rail__nav { display: flex; }

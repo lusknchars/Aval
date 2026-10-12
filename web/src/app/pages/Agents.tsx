@@ -57,7 +57,7 @@ export default function Agents() {
           <button type="button" className="act act--primary" onClick={add}>+ Register agent</button>
         </div>
         <div className="register__demo ui-reset" aria-hidden="true">
-          <AnimatedForm name="treasury-07" title="Register agent" secret="••••••••••••" icons={REGISTER_ICONS} />
+          <AnimatedForm name="treasury" title="Register agent" secret="••••••••••••" icons={REGISTER_ICONS} />
         </div>
       </section>
 

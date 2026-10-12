@@ -64,7 +64,7 @@ export default function Evaluate({ preset }: { preset?: string }) {
     const answer = evaluate(req)
     try {
       await tick(1); await tick(2)
-      const { trace, source } = await answer
+      const { trace, source, why } = await answer
       const ms = Math.round(performance.now() - t0)
       await tick(3); await tick(4)
       await new Promise((r) => setTimeout(r, reduced ? 0 : 380))
@@ -72,7 +72,7 @@ export default function Evaluate({ preset }: { preset?: string }) {
       store.add({ id, at: Date.now(), request: req, trace, source, ms })
       toast({
         title: `${DECISION_WORD[trace.decision.outcome]} · ${trace.toolCall?.name ?? fixture}`,
-        body: source === 'live' ? 'Verdict from the live engine.' : 'Engine offline: showing the recorded verdict for this fixture. Agent context was not applied.',
+        body: source === 'live' ? 'Verdict from the live engine.' : `${why === 'no-fixture' ? 'The engine lacks this fixture' : 'Engine offline'}: showing the recorded verdict for this fixture. Agent context was not applied.`,
         tone: trace.decision.outcome === 'deny' ? 'deny' : trace.decision.outcome === 'flag' ? 'flag' : 'ink',
       })
       go(`actions/${id}`)
@@ -163,9 +163,9 @@ export default function Evaluate({ preset }: { preset?: string }) {
         </fieldset>
 
         <div className="evalform__go">
-          <span className={`engine engine--${engine}`}>
+          <span className={`engine engine--${engine === 'no-fixtures' ? 'offline' : engine}`}>
             <i aria-hidden="true" />
-            {engine === 'live' ? 'live engine connected' : engine === 'offline' ? 'engine offline · recorded verdicts' : 'checking engine…'}
+            {engine === 'live' ? 'live engine connected' : engine === 'offline' ? 'engine offline · recorded verdicts' : engine === 'no-fixtures' ? 'engine lacks fixtures · recorded verdicts' : 'checking engine…'}
           </span>
           <button type="submit" className="runbtn" disabled={stage >= 0}>
             <span>run through the gate</span><b aria-hidden="true">⏎</b>

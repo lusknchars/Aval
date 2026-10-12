@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import defaults from '../snapshots/engine-defaults.json'
 import type { EffectType } from '../api/types'
+import { AGENTS, type AgentId } from './company'
 
 /*
  * Platform configuration: one draft the operator edits, and a history of
@@ -59,6 +60,14 @@ export const ENFORCEMENT = {
 
 const DEMO_WALLET = '11111111111111111111111111111112'
 
+/* What each of the company's agents may do: tools, flag policy, limits. */
+const AGENT_POLICY: Record<AgentId, Pick<Agent, 'tools' | 'onFlag' | 'status' | 'dailyLimitSol'>> = {
+  'mm-alpha': { tools: ['swap', 'close_account'], onFlag: 'hold', status: 'active', dailyLimitSol: 500 },
+  'dca-bot': { tools: ['swap', 'transfer_token', 'close_account'], onFlag: 'inherit', status: 'active', dailyLimitSol: 50 },
+  'yield-router': { tools: ['approve', 'revoke', 'fund_token_account'], onFlag: 'hold', status: 'active', dailyLimitSol: 200 },
+  'treasury': { tools: ['transfer_sol', 'transfer_token', 'fund_token_account'], onFlag: 'refuse', status: 'active', dailyLimitSol: 250 },
+}
+
 export function engineDefaults(): Config {
   return {
     thresholds: { ...defaults.thresholds },
@@ -69,11 +78,8 @@ export function engineDefaults(): Config {
     network: 'mainnet',
     manifests: (defaults.manifests as unknown as Omit<ManifestCfg, 'enabled'>[]).map((m) => ({ ...m, enabled: true })),
     lists: { allowlist: [], denylist: [], trustedSources: [], knownCounterparties: [], ownAccounts: [] },
-    agents: [
-      { id: 'treasury-07', label: 'Treasury rebalancer', wallet: DEMO_WALLET, network: 'mainnet', tools: ['swap', 'transfer_token'], onFlag: 'hold', status: 'active', dailyLimitSol: 250 },
-      { id: 'payroll', label: 'Payroll runner', wallet: DEMO_WALLET, network: 'mainnet', tools: ['transfer_sol', 'transfer_token'], onFlag: 'inherit', status: 'active', dailyLimitSol: 40 },
-      { id: 'yield-bot', label: 'Staking & yield', wallet: DEMO_WALLET, network: 'devnet', tools: ['stake_native', 'unstake_native', 'withdraw_stake'], onFlag: 'refuse', status: 'paused', dailyLimitSol: 100 },
-    ],
+    // Cerrado Capital's desk (fictional, see config/company.ts).
+    agents: AGENTS.map((a) => ({ id: a.id, label: a.label, wallet: DEMO_WALLET, network: 'mainnet' as const, ...AGENT_POLICY[a.id] })),
   }
 }
 
@@ -85,7 +91,8 @@ export function versionId(c: Config) {
   return 'p-' + (h >>> 0).toString(16).padStart(8, '0').slice(0, 7)
 }
 
-const KEY = 'aval.console.config.v1'
+// v2: the agents became Cerrado Capital's; an older saved draft would keep the old rota.
+const KEY = 'aval.console.config.v2'
 type State = { draft: Config; history: Published[] }
 
 function initial(): State {
