@@ -1,0 +1,21 @@
+//! aval-svm: run Solana transactions locally over cached cluster state.
+pub mod config;
+pub mod decode;
+pub mod gather;
+pub mod source;
+pub mod upstream;
+pub mod quorum;
+pub mod cache;
+pub mod pool;
+pub mod engine;
+pub mod project;
+pub mod rpc;
+pub mod http;
+pub mod shadow;
+pub mod dataset;
+pub mod synth;
+pub mod merkle;
+pub mod registry_client;
+pub mod chain;
+pub mod anchor_batcher;
+pub mod verify;

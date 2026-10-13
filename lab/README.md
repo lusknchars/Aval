@@ -1,0 +1,454 @@
+# VETO LAB — benchmark de segurança para carteiras
+
+API local que verifica transações (EVM/Solana) e prompts de agentes em camadas: blacklist → Prompt Guard → IA (VETO LFM2.5 350M) → simulação. Detalhes da metodologia e limitações em [LEIA-ME.md](LEIA-ME.md).
+
+Para interpretar corretamente as métricas e planejar avaliações independentes,
+consulte [AVALIACAO_E_TESTES.md](AVALIACAO_E_TESTES.md).
+
+## O que está (e o que não está) no repositório
+
+| Item | No git? | Como obter |
+|---|---|---|
+| Código (`src/`, `tests/`, `config/`, `.bat`, `.sh`) | ✅ | — |
+| VETO LFM2.5 350M com LoRA embutido | ❌ | coloque em `models/veto_lfm2_5_350m_aave_f16.gguf` |
+| Gemma 3 4B + LoRA externo | opcional/fallback | — |
+| Gemma 3 4B IT `Q4_K_M` (~2.5 GB) | ❌ | `BAIXAR_MODELOS.bat` / `./baixar_modelos.sh` |
+| Prompt Guard 2 86M (Meta, ~1.1 GB, acesso restrito) | ❌ | mesmo script, com `HF_TOKEN` |
+| llama.cpp (`llama/`) | ❌ | [releases do llama.cpp](https://github.com/ggml-org/llama.cpp/releases) |
+| `.venv`, `tools/`, `external/` | ❌ | criados pelos scripts |
+
+O Prompt Guard é um modelo restrito: aceite a licença em <https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M>, gere um token em <https://huggingface.co/settings/tokens> e defina `HF_TOKEN` antes de rodar o script de download.
+
+## Windows
+
+1. Instale Python 3.11+, Git e (opcional) [Foundry](https://getfoundry.sh) para o Anvil.
+2. Baixe o llama.cpp para Windows (CPU ou CUDA) e extraia **todo o pacote** em `llama\` (precisa de `llama\llama-server.exe` e das DLLs).
+3. Baixe os modelos:
+   ```bat
+   set HF_TOKEN=hf_xxx
+   BAIXAR_MODELOS.bat
+   ```
+4. Crie o ambiente Python único (usado pelo benchmark, API e Prompt Guard):
+   ```bat
+   py -3 -m venv .venv
+   .venv\Scripts\python.exe -m pip install -r requirements-guard.txt
+   ```
+   No Windows, `01_INSTALAR.bat` executa esses passos automaticamente.
+5. Suba tudo: `00_INICIAR_TUDO.bat` → abre o Swagger em <http://127.0.0.1:8070/docs> e o painel em <http://127.0.0.1:8070/admin>. O painel acompanha requisições, latências e o relatório detalhado do benchmark Solana. O Anvil é opcional e só é iniciado quando está instalado; ele não é necessário para o fluxo Solana.
+
+Os demais `.bat` (`02_SERVIDOR`, `03_GERAR_CASOS`, `04_RODAR_BENCHMARK`, ...) seguem descritos no [LEIA-ME.md](LEIA-ME.md).
+
+## Linux
+
+### 1. Dependências do sistema
+```bash
+# Debian/Ubuntu
+sudo apt update && sudo apt install -y git curl python3 python3-venv build-essential cmake
+```
+
+### 2. Clonar o projeto
+```bash
+git clone https://github.com/Luispessoa18/veto-lab-2.git
+cd veto-lab-2
+chmod +x *.sh
+```
+
+### 3. llama.cpp (`llama-server`)
+Compile a partir do código-fonte (fora do projeto):
+```bash
+git clone https://github.com/ggml-org/llama.cpp ~/llama.cpp
+cd ~/llama.cpp
+cmake -B build                       # CPU
+# cmake -B build -DGGML_CUDA=ON      # GPU NVIDIA (requer CUDA Toolkit)
+cmake --build build --config Release -j
+cd -
+export LLAMA_SERVER=~/llama.cpp/build/bin/llama-server
+```
+Alternativas: baixar o binário Linux em [releases](https://github.com/ggml-org/llama.cpp/releases) ou `brew install llama.cpp`.
+
+### 4. Modelos
+```bash
+HF_TOKEN=hf_xxx ./baixar_modelos.sh
+```
+
+### 5. Ambiente Python
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-guard.txt
+# so CPU (download bem menor do torch):
+# .venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+### 6. Anvil (Foundry)
+```bash
+curl -L https://foundry.paradigm.xyz | bash
+~/.foundry/bin/foundryup
+```
+
+### 7. Subir tudo
+```bash
+./iniciar_tudo.sh                 # CPU por padrão
+VETO_NGL=99 ./iniciar_tudo.sh     # offload para GPU
+```
+Sobe llama.cpp (18080), Anvil opcional (8545) e API + Prompt Guard (8070). Logs em `results/*.log`. Swagger: <http://127.0.0.1:8070/docs>. `CTRL+C` encerra tudo.
+
+O LFM já contém o ajuste VETO e não recebe `--lora`. Para voltar temporariamente
+ao Gemma com adaptador externo no Windows:
+
+```bat
+set "VETO_MODEL=models\gemma-3-4b-it-Q4_K_M.gguf"
+set "VETO_LORA=models\VETO-Security-LoRA-F16.gguf"
+set "VETO_NGL=99"
+00_INICIAR_TUDO.bat
+```
+
+Para subir cada serviço manualmente:
+```bash
+$LLAMA_SERVER -m models/veto_lfm2_5_350m_aave_f16.gguf \
+  --host 127.0.0.1 --port 18080 -c 4096 -np 2 -ngl 0 --jinja
+anvil --host 127.0.0.1 --port 8545
+.venv/bin/python -m src.unified_api --host 127.0.0.1 --port 8070
+# Prompt Guard standalone (usado pelo benchmark):
+.venv/bin/python -m src.guard_server --host 127.0.0.1 --port 8090 --threshold 0.90
+```
+
+### 8. Benchmarks e utilitários (equivalentes dos `.bat`)
+| Windows | Linux |
+|---|---|
+| `03_GERAR_CASOS.bat` | `.venv/bin/python -m src.main generate --count 1200` |
+| `04_RODAR_BENCHMARK.bat` | `.venv/bin/python -m src.main run` |
+| `05_RELATORIO.bat` | `.venv/bin/python -m src.main report` |
+| `06_CATALOGO_HISTORICO.bat` | `.venv/bin/python -m src.main catalog --fetch-rpc` |
+| `07_PROMPT_GUARD.bat` | `.venv/bin/python -m src.guard_server --port 8090 --threshold 0.90` |
+| `08_API_UNICA.bat` | `.venv/bin/python -m src.unified_api --port 8070` |
+| `09_SIMULAR_ATAQUES_SOLANA.bat` | `.venv/bin/python -m src.solana_attack_simulator --api http://127.0.0.1:8070` |
+| testes | `.venv/bin/python -m unittest discover -s tests` |
+
+> **Guia passo a passo para configurar e testar:** [CONFIGURAR_AVAL.md](CONFIGURAR_AVAL.md)
+
+## aval-svm — simulação Solana local (Rust)
+
+A camada `solana_simulation` roda as transações numa VM Solana local (LiteSVM) em vez de
+chamar o RPC público a cada verificação. As contas vêm do RPC uma vez, ficam em cache
+(2 s; programas são relidos a cada 60 s, `program_ttl_ms`, para pegar upgrades) e a simulação
+roda em milissegundos. Se o aval-svm não estiver rodando, não responder, ou não suportar um
+programa, a API volta sozinha para o RPC público.
+
+Requisitos: Rust (rustc >= 1.97.1; se já tiver Rust, rode `rustup update`). No Linux, instale
+`build-essential`; no Windows, use o `rustup-init.exe` (https://rustup.rs) e o Visual Studio
+Build Tools com o componente "Desenvolvimento para desktop com C++" (MSVC).
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y   # uma vez
+cd svm && cargo build --release && cd ..
+./svm/target/release/aval-svm serve --config svm/aval-svm.toml          # porta 8899
+```
+
+- A porta 8899 também é a padrão do `solana-test-validator`. Para usar outra, defina
+  `AVAL_LISTEN=127.0.0.1:8898` e mude `aval_svm_url` em `config/settings.json` para a mesma
+  porta. Se outro servidor responder na porta (sem o bloco `aval`), a API usa o RPC público.
+
+- Compatível com JSON-RPC: qualquer cliente que fala `simulateTransaction` (inclusive o VETO
+  em TypeScript) só precisa apontar a URL para `http://127.0.0.1:8899`.
+- `POST /v1/project` devolve a **projeção**: saldos SOL/tokens antes e depois, mudanças de
+  dono/delegate e contas criadas/fechadas.
+- Toda resposta traz `aval.digest` (sha256 da mensagem, igual ao `messageDigest` do VETO) e
+  o slot do estado usado (`stateSlot`, o mais novo; `stateSlotMin`, o mais antigo entre as contas
+  que não são programas — iguais significa que o estado veio todo de um só slot).
+- `getMultipleAccounts` com `encoding: "base64"` (sem `dataSlice`/`minContextSlot`, com ao menos uma
+  conta) sai do mesmo cache da simulação — em geral no mesmo slot dela, mas sem garantia; outras
+  formas vão para o upstream.
+- Upstream: `AVAL_UPSTREAM_URL` (padrão devnet). Para mainnet use um RPC próprio (Helius etc.).
+- Verificação cruzada (opcional): com `upstream_secondary_url` (ou `AVAL_UPSTREAM_SECONDARY_URL`),
+  toda leitura de contas é feita nos dois provedores e comparada; um provedor mais de
+  `quorum_max_slot_gap` slots atrás é tratado como indisponível (`-32005`). Se os dados diferem em
+  slots diferentes, o lado atrasado é relido até `quorum_refetch_attempts` vezes (padrão 3) com
+  `minContextSlot`. As contas são conferidas no momento da busca e depois servidas do cache dentro
+  do TTL. A resposta traz `aval.upstreams: 2` quando ligada.
+- Contas quentes não falham mais fechado. Se a divergência persiste, a regra é:
+  - **estritas** (precisam bater; senão `-32005`): signatários (inclusive o pagador da taxa),
+    qualquer conta executável em uma das visões, ProgramData, contas de token SPL / Token-2022
+    cujo dono ou delegado é um signatário, e tabelas de lookup (decidem quais contas entram);
+  - **toleradas** (pools, oráculos, estado de terceiros, sysvars): a transação é simulada em dois
+    mundos — P (contas do primário) e S (as mesmas, com os valores do secundário nas contas
+    divergentes). Se um mundo falha, a resposta é a falha; se os dois passam, vale o mundo P.
+    `aval` ganha `"worlds": 2` e `"divergent"`; `/v1/project` ganha `projectionAlternate` (o
+    outro mundo). O laboratório transforma `divergent: true` + ALLOW em REVIEW
+    (`SOLANA_SIMULATION_DIVERGENT`).
+  - `divergent` olha o que importa ao usuário: é verdadeiro se um mundo falha e o outro não (ou o
+    tipo de erro muda); se qualquer mudança de autoridade/dono (owner, delegate, closeAuthority,
+    programOwner) ou o conjunto de contas criadas/fechadas difere; ou se o delta de SOL de um
+    signatário, ou o delta de token de uma conta de token de que um signatário é dono ou delegado,
+    difere mais que `divergence_tolerance_bps` (padrão 50, relativo ao maior delta; zero num mundo
+    e não-zero no outro sempre diverge). Pools e oráculos mudando diferente, sozinhos, não contam.
+  - `getMultipleAccounts` servido do cache continua falhando fechado (`-32005`) numa divergência.
+  - Clientes RPC comuns (que só leem os campos padrão) recebem `-32005` "simulated worlds diverge
+    (upstreams disagree on <contas>)" quando os mundos divergem; quem envia
+    `"aval": {"worlds": true}` (o laboratório envia) recebe o mundo P com `aval.worlds/divergent`.
+    `/v1/project` sempre traz as duas projeções.
+  - O `Clock` do cluster nunca passa de `slot lido + quorum_max_slot_gap` na VM, e uma divergência
+    no `Clock` além disso é estrita (as épocas não seriam confiáveis).
+  - Garantia, com ao menos um provedor honesto: um provedor mentiroso só deixa o Aval mais
+    estrito — exceto que uma visão falsa de pools/oráculos pode mover o resultado do usuário em
+    até `divergence_tolerance_bps` sem ser detectada. As contas pedidas em `accounts` que a
+    transação já carrega vêm do mundo P.
+- Medir contra o RPC: `aval-svm shadow --upstream <url> --count 200`.
+- Usa o `Clock` e o `EpochSchedule` do cluster, e verifica os precompiles ed25519/secp256k1.
+  Transações maiores que 4096 bytes são recusadas (`-32602`).
+- Limitações conhecidas: `minContextSlot` é ignorado; `sigVerify: true` é recusado (simule a
+  transação sem assinatura); o `replacementBlockhash` é gerado pela VM local, não é um blockhash
+  do cluster — não assine transações com ele.
+
+Desenho: `svm/docs/2026-10-06-aval-svm-design.md`.
+
+### Dataset de treino a partir do aval-svm
+
+Transações **reais** da mainnet viram exemplos de treino pareados para o modelo do VETO.
+O aval-svm amostra blocos finalizados recentes (sem votos, até 8 transações por bloco), simula
+cada uma de novo contra o estado atual e guarda só as que **executam com sucesso** e mexem em
+algum signatário além da taxa:
+
+```bash
+./svm/target/release/aval-svm dataset --upstream "$AVAL_UPSTREAM_URL" \
+    --target 1000 --out results/svm_effects.jsonl --delay-ms 300 --max-blocks 400
+```
+
+- Retomável: relê o arquivo, pula os `tx_digest` já salvos e continua acrescentando até o
+  `--target` (contando o que já existe). 429/erros de rede: espera e tenta de novo; nunca derruba
+  a execução. A URL do upstream não é impressa (só o host). `--with-tx` guarda também a transação.
+- Registros antigos sem `decimals` dos tokens: `aval-svm dataset --backfill-decimals --in results/svm_effects.jsonl
+  --out results/svm_effects.v2.jsonl --upstream <url>` lê cada mint uma vez e preenche os decimais (sem
+  re-simular; os demais campos ficam iguais).
+- RPC público (`https://api.mainnet-beta.solana.com`) funciona, mas limita `getBlock`; use
+  `--delay-ms 400` ou um RPC próprio.
+
+Efeitos de permissão (approve, set_authority, close) são raros numa amostra da mainnet; o
+`dataset-synth` monta essas transações localmente (SPL Token e Token-2022 embutidos no LiteSVM,
+estado em memória, sem rede) e as simula com o mesmo motor — approve limitado e ilimitado,
+troca de dono/closeAuthority, close com o rent indo para terceiros, transfer_checked para um
+estranho e variantes benignas. Mesmo esquema, com `"source": "synthetic"`:
+
+```bash
+./svm/target/release/aval-svm dataset-synth --count 300 --out results/svm_effects_synth.jsonl --seed 42
+```
+
+Depois, o lab deriva de cada efeito uma intenção **honesta** (ação, ativo, valor, destinatário,
+efeitos permitidos) e gera mutações rotuladas **por código** (comparando intenção × efeitos):
+`recipient_mismatch`, `amount_understated`, `asset_mismatch`, `undeclared_approval`,
+`undeclared_authority_change`, `undeclared_close`, `approval_exceeds_intent` (intenção declara
+um approve limitado, a simulação mostra um maior ou ilimitado) e `injected_instruction` (instrução para a IA
+escondida em memo/metadados, en e pt-BR). Cerca de 1 honesto : 1–2 mutados por transação,
+com teto por sinal; a divisão train/valid/test (80/10/10) é por `tx_digest`.
+
+```bash
+python -m src.svm_dataset --effects results/svm_effects.jsonl results/svm_effects_synth.jsonl \
+    --out results/svm_dataset --format risk --seed 42 --min-sol 0.001
+```
+
+- `--min-sol` (padrão 0.001) descarta transfer_sol menores que isso (spam/gorjetas); a contagem
+  vai para `stats.json`, que também separa tudo por origem (`mainnet` / `synthetic`).
+- Avaliação por origem: `test_mainnet.jsonl`, `test_synthetic.jsonl` e `test_by_source.jsonl`
+  (cada linha com `source`). Os casos sintéticos são mais fáceis; reporte os dois números.
+- O que as verificações automáticas garantem (testes + `stats.json`): nenhuma ação com risco alto
+  >85% ou <15% (`risk_by_action`/`warnings`, n ≥ 20); cada campo de metadados (e "sem metadados")
+  aparece com risco baixo e alto; o ativo declarado sempre consta em `allowed_effects`; fechar uma
+  conta não conta como troca de autoridade; mutações `undeclared_*` usam os casos "bundled" do
+  `dataset-synth` (a transferência declarada acontece de verdade) e, só na falta deles, a intenção
+  de uma transferência benigna do **mesmo** split; ~30% dos textos de injeção só aparecem no teste;
+  no máximo 8 registros por pagador de taxa. Isso reduz atalhos conhecidos, não prova que não há outros.
+- Questão em aberto (decisão do time): uma intenção honesta que declara uma ação perigosa (por
+  exemplo, approve ilimitado ou transferir a autoridade da conta) é rotulada risco **baixo**, porque
+  os efeitos batem com o pedido. Se o modelo deve sinalizar ações perigosas mesmo quando declaradas
+  ainda precisa ser decidido; os rótulos atuais não fazem isso.
+
+- Saída em chat JSONL (`messages` system/user/assistant), aceita por MLX-LM e Unsloth:
+  `results/svm_dataset/{train,valid,test}.jsonl` + `stats.json` (contagens por split, por sinal,
+  descartes).
+- `--format risk` (padrão): o assistente responde `{"risk","signals","reasons"}` — o LLM opina,
+  o código decide. `--format decision`: o formato atual do lab
+  (`decision`/`confidence`/`reasons`/`evidence_fields`).
+- Execução longa em segundo plano: `nohup ./svm/target/release/aval-svm dataset ... >> results/svm_dataset_run.log 2>&1 &`
+  e acompanhe com `tail -f results/svm_dataset_run.log` ou `wc -l results/svm_effects.jsonl`.
+
+### Treino local com MLX
+
+Continua o treino do modelo de Luis (Qwen2.5-Coder-1.5B-Instruct, merged bf16, pasta `gguf-model/` do
+Drive) com LoRA no dataset acima, tudo local em Apple Silicon (M4 Pro, 48 GB), custo zero. Os comandos
+exatos estão em `scripts/train_mlx.sh` (`baseline`, `train`, `tuned`, `fuse`, `gguf`); a config LoRA em
+`config/mlx_lora_svm.yaml` (rank 16, scale 2, dropout 0.05, max_seq 2560).
+
+```bash
+/opt/homebrew/bin/python3 -m venv .venv-mlx && .venv-mlx/bin/pip install mlx-lm gdown gguf numpy pytest
+./scripts/train_mlx.sh baseline   # avalia o modelo original → results/eval/baseline_*.json
+./scripts/train_mlx.sh train      # mlx_lm.lora: todas as camadas, batch 8, lr 1e-4, --mask-prompt, --grad-checkpoint
+./scripts/train_mlx.sh tuned      # avalia base + adapter → results/eval/tuned_*.json
+./scripts/train_mlx.sh fuse       # models/veto-svm-fused (bf16)
+LLAMA_CPP=<clone do llama.cpp> ./scripts/train_mlx.sh gguf   # models/veto-svm-f16.gguf (3,1 GB)
+```
+
+- Avaliação (`src/eval_risk.py`): mesmas mensagens system+user do dataset, decodificação gulosa,
+  200 tokens. Resposta `{"risk":...}` ou decisão legada (`BLOCK`/`REVIEW` = alto, `ALLOW` = baixo);
+  o resto é inválido e conta como erro. Recall por sinal com IC de Wilson 95%.
+- Treino: val loss 1,917 → 0,106 (50) → 0,082 (100) → 0,072 (200) → **0,056 (300)** → 0,058 (350) →
+  0,072 (400). Parada antecipada em ~420 iterações; adapter final = checkpoint 300 (≈1,35 época).
+- GGUF: `mlx_lm.fuse --export-gguf` não suporta qwen2, então usamos o `convert_hf_to_gguf.py` do
+  llama.cpp. Sem `llama-quantize`/`llama-server` instalados, o arquivo fica só em f16 e não foi testado no llama.cpp.
+
+| Conjunto | Modelo | Acurácia (IC95) | Precisão alto | Recall alto | F1 | Inválidas |
+|---|---|---|---|---|---|---|
+| test_mainnet (106) | original | 39,6% (30,8–49,1) | — (nunca diz alto) | 0% | 0 | 3,8% |
+| test_mainnet (106) | ajustado | **82,1%** (73,7–88,2) | 79,5% | 93,5% | 0,86 | 0% |
+| test_synthetic (143) | original | 34,3% (27,0–42,4) | — | 0% | 0 | 15,4% |
+| test_synthetic (143) | ajustado | **91,6%** (85,9–95,1) | 100% | 86,0% | 0,93 | 0% |
+
+O modelo original responde no formato `risk` (ele aprendeu o formato pelo system prompt), mas responde
+sempre "baixo"; as inválidas são respostas cortadas no limite de 200 tokens. Ponto fraco do ajustado: no mainnet, 15 de 44 transações honestas
+(todas swaps) viram falso positivo, principalmente `amount_understated` (especificidade 66%). No sintético,
+`amount_understated` (0/6), `undeclared_close` (3/5) e `approval_exceeds_intent` (4/7) ainda escapam.
+Não medimos o esquecimento da tarefa original de Luis (não temos os dados dele).
+
+### Benchmark de 1000 transações (Aval completo)
+
+`scripts/run_benchmark.sh` (passos `collect`, `synth`, `cases`, `model`, `prices`, `report`, `pdf`) roda a decisão
+do Aval em 1000 transações **nunca usadas no treino**: 400 da mainnet (coletadas de novo, digests do treino
+removidos) e 600 sintéticas (`dataset-synth --seed 777`; o treino usou 42). Uma transação = um caso: intenção
+honesta (espera ALLOW) ou uma mutação (espera BLOCK), 500/500; injeções só com `TEST_ONLY_INJECTIONS`.
+Código em `src/aval_benchmark.py`: camada A (simulação + `label()`), B (`INJECTION_PATTERN` nos metadados),
+C (IA ajustada; só aumenta o risco: `high` + `injected_instruction` → BLOCK, outro `high` → REVIEW).
+Saída em `results/benchmark/` (fora do git): `cases.jsonl`, `rows.jsonl`, `summary.json`, `relatorio_aval_1000.{html,pdf}`.
+
+Rodada de 2026-10-09: pipeline completo 500/500 ataques bloqueados, 0 legítimas bloqueadas, 68 legítimas em
+REVIEW (60 swaps da mainnet). **A Camada A é circular por construção** (os rótulos saem da mesma comparação),
+então esses 100% mostram o mecanismo, não habilidade; a medida independente é a IA sozinha: ajustada 81,1%
+(precisão 0,85, recall 0,76, taxa FP 13,6%; mainnet 72,8%, sintético 86,7%), original 50% (sempre "baixo").
+Latência p50/p95: A e B ~0,01 ms, simulação sintética 0,03/0,06 ms, IA 1,3/2,5 s (MLX, M4 Pro).
+
+## aval-registry — atestação on-chain dos vereditos
+
+O `aval-svm anchor` lê o arquivo de registros do VETO (JSONL, um veredito por linha), agrupa as
+linhas novas em lotes, calcula a raiz Merkle de cada lote e grava a raiz no programa Anchor
+`aval_registry` (`registry/`). O `aval-svm verify` prova que uma linha específica está sob uma
+raiz gravada na cadeia. Desenho: `svm/docs/2026-10-06-aval-registry-design.md`.
+
+**O que `VERIFIED` prova:** os bytes exatos da linha N do arquivo foram comprometidos como linha N
+pelo registry da authority X, no lote k, no slot S ou antes dele. Os lotes são contíguos, então
+uma linha ancorada não pode mudar e não existe buraco no meio.
+
+**O que `VERIFIED` NÃO prova:**
+
+- que o veredito está correto (só que ele não foi alterado depois);
+- que o horário gravado no próprio registro é verdadeiro (a prova só garante "até o slot S");
+- que todo veredito foi escrito no arquivo: o operador pode omitir vereditos ou deixar o final
+  do arquivo sem ancorar;
+- linhas ainda não ancoradas: podem ser alteradas dentro do `--interval-secs` (padrão 30 s) ou
+  enquanto o batcher estiver parado.
+
+Cuidados:
+
+- Sempre passe `--authority`. Sem ele o verificador confia no registry citado no arquivo de provas.
+- O verificador confia no RPC que consulta (leitura em commitment `finalized`).
+- As provas só existem em `<registros>.proofs.jsonl`: faça backup. O arquivo de registros deve
+  ser somente de acréscimo (append-only).
+- O programa é atualizável pela carteira local até ser finalizado
+  (`solana program set-upgrade-authority <programa> --final`, irreversível; **não foi feito**).
+- Custo: cerca de 0,0017 SOL de aluguel por lote em devnet (grátis na localnet).
+- Códigos de saída: `0` verificado, `1` NÃO verificado, `2` não deu para checar (erro de RPC, arquivo ou argumentos, ou `PENDING`: tente de novo).
+
+### Rodar na localnet (custo zero)
+
+Requer o Solana CLI (Agave). O script sobe um `solana-test-validator` na porta 8999, faz um airdrop
+de 2,5 SOL simulados e deixa o programa `5t75hMEMtV5rEN7BuRu3pQfyu2yUc5DVMBFqvdLxoZN5` (o `.so` e o id
+estão em `svm/tests/fixtures/`) carregado. Com o keypair do programa em `registry/target/deploy/`
+(nunca versionado) ele faz um `solana program deploy` de verdade; num clone limpo, sem esse keypair,
+carrega o programa no genesis com o mesmo id e a sua carteira como upgrade authority. Se
+`~/.config/solana/id.json` não existir, o script cria uma carteira nova (sem exibir a chave).
+`--demo-records` escreve `results/demo-records.jsonl` (10 linhas sintéticas) para os comandos abaixo:
+
+```bash
+registry/scripts/localnet.sh            # sobe o validador e publica o programa
+registry/scripts/localnet.sh --demo-records   # results/demo-records.jsonl
+export AVAL_REGISTRY_RPC=http://127.0.0.1:8999
+./svm/target/release/aval-svm anchor --records results/demo-records.jsonl \
+    --keypair ~/.config/solana/id.json --once
+./svm/target/release/aval-svm verify --records results/demo-records.jsonl --line 7 \
+    --authority $(solana-keygen pubkey ~/.config/solana/id.json)
+registry/scripts/localnet.sh --stop     # para o validador
+```
+
+A leitura do `verify` é `finalized`, que no validador local demora uns 15 s depois do `anchor`.
+Nesse intervalo ele imprime `PENDING: batch k is confirmed but not finalized yet — retry in ~15 s`
+e sai com código `2`: não é adulteração, só repetir o comando. `NOT VERIFIED: ... not found on chain`
+(código `1`) fica para o lote que não existe nem em `confirmed`.
+
+Saída real de uma execução (10 linhas sintéticas, depois mais 3):
+
+```text
+anchored batch 0: lines 0–9 (10 records) tx 4u6pFwmngi9DG35Yq53rnrboJQNURmDeLfH6e3FgmKHFM7ZheKTm1rubuTq9p3bEBj7TAB5MncCP87vLhX2u77Di
+VERIFIED line 7 — batch 0, slot 26, 2026-10-07T02:38:23Z, tx 4u6pFw…2u77Di, registry 5DUzCe7nW23RRWHzqvNHPs6V7biNP4eqEPbrj5YFxnGh (authority 3Q2guAHRjtUdhbTvvXzztpjEdFG8RpMm15fv6Lho4mzD)   # saída 0
+NOT VERIFIED: leaf mismatch: line 7 hashes to c09da1d0…, the proof entry has c3c7e96c…           # linha 7 adulterada numa cópia, saída 1
+NOT VERIFIED: proof entry names registry 5DUzCe7n…, but the registry of authority 5t75hMEM…(id do programa, errada) is EqktkaAX…   # saída 1
+anchored batch 1: lines 10–12 (3 records) tx 22srm8iGWSzzK6H7VEn34fwRVzRgvDrEoM4yXqcQnyPQmJEApxMrhwjoSs4FpHuyWiTEY4h4vRQrbWsUyBKDYwce
+VERIFIED line 11 — batch 1, slot 32, 2026-10-07T02:38:26Z, tx 22srm8…BKDYwce, registry 5DUzCe7nW23RRWHzqvNHPs6V7biNP4eqEPbrj5YFxnGh (authority 3Q2guAHRjtUdhbTvvXzztpjEdFG8RpMm15fv6Lho4mzD)   # saída 0
+```
+
+Os mesmos comandos funcionam na devnet com `AVAL_REGISTRY_RPC` sem definir (o padrão é a devnet);
+nesse caso é preciso ter SOL de devnet e fazer o deploy do programa lá.
+
+Para não depender de um único RPC, passe um segundo, independente, com `--cross-check <url>` (ou
+`AVAL_REGISTRY_RPC_2`) no `verify`: toda conta lida precisa ser idêntica nos dois. Se divergirem, ou um
+falhar, o `verify` sai com 2 ("não deu para checar"), nunca com 0 nem 1; só diz VERIFIED quando ambos concordam.
+
+## Avaliação adversarial
+
+`03_GERAR_CASOS.bat` cria 600 casos-base e aproximadamente 20% de equivalentes
+metamórficos. Cada execução usa uma seed aleatória registrada em
+`results/solana_cases.jsonl`, distribui casos entre `development` e `holdout` e
+embaralha tipos, valores, limites e textos. `09_SIMULAR_ATAQUES_SOLANA.bat` executa
+exatamente o arquivo preparado, evitando gerar outro conjunto durante a medição.
+
+O relatório separa acurácia do pipeline, decisão bruta do LFM, overrides,
+componentes, baselines triviais, development/holdout e estabilidade metamórfica.
+Consulte [AVALIACAO_E_TESTES.md](AVALIACAO_E_TESTES.md) para ablações e limites da
+metodologia.
+
+## RPC Solana
+
+`09_SIMULAR_ATAQUES_SOLANA.bat` executa casos sintéticos e sobe um RPC mock somente
+em `127.0.0.1`; ele não transmite transações nem precisa de acesso à mainnet.
+
+Para verificar uma transação Solana real já serializada, configure um endpoint RPC
+antes de iniciar a API:
+
+```bat
+set "SOLANA_RPC_URL=https://seu-endpoint-solana"
+08_API_UNICA.bat
+```
+
+Também é possível alterar `solana_rpc_url` em `config/settings.json`. A API chama
+apenas `simulateTransaction`, com `sigVerify=false` e
+`replaceRecentBlockhash=true`; ela não chama `sendTransaction`. Não coloque chaves
+privadas no arquivo de configuração.
+
+Por padrão, `config/settings.json` já contém os RPCs públicos oficiais de Devnet,
+Testnet e Mainnet. Devnet é o cluster padrão. Para selecionar outro endpoint sem
+editar o arquivo:
+
+```bat
+set "SOLANA_CLUSTER=testnet"
+08_API_UNICA.bat
+```
+
+Ou informe `"cluster": "mainnet"`, `"testnet"` ou `"devnet"` dentro do objeto
+`solana` da requisição. A transação serializada deve ter sido construída para o
+cluster escolhido. Os endpoints públicos têm limite de uso e não oferecem SLA.
+
+`03_GERAR_CASOS`/`catalog` clonam o DeFiHackLabs em `external/` (precisa de `git`).
+
+## Endpoints
+- `POST /v1/transactions/verify` — blacklist → camada 1 (política + IA) → simulação Anvil.
+- `POST /v1/agent/run` — Prompt Guard antes da IA; injection retorna `decision=BLOCK`.
+- `GET /health` — saúde e rotas.
+
+Auditoria em `results/api_audit.jsonl`. Blacklist em `config/blacklist.json`.
+
+> Uso apenas local (127.0.0.1). Nunca use chaves privadas reais nem rode contra a mainnet.

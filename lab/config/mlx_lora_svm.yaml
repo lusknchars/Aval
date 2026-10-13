@@ -1,0 +1,9 @@
+# LoRA config for mlx_lm.lora (scripts/train_mlx.sh). CLI flags in the script override nothing here
+# except where noted; rank/scale/dropout can only be set via this file.
+lora_parameters:
+  rank: 16
+  scale: 2.0      # = alpha/rank with alpha 32 (mlx default is 20, too hot for lr 1e-4 on all layers)
+  dropout: 0.05
+max_seq_length: 2560   # longest train example is 2446 tokens with the Qwen2.5 template
+val_batches: -1        # whole valid.jsonl at every eval
+seed: 42

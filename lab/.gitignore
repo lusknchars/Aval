@@ -1,0 +1,44 @@
+# Arquivos/pastas ocultos (.venv, .venv-lora, .cache, etc.)
+.*
+!.gitignore
+!.github/
+
+# Modelos grandes: baixe com BAIXAR_MODELOS.bat / baixar_modelos.sh
+*.gguf
+!models/VETO-Security-LoRA-F16.gguf
+models/Llama-Prompt-Guard-2-86M/
+models/VETO-Security-Gemma3-4B-LoRA/
+*.safetensors
+models/veto-*/
+models/*.gguf
+
+# Binarios e ferramentas de terceiros
+llama/
+tools/
+external/
+
+# Python / temporarios
+__pycache__/
+*.pyc
+results/tmp*/
+
+# Rust (aval-svm)
+svm/target/
+results/aval_shadow.jsonl
+results/aval-svm.log
+results/demo-records.jsonl*
+results/demo-tampered.*
+results/svm_effects.jsonl
+results/svm_effects_synth.jsonl
+results/svm_effects.v2.jsonl
+results/svm_dataset/
+results/svm_dataset_run.log
+
+# Anchor (aval-registry)
+registry/target/
+registry/.anchor/
+registry/.localnet/
+registry/node_modules/
+*-keypair.json
+results/bench_effects_*.jsonl
+results/benchmark/

@@ -1,0 +1,27 @@
+{
+  "llm_url": "http://127.0.0.1:18080/v1/chat/completions",
+  "prompt_guard_url": "http://127.0.0.1:8090/scan",
+  "blacklist_path": "config/blacklist.json",
+  "anvil_rpc_url": "http://127.0.0.1:8545",
+  "anvil_timeout_seconds": 30,
+  "solana_rpc_url": "",
+  "solana_cluster": "devnet",
+  "solana_rpc_by_cluster": {
+    "devnet": "https://api.devnet.solana.com",
+    "testnet": "https://api.testnet.solana.com",
+    "mainnet": "https://api.mainnet.solana.com"
+  },
+  "aval_svm_url": "http://127.0.0.1:8899",
+  "aval_svm_cluster": "devnet",
+  "aval_svm_timeout_seconds": 12,
+  "solana_timeout_seconds": 30,
+  "seed": 42,
+  "synthetic_count": 600,
+  "max_historical": 80,
+  "max_output_tokens": 450,
+  "llm_timeout_seconds": 150,
+  "benchmark_workers": 2,
+  "rpc_by_chain": {
+    "ethereum": "", "bsc": "", "arbitrum": "", "polygon": "", "optimism": "", "base": "", "avalanche": "", "fantom": "", "gnosis": ""
+  }
+}
