@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/aval-logo-animated.svg" alt="AVAL" width="620">
+</p>
+
 # Aval
 
 **A safety check that sits between an AI agent and its Solana wallet.**
