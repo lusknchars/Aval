@@ -16,7 +16,7 @@ const proxy = {
 
 // Bind to 127.0.0.1: plain "localhost" lands on IPv6 only, which some
 // browsers and extensions can't reach.
-// `vite build --mode public` builds the landing page only: the console (and
+// `vite build --mode public` builds the landing page and the docs only: the console (and
 // the private Veto snapshots it bundles) stays out of the public deploy, and
 // /app/ is served by the placeholder in public-only/.
 export default defineConfig(({ mode }) => ({
@@ -30,8 +30,12 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       input: mode === 'public'
-        ? { site: resolve(import.meta.dirname, 'index.html') }
-        : { site: resolve(import.meta.dirname, 'index.html'), console: resolve(import.meta.dirname, 'app/index.html') },
+        ? { site: resolve(import.meta.dirname, 'index.html'), docs: resolve(import.meta.dirname, 'docs/index.html') }
+        : {
+            site: resolve(import.meta.dirname, 'index.html'),
+            docs: resolve(import.meta.dirname, 'docs/index.html'),
+            console: resolve(import.meta.dirname, 'app/index.html'),
+          },
     },
   },
 }))

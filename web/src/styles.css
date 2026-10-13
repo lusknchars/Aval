@@ -519,6 +519,7 @@ p { text-wrap: pretty; }
 .pill__menu a span { color: var(--mute); font-size: 11px; }
 .pill__menu a:hover, .pill__menu a.is-on { background: var(--s2); color: var(--ink); }
 .pill__menu .pill__console { color: var(--ink); border-top: 1px solid var(--l1); border-radius: 0 0 6px 6px; margin-top: 4px; }
+.pill__menu .pill__console--next { border-top: 0; margin-top: 0; }
 .hud .nav__status { display: inline-flex; gap: 6px; align-items: center; }
 .hud .nav__status i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink); animation: pulse 1.6s infinite; }
 

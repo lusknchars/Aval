@@ -99,7 +99,8 @@ function SectionPill() {
                 </a>
               </motion.li>
             ))}
-            <li role="none"><a role="menuitem" href="/app/" className="pill__console">Open console →</a></li>
+            <li role="none"><a role="menuitem" href="/docs/" className="pill__console">Read the docs →</a></li>
+            <li role="none"><a role="menuitem" href="/app/" className="pill__console pill__console--next">Open console →</a></li>
           </motion.ul>
         )}
       </AnimatePresence>
@@ -127,6 +128,7 @@ export default function App() {
           <Scramble as="a" text="lifecycle" className="nav__link" href='#lifecycle' />
           <Scramble as="a" text="speed" className="nav__link" href='#speed' />
           <Scramble as="a" text="receipts" className="nav__link" href='#receipt' />
+          <Scramble as="a" text="docs" className="nav__link" href='/docs/' />
         </nav>
         <div className="nav__right">
           <ThemeToggle />
@@ -309,6 +311,7 @@ export default function App() {
               </div>
               <div className="finale__cta">
                 <ScrambleButton label="Open the console" href="/app/" />
+                <ScrambleButton label="Read the docs" href="/docs/" variant="ghost" />
                 <ScrambleButton label="Back to the top" href="#home" variant="ghost" />
               </div>
             </div>
@@ -318,7 +321,7 @@ export default function App() {
             </div>
             <footer className="footer">
               <span>AVAL · built for VETO · Superteam Brasil 2026</span>
-              <span className="footer__links"><a href="#feed">Verdicts</a><a href="#lifecycle">Lifecycle</a><a href="/app/">Console</a></span>
+              <span className="footer__links"><a href="#feed">Verdicts</a><a href="#lifecycle">Lifecycle</a><a href="/docs/">Docs</a><a href="/app/">Console</a></span>
               <span>EOF</span>
             </footer>
             <p className="footer__credits">3D Solana model by <a href="https://sketchfab.com/3d-models/solana-logo-7b786b250ea74f0bbb007b1b99792745" target="_blank" rel="noreferrer">eshraqism</a> · CC BY 4.0</p>
