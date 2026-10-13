@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#050505" />
+    <script>
+      /* Apply the saved or system theme before first paint, so nothing flashes. */
+      (function () {
+        var t = null
+        try { t = localStorage.getItem('aval.theme') } catch (e) {}
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+        document.documentElement.dataset.theme = t
+        /* Cover the page until the load sequence (Preloader) takes over. */
+        document.write('<style>#boot{position:fixed;inset:0;z-index:999;background:' + (t === 'light' ? '#f2f2ef' : '#050505') + '}</style>')
+      })()
+    </script>
+    <title>AVAL — EDR for autonomous agents</title>
+    <link rel="icon" type="image/svg+xml" href="/brand/aval-mark-dark.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,500;0,600;0,700;1,500;1,700&family=Martian+Mono:wdth,wght@75..112.5,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="boot"></div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

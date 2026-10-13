@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#050505" />
+    <title>AVAL console</title>
+    <link rel="icon" type="image/svg+xml" href="/brand/aval-mark-dark.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      :root { --bg: #050505; --ink: #ececec; --dim: #8a8a8a; --line: rgba(255,255,255,.12); }
+      @media (prefers-color-scheme: light) { :root { --bg: #f2f2ef; --ink: #0d0d0c; --dim: #5d5d58; --line: rgba(0,0,0,.12); } }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg); color: var(--ink); font-family: 'Martian Mono', ui-monospace, monospace; }
+      main { max-width: 560px; display: grid; gap: 20px; }
+      img { width: 72px; height: 72px; }
+      p.k { margin: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+      h1 { margin: 0; font-family: 'Chakra Petch', system-ui, sans-serif; font-size: clamp(32px, 7vw, 52px); line-height: 1; }
+      p { margin: 0; color: var(--dim); font-size: 14px; line-height: 1.7; }
+      a.b { justify-self: start; padding: 12px 20px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+      a.b:hover { border-color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/brand/aval-mark-dark.svg" alt="" />
+      <p class="k">AVAL · operator console</p>
+      <h1>The console runs next to the engine.</h1>
+      <p>The operator console connects to a running Veto engine, so it is shown live during the demo rather than hosted here. Everything on the landing page is the same product, end to end.</p>
+      <a class="b" href="/">← Back to AVAL</a>
+    </main>
+  </body>
+</html>
