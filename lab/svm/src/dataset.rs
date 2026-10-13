@@ -572,6 +572,7 @@ mod tests {
                 post: post.into_iter().collect(), blockhash: Hash::default(), clock: Default::default(),
             },
             pre: pre.into_iter().collect(), slot: 900, min_slot: 900, hits: 0, misses: 0, elapsed_us: 0, digest: "ab".repeat(32),
+            upstreams: 1, worlds: 1, divergent: false, alternate: None, disputed: vec![],
         }
     }
 
