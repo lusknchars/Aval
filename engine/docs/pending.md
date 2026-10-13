@@ -1,0 +1,136 @@
+# Pending work, by block
+
+*Tracked during construction, not written afterwards.*
+
+Urgency: **B** blocks the next piece · **P** the product is not complete
+without it · **D** known debt, can wait.
+
+---
+
+## Block 1 — Types (`src/types/`) — *built*
+
+What exists: the closed vocabulary of 8 effects, `EffectSet`, `ActionContext`
+with provenance, `ToolManifest` with reference validation, `Verdict`.
+
+| # | Item | Urgency |
+|---|---|---|
+| 1.1 | ~~Always-critical effect set~~ — built in `evaluation/critical.ts`. Former text: **the set** (`AUTHORITY_CHANGE`, `OWNER_CHANGE`, unlimited `DELEGATE_GRANT`). The safety net under an incomplete `mustNot`, and the only check that works with no manifest at all. Does not exist. | **P** |
+| 1.2 | ~~`ArgRef` resolver~~ — built in `evaluation/manifest.ts`; an unresolved reference becomes a coverage finding. Former text: **resolver** — resolve `arg:from` against the tool call arguments, failing explicitly. Static validation exists; runtime resolution does not. | **B** |
+| 1.3 | ~~Combination rule~~ — built in `evaluation/verdict.ts`, severity ceiling. Former text: **decide** — severity ceiling → `allow`/`flag`/`deny`. Types and thresholds exist; the function belongs to the evaluation layer. | **P** |
+| 1.4 | ~~bigint serialization~~ — **resolved in block 2**: decimal strings in fixtures. | done |
+| 1.5 | ~~policyVersion~~ — derived from a hash of manifests, thresholds and customer configuration. Former text: **composition** — today it is a free string. It must be derived from manifest versions + thresholds + classifier version. | **D** |
+| 1.6 | `MAX_TOLERANCE = 0.10` is arbitrary calibration, chosen with no data. Measure the p99 slippage of a legitimate swap. | **D** |
+| 1.7 | A severity of its own for **extreme slippage** (manifests now carry tolerance; passing far inside it is still not a signal) — the spec asks for it; today tolerance is binary (inside passes, outside is a finding). | **D** |
+| 1.8 | An explicit exception for a tool that legitimately needs more slack than the cap. | **D** |
+
+---
+
+## Block 2 — RPC and fixtures (`src/normalization/`) — *built*
+
+What exists: `rpc.ts` with the `RpcClient` interface and a web3.js-backed
+implementation; `fixture.ts` with the recorded format and a fake client;
+`src/cli/record-fixture.ts`; three recorded fixtures.
+
+| # | Item | Urgency |
+|---|---|---|
+| 2.1 | ~~Fixture recorder~~ | done |
+| 2.2 | ~~Minimum fixtures~~ — `transfer-sol`, `create-ata`, `unlimited-approve` recorded. | done |
+| 2.3 | ~~Fake `RpcClient`~~ | done |
+| 2.4 | ~~`lamportsExact` is consumed by nobody~~ — an observed account whose balance arrived rounded now produces `coverage.inexact_lamports` (low). | **P** |
+| 2.5 | ~~Partial failure in `readLookupTables`~~ — resolved: unreadable tables are named in `unresolvedTables`. Former text: **partial failure** — the first error currently brings down the whole read. Resolving what it can and flagging incomplete coverage is probably right. | **P** |
+| 2.6 | ~~Timeout and retry policy~~ — 1.5 s per read, 3 s per simulation, and a 5 s total budget held by the normalizer itself, because an `RpcClient` is an interface and an integrator's implementation may have no deadline at all. Running out degrades to `unavailable`. Retry policy beyond the alignment attempts is still undecided. | **P** |
+| 2.7 | **Latency budget unmeasured.** Resolving lookup tables is an extra round trip; the target is deciding under 100 ms. No measurement has been taken. One call was removed from the critical path: the fee now comes from the bytes rather than from `getFeeForMessage`. | **P** |
+| 2.8 | `identifyNetwork` exists but is never called automatically. Decide whether it is mandatory at client construction. | **D** |
+| 2.9 | ~~Behaviour under rate limiting~~ — a 429 surfaces as an `RpcFailure`, which becomes `unavailable`, which is a critical coverage finding and therefore a deny. Verified end to end after a real 429 took down a sampling run. | **P** |
+| 2.12 | ~~Version 1 transactions cannot be simulated~~ — **resolved**: simulation now speaks JSON-RPC directly and passes the caller's original bytes through, so nothing has to be re-serialized. Verified against 6 v1 mainnet transactions, agreeing with a raw RPC call on all 6, including one that simulates successfully. The same change removes the SDK's rejection of compiled inner instructions. Former text: **cannot be simulated.** `@solana/web3.js` 1.x reads a v1 message but refuses to serialize one, and `simulateTransaction` serializes before sending. Measured on mainnet: 8 of 40 non-vote transactions, so roughly a fifth of real traffic, come back as `unavailable`. This is a production limitation, not just a sampling artifact: an agent handing AVAL a v1 transaction would hit the same wall. Proposed fix: keep the original bytes and send them straight to the RPC as a JSON-RPC call, since only the SDK's serializer is missing, not the RPC's support. | **B** |
+| 2.13 | PARTLY IMPROVED — the fee no longer costs a call, so each attempt is two calls instead of three. Former text: **alignment retries multiply RPC volume.** Three attempts means up to six calls per transaction. Measured over 60 mainnet transactions on a free tier, that produced enough 429s to make alignment *worse* than a single attempt. `alignmentAttempts` is now a caller option, and bulk work should use 1 with a pause between transactions. A budget-aware default is still missing. | **P** |
+| 2.11 | **The baseline and the simulation can disagree.** Mitigated, not solved: the read and the simulation are fired in parallel and retried until both report the same slot, which fixed the arithmetic in 4 of 5 runs against a busy mainnet account. The fifth still showed a movement that was not this transaction's, so identical slot numbers do not guarantee an identical view. Declared through `EffectSet.baselineSlot` and a CLI warning. Option not yet taken: sample twice and require the effects to match, at the cost of doubling the RPC calls. Former text: **different slots.** There is no way to read account state and simulate atomically over public RPC, so anything that changes an observed account in between is attributed to this transaction. Observed on mainnet: a busy destination account gained lamports from unrelated transfers inside a one-slot gap. Declared through `EffectSet.baselineSlot` and a CLI warning, but not solved. Options to evaluate: simulate first and read the baseline at the simulation's slot; retry when the slots disagree; or accept the gap for accounts with low churn, which is the agent's own case. | **P** |
+| 2.10 | ~~No fixture uses an Address Lookup Table~~ — resolved differently: lookup tables are built offline in the tests, so no recorded mainnet fixture is needed. Former text: **no fixture uses a lookup table.** Fixtures are built by us on devnet; a historical mainnet transaction cannot be simulated today because state has moved. `contas`/`accounts` resolution will need a different fixture shape: message and table contents, with no post-state. | **B** |
+
+---
+
+## Block 3 — SPL decoding (`spl.ts`) — *built*
+
+Read `amount`, `owner`, `delegate`, `delegatedAmount`, `state` and
+`closeAuthority` from the bytes, at fixed offsets, with no IDL.
+
+| # | Item | Urgency |
+|---|---|---|
+| 3.1 | ~~Token-2022~~ — base fields decode, and the extension TLV is parsed for its type ids so only the ones that could hide movement are reported. Former text: **not covered.** Same base layout, but extensions change the account size. Decision: cover the classic Token Program only and record Token-2022 as "not covered" in `coverage`. | **P** |
+| 3.2 | PARTLY DONE — an observed account owned by Stake, Vote, the upgradeable loader or Config whose bytes changed now produces `coverage.undecoded_authority_account` (high). Former text: **stake and vote out of scope.** `AUTHORITY_CHANGE` includes stake authorities and program upgrade authority; none will be read at first. Mark as not covered. **Still missing:** actually decoding them, which would turn one blanket high into a real `AUTHORITY_CHANGE` with the old and new authority named. | **P** |
+| 3.3 | ~~Mint `decimals`~~ — `decodeMint` reads them. Caching is still open. Former text: **mint decimals** — needed for the manifest's `decimal` unit. It requires reading the mint account, which is another round trip. Cache? | **B** |
+| 3.4 | ~~Closed account vs unobserved~~ — resolved in the diff. Former text: a **closed** token account comes back as `null` in the post-state. Tell that apart from "not observed". | **B** |
+
+---
+
+## Block 4 — Account resolution (`accounts.ts`) — *built*
+
+| # | Item | Urgency |
+|---|---|---|
+| 4.1 | ~~Resolve lookup tables before signing~~ — done. Former text: **resolve lookup tables** — verified to work (table `Hu5cMUbi…` index 111 returns the same account the executed transaction showed). Implementation missing. | **B** |
+| 4.2 | ~~Build the observation list~~ — done: writable accounts only. Former text: **build the list.** This is what defines coverage: anything not requested never shows up in the simulation. | **B** |
+| 4.3 | ~~`args_plus_derived` scope~~ — enforced in `evaluation/scope.ts`. Former text: requires deriving PDAs and ATAs from the arguments. Without it the manifest's account scope is not verifiable. **Still partial:** an ATA is derived and a token account's `owner` is read from its own bytes, but a third-party program's PDA is not derivable, so a tool that routes through one has to declare `open`. | **P** |
+| 4.4 | **Writable demotion** — the message declares writable; the runtime may demote. The message flag is not absolute truth, but it IS an upper bound, and a resolution agreement test now confirms our reading of it matches the SDK's `isAccountWritable` index by index across seven message shapes. | **D** |
+| 4.5 | ~~Account cap~~ — measured at 64 by the RPC, and handled: the first 64 writable accounts in message order are observed, the rest become `coverage.account_limit_exceeded` (high). Real traffic: median 6, p90 12, max 41. Former text: resolved by observing only writable accounts. Former text: **account cap.** A transaction can reference ~256 accounts with lookup tables. Asking for all of them costs; asking for fewer creates a blind spot. Decide the limit and what happens past it. | **P** |
+
+---
+
+## Block 5 — Diff (`diff.ts`) — *built*
+
+| # | Item | Urgency |
+|---|---|---|
+| 5.1 | ~~Wrapped SOL counted twice~~ — resolved: a token account reports its token side only. Former text: **counted twice.** Observed in a real swap: the lamport delta and the token delta on the same account are identical. Needs an explicit rule. | **B** |
+| 5.2 | ~~Fee attribution~~ — resolved: the fee leaves the payer's delta and is carried on `EffectSet.fee`. Former text: **fee and rent.** The post-state already deducts the fee from the fee payer (verified). That must not become a `BALANCE_DECREASE` attributed to the user's intent. | **B** |
+| 5.3 | ~~Detect create and close~~ — done. Former text: **detect create/close** from `null → exists` and `exists → null` transitions. Depends on 3.4. | **B** |
+| 5.4 | ~~PROGRAM_INVOKE from innerInstructions~~ — done, both response shapes narrowed at runtime. Former text: **two shapes** — two possible shapes in the response (`jsonParsed` and compiled). The installed SDK only validates the first. | **P** |
+| 5.5 | ~~Noise threshold~~ — settled: nothing is filtered by size. Former text: **noise threshold.** Not every lamport change is a meaningful effect. Define what counts as noise without creating a blind spot. | **P** |
+| 5.6 | ~~Unlimited allowance~~ — `always_critical.unlimited_delegate` is its own rule, critical, and fires with no manifest at all. | **P** |
+
+---
+
+## Block 6 — Orchestration (`normalize.ts`) — *built*
+
+| # | Item | Urgency |
+|---|---|---|
+| 6.1 | ~~Assemble the EffectSet~~ — done. Former text: assemble: effects + `slot` + `simulation` + `coverage`. | **B** |
+| 6.2 | ~~Explicit degradation~~ — done, with tests for each path. Former text: **explicit degradation**: RPC down, simulation refused, incomplete coverage — each with its own path, none collapsing into an empty effect list. | **B** |
+| 6.3 | ~~minContextSlot~~ — applied between the read and the simulation. Former text: `minContextSlot` between the before-read and the simulation. Decide whether it is mandatory. | **D** |
+
+---
+
+## Block 7 — CLI (`src/cli/`) — *built*
+
+| # | Item | Urgency |
+|---|---|---|
+| 7.1 | ~~`inspect`~~ — done. Former text: **inspect** — take a mainnet signature or a base64 transaction and print a readable `EffectSet`. | **P** |
+| 7.2 | ~~`record-fixture`~~ | done |
+| 7.3 | ~~JSON output~~ — done, amounts as decimal strings. Former text: **JSON output** (`--json`) for research scripts. | **P** |
+| 7.4 | ~~Never print secrets~~ — inherited from the RPC module, verified. Former text: **never print.** Handled in the RPC module; the CLI must inherit the discipline. | **P** |
+| 7.5 | ~~Distinct exit codes~~ — done: 0 pass, 1 input, 3 unavailable, 4 would fail. Former text: distinct exit codes, like the exploration scripts. | **D** |
+| 7.6 | Decide whether this becomes a publishable binary (`bin` in `package.json`) or stays on `tsx`. | **D** |
+
+---
+
+## Cross-cutting
+
+| # | Item | Urgency |
+|---|---|---|
+| T.1 | PARTLY DONE — source patterns now match on label boundaries and `validateSourceTrust` rejects shapes that would silently widen trust. Still missing: the preview showing what a pattern would match against real traffic. Former text: **no validation.** It is the only place where a mistake *switches off a whole detector without saying so* (an over-broad `SourceTrust` pattern). Defence: require a full hostname, plus a **preview** of what the pattern would match against real traffic. | **P** |
+| T.2 | ~~The manifest/tool seam~~ — an unresolved reference now produces `coverage.unresolved_reference`. Former text: **the seam.** Nobody types anything wrong and it still fails to line up. An unresolved reference must become a `coverage` finding. | **P** |
+| T.3 | **Allowlisted addresses are never checked on-chain.** A mistyped address almost never exists — that is detectable at input time. | **D** |
+| T.4 | **No performance measurement anywhere.** | **P** |
+| T.5 | **No CI.** `pnpm typecheck && pnpm test` should run on every push. | **D** |
+| T.6 | The three specification documents in `docs/` are in Portuguese; everything else is in English. Decide whether to translate them. | **D** |
+| T.7 | **No manifest for funding a token account.** Two recorded scenarios (`token-to-wallet`, `create-ata`) wrap the payer's SOL into a token account that did not exist. No token leaves anyone, so `transfer_token` reported a decrease that was never going to happen. They now degrade to `coverage.no_manifest`; the primitive deserves one of its own. | **P** |
+| T.8 | **Aggregate check (D) still absent.** A hundred outflows of 499 under a ceiling of 500 pass. Check B now sums the legs WITHIN one transaction; across transactions there is still nothing. | **P** |
+| T.9 | ~~Scope severities are calibration~~ — measured: zero scope findings on honest declarations across real mainnet traffic, once `swap` stopped claiming a scope it could not enforce. Still calibration, now with evidence. | **P** |
+| T.10 | **A swap that drains a DIFFERENT mint from the caller's own account.** It matches `swap`'s loose `may`, and the scope check is `open` there. Provenance still asks who receives it, so it is only unseen when the attacker routes the proceeds to an address the user already named. Closing it needs negation in effect patterns ("a decrease owned by `arg:from` of any mint other than `arg:mint`"), which the schema cannot express today. | **P** |
+| T.12 | ~~Token-2022 extensions are reported, not read~~ — the extension TLV is now parsed for its type ids, so a metadata pointer is silent and a transfer hook is named. Still open: the extension VALUES are not read, so `transfer_hook` says a hook exists, not which program it calls. | **P** |
+| T.14 | **A simulation is not an execution.** `simulateTransaction` runs against the state of one slot. Between the verdict and the transaction landing, prices move, oracles update, a pool empties, and a program branching on `Clock` or on a sysvar takes a different path. A transaction that simulates benign can execute otherwise. This is the deepest limitation of the whole approach, and the architectural answer is an on-chain assertion (Lighthouse) that fails the transaction if the state it depended on moved — not a better simulator. | **P** |
+| T.15 | **A transaction that would fail is allowed.** It causes nothing, so `must.missing.*` is suppressed and the verdict is ALLOW with two low coverage findings. Harmless if it is submitted now. Not harmless if it is held and submitted later, when the state that made it fail has changed: the same bytes then execute, against a verdict that never saw them succeed. The `messageDigest` binding does not help here — the bytes are the same ones. | **P** |
+| T.16 | **Third-party program state produces nothing.** The authority-bearing list is the four NATIVE programs. A Squads multisig changing its signer set, a lending position being reassigned, a perps account's owner moving: all invisible, because the diff only decodes lamports and the two token layouts. The list cannot be completed — there is no way to enumerate every program whose state carries control. | **P** |
+| T.17 | **An attacker address inside the user's own prompt is trusted.** By design: provenance tracks origin and never truthfulness. A user who pastes a poisoned address into their own message gives it `user` provenance, which is the most trusted tier. Rejected remedy in `decisions.md`: an LLM rewriting the goal, which would let an address be introduced carrying user provenance. | **D** |
+| T.18 | **Degrade-never-open makes availability an attack surface.** An unreachable or rate-limited RPC produces `unavailable`, which is critical, which is DENY. Whoever can degrade the RPC can stop all agent activity. That is the correct trade for a security gate and it is still a denial of service; it needs to be a deliberate, documented operational choice rather than a surprise. | **P** |
+| T.19 | **A tool with no manifest that simply drains is only a FLAG.** `coverage.no_manifest` is medium, and the safety net covers authority changes, owner changes and unlimited delegates — not a plain transfer to an address the user happened to name. A customer who auto-approves FLAGs has no protection on a tool nobody wrote a manifest for. | **P** |
+| T.13 | **A 100% transfer fee is invisible to the manifest.** Both sides are observed, so it is not a coverage gap — but `must` bounds the decrease and nothing bounds how little arrives, so a token engineered to eat the whole transfer would be allowed. It is a token-design attack rather than an agent-divergence one, and the token was already that way before the agent acted. | **D** |
+| T.11 | **Roughly 80% of sampled mainnet traffic matches no primitive we cover.** Those are arbitrage and MEV bundles, not agent traffic, so the number is context rather than a defect — but it is unmeasured for real agent traffic, and that is the number that matters. | **P** |

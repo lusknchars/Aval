@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AVAL pipeline</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #161a21; --line: #242a34;
+    --ink: #e6e9ef; --dim: #8b93a1; --faint: #5b626f;
+    --accent: #6ea8fe;
+    --allow: #3fb950; --flag: #d29922; --deny: #f85149;
+    --low: #5b626f; --medium: #d29922; --high: #f0883e; --critical: #f85149;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #fbfcfd; --panel: #ffffff; --line: #e3e7ec;
+      --ink: #1b2027; --dim: #5b636f; --faint: #8b93a1;
+      --allow: #1a7f37; --flag: #9a6700; --deny: #cf222e;
+      --low: #8b93a1; --medium: #9a6700; --high: #bc4c00; --critical: #cf222e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 16px 80px; }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--dim); font-size: 13px; margin: 0 0 28px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 18px; margin-bottom: 14px;
+  }
+  label { display: block; font-size: 12px; color: var(--dim); margin: 0 0 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  input, textarea, select, button {
+    width: 100%; font: inherit; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--line);
+    border-radius: 7px; padding: 9px 11px;
+  }
+  textarea { resize: vertical; min-height: 58px; }
+  .row { display: grid; gap: 12px; margin-bottom: 12px; }
+  @media (min-width: 700px) { .two { grid-template-columns: 1fr 1fr; } }
+  button {
+    background: var(--accent); color: #06101f; border: none;
+    font-weight: 600; cursor: pointer; margin-top: 4px;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .stage { margin-top: 22px; }
+  .stage h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--dim); margin: 0 0 8px; display: flex; align-items: baseline; gap: 8px;
+  }
+  .stage h2 .n {
+    font-family: var(--mono); color: var(--faint); font-size: 11px;
+    border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px;
+  }
+  .mono { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+  .mono.tight { word-break: normal; white-space: nowrap; }
+  .chunk { border-left: 3px solid var(--line); padding: 2px 0 2px 11px; margin-bottom: 11px; }
+  .chunk.user { border-color: var(--allow); }
+  .chunk.untrusted { border-color: var(--deny); }
+  .stamp {
+    font-family: var(--mono); font-size: 11px; color: var(--dim);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-weight: 500; color: var(--dim); font-size: 11px;
+       text-transform: uppercase; letter-spacing: 0.05em; padding: 0 10px 6px 0; }
+  td { padding: 5px 10px 5px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  .sev { font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .sev.low { color: var(--low); } .sev.medium { color: var(--medium); }
+  .sev.high { color: var(--high); } .sev.critical { color: var(--critical); }
+  .verdict { display: flex; align-items: center; gap: 14px; }
+  .verdict .big { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+  .verdict.allow .big { color: var(--allow); }
+  .verdict.flag .big { color: var(--flag); }
+  .verdict.deny .big { color: var(--deny); }
+  .step { display: flex; gap: 10px; align-items: baseline; padding: 3px 0; color: var(--faint); font-size: 13px; }
+  .step.held { color: var(--ink); font-weight: 600; }
+  .step .mark { font-family: var(--mono); width: 14px; }
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px;
+    margin: 0 4px 4px 0; color: var(--dim);
+  }
+  .err { color: var(--deny); }
+  .panel.agent { border-color: var(--accent); }
+  label.check { display: flex; align-items: center; gap: 8px; margin: 10px 0 0;
+                font-size: 12.5px; color: var(--dim); text-transform: none;
+                letter-spacing: 0; cursor: pointer; }
+  label.check input { width: auto; }
+  .said { border-left: 3px solid var(--accent); padding: 2px 0 2px 11px;
+          margin-bottom: 10px; font-size: 13.5px; color: var(--dim); }
+  .deeper { color: var(--faint); font-size: 11px; text-transform: uppercase;
+            letter-spacing: 0.06em; margin: 26px 0 8px; }
+  details.stage-d { margin-bottom: 8px; }
+  details.stage-d > summary { cursor: pointer; color: var(--dim); font-size: 13px;
+                              padding: 6px 0; }
+  details.stage-d > summary:hover { color: var(--ink); }
+  details.panel.manual > summary { cursor: pointer; color: var(--dim); font-size: 12.5px; }
+  .box { background: var(--bg); border: 1px solid var(--line); border-radius: 7px;
+         padding: 11px 13px; margin-top: 7px; }
+  .box .stamp { margin-bottom: 3px; }
+  .boxes { display: grid; gap: 14px; }
+  @media (min-width: 760px) { .boxes { grid-template-columns: 1fr 1fr; } }
+  a.mini.ext { text-decoration: none; display: inline-block; }
+  .pt { border-left: 3px solid var(--line); padding-left: 14px; }
+  .pt.allow { border-color: var(--allow); }
+  .pt.flag { border-color: var(--flag); }
+  .pt.deny { border-color: var(--deny); }
+  .pt.none { border-color: var(--faint); }
+  .pt.none .pt-v { color: var(--faint); }
+  .pt-v { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; }
+  .pt.allow .pt-v { color: var(--allow); }
+  .pt.flag .pt-v { color: var(--flag); }
+  .pt.deny .pt-v { color: var(--deny); }
+  .pt-s { margin: 6px 0 0; font-size: 15px; line-height: 1.5; }
+  ul.why { margin: 10px 0 0; padding-left: 18px; color: var(--dim); font-size: 13.5px; }
+  ul.why li { white-space: pre-line; }
+  .levels { margin-top: 18px; }
+  .levels .arrow { color: var(--faint); font-size: 16px; margin: 6px 0 2px 2px; }
+  .origin { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+            letter-spacing: 0.05em; color: var(--faint); }
+  ul.why li { margin-bottom: 5px; }
+  details.minor { margin-top: 10px; }
+  details.minor summary { cursor: pointer; color: var(--faint); font-size: 12.5px; }
+  .acts { white-space: nowrap; }
+  button.mini {
+    width: auto; display: inline-block; background: transparent;
+    color: var(--dim); border: 1px solid var(--line); font-size: 11px;
+    font-weight: 500; padding: 3px 8px; margin: 0 4px 0 0; border-radius: 5px;
+  }
+  button.mini:hover { color: var(--ink); border-color: var(--dim); }
+  .rev { border-top: 1px solid var(--line); padding: 12px 0; }
+  .rev:first-child { border-top: none; }
+  .rev-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .rev-n { font-family: var(--mono); font-size: 11px; color: var(--faint);
+           border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+  .rev-k { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase;
+           letter-spacing: 0.05em; color: var(--faint); }
+  .rev-retro { color: var(--dim); font-size: 13px; margin: 6px 0 0; }
+  .rev-retro b { color: var(--ink); font-weight: 600; }
+  .rev-code { color: var(--flag); font-size: 12.5px; margin: 5px 0 0; }
+  .rev-acts { margin-top: 8px; }
+  .rev-stance { font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em;
+                text-transform: uppercase; }
+  .rev-stance.trust { color: var(--allow); }
+  .rev-stance.block { color: var(--deny); }
+  .rev-stance.pend { color: var(--flag); }
+  button.mini.danger { color: var(--deny); }
+  button.mini.danger:hover { border-color: var(--deny); }
+
+  input:disabled { opacity: 0.45; }
+  .foot { color: var(--faint); font-size: 12px; margin-top: 18px; font-family: var(--mono); }
+  .note { color: var(--dim); font-size: 12.5px; margin: 6px 0 0; }
+  .sub-h { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+           color: var(--faint); margin: 0 0 7px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AVAL — the pipeline, end to end</h1>
+  <p class="sub">Type what the user asked for. Everything below is produced by the library itself; nothing is signed and nothing is sent.</p>
+
+  <div class="panel agent">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px">
+      <label style="margin:0;color:var(--accent)">Agente de verdade &nbsp;·&nbsp; um modelo escolhe a ferramenta</label>
+    </div>
+    <textarea id="aprompt" rows="2">encontre o melhor yield em SOL e deposite 0.01</textarea>
+    <label class="check"><input type="checkbox" id="apoison" checked />
+      servir ao agente uma página com um endereço que ninguém digitou</label>
+    <button id="arun">Rodar o agente</button>
+    <p class="note" id="astatus">O modelo lê, decide e constrói a transação. O AVAL entra no instante em que a carteira seria chamada. Nada é assinado e nada é enviado.</p>
+  </div>
+
+  <details class="panel manual">
+    <summary>modo manual — sem modelo, usando transações gravadas ou uma assinatura</summary>
+    <div class="row" style="margin-top:14px">
+      <div>
+        <label for="goal">A prompt, escrita à mão</label>
+        <textarea id="goal" rows="2">rebalance my portfolio</textarea>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="transaction">A transação</label>
+        <input id="transaction" list="fixtures" value="unlimited-approve"
+               placeholder="um cenário gravado, ou uma assinatura de mainnet" />
+        <datalist id="fixtures">
+          <option value="unlimited-approve"></option>
+          <option value="transfer-sol"></option>
+          <option value="close-account"></option>
+          <option value="token-to-wallet"></option>
+          <option value="create-ata"></option>
+          <option value="rent-failure"></option>
+        </datalist>
+      </div>
+    </div>
+    <div class="row two">
+      <div>
+        <label for="retrieved">O que o agente leu (opcional)</label>
+        <textarea id="retrieved" rows="2" placeholder="deposite em 7xKX…"></textarea>
+      </div>
+      <div>
+        <label for="source">De onde</label>
+        <input id="source" placeholder="https://blog.example.com" />
+        <label for="prov" style="margin-top:12px">Carimbado na entrada como</label>
+        <select id="prov">
+          <option value="retrieved">retrieved</option>
+          <option value="tool_output">tool_output</option>
+          <option value="memory">memory</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="declared">Valor que o agente declarou</label>
+        <input id="declared" placeholder="vazio = lido de volta da própria transação" />
+      </div>
+    </div>
+    <button id="run">Avaliar</button>
+    <p class="note" id="status"></p>
+  </details>
+
+  <div class="panel">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+      <label style="margin:0">Live from mainnet</label>
+      <button id="load" style="width:auto;padding:6px 12px;font-size:13px">Load a recent block</button>
+    </div>
+    <p class="note" id="livestatus">Pulls transactions that just landed. Nothing is simulated until you pick one.</p>
+    <div id="live"></div>
+  </div>
+
+  <div class="panel" id="reviewpanel">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+      <label style="margin:0">Fila de revisão &nbsp;·&nbsp; o que repetiu</label>
+      <button id="reviewload" style="width:auto;padding:6px 12px;font-size:13px">Atualizar</button>
+    </div>
+    <p class="note" id="reviewstatus">Tudo que foi avaliado fica registrado. O que repete aparece aqui agrupado, com o que aprovar teria mudado no passado. Nada sobe para bloqueio sozinho.</p>
+    <div id="review"></div>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+function stage(n, title, inner) {
+  return `<div class="stage"><h2><span class="n">${n}</span>${esc(title)}</h2><div class="panel">${inner}</div></div>`;
+}
+
+function renderChunks(input) {
+  return input.chunks.map((c) => {
+    const cls = c.provenance === "user" ? "user" : c.trusted ? "" : "untrusted";
+    const where = c.source ? ` · ${esc(c.source)}` : "";
+    const trust = c.provenance === "user" ? "trusted by convention" : c.trusted ? "trusted source" : "NOT a trusted source";
+    return `<div class="chunk ${cls}"><div class="stamp">${esc(c.provenance)}${where} — ${trust}</div><div>${esc(c.text)}</div></div>`;
+  }).join("");
+}
+
+function renderTool(t) {
+  const args = Object.entries(t.args).map(([k, v]) => `<span class="pill">${esc(k)}: ${esc(v)}</span>`).join("") || '<span class="pill">no arguments</span>';
+  if (t.manifest === null) {
+    return `<div class="mono">${esc(t.name)}</div><div>${args}</div><p class="note err">No manifest for this tool — checks A and B cannot run, and that is reported rather than passed over.</p>`;
+  }
+  const m = t.manifest;
+  return `<div class="mono">${esc(t.name)} <span style="color:var(--faint)">→ manifest ${esc(m.tool)}@${esc(m.version)}</span></div><div>${args}</div>
+    <table style="margin-top:12px"><tr><th>must</th><td>${m.must.map((x)=>`<span class="pill">${esc(x)}</span>`).join("") || "—"}</td></tr>
+    <tr><th>may</th><td>${m.may.map((x)=>`<span class="pill">${esc(x)}</span>`).join("") || "—"}</td></tr>
+    <tr><th>must not</th><td>${m.mustNot.map((x)=>`<span class="pill">${esc(x)}</span>`).join("") || "—"}</td></tr>
+    <tr><th>account scope</th><td><span class="pill">${esc(m.accountScope)}</span></td></tr></table>`;
+}
+
+function renderEffects(t) {
+  if (t.effects.length === 0) {
+    const why = t.transaction.simulationDetail ? ` — ${esc(t.transaction.simulationDetail)}` : "";
+    return `<p class="note">No effects. Simulation: <b>${esc(t.transaction.simulation)}</b>${why}. An empty list is never read as approval.</p>`;
+  }
+  const rows = t.effects.map((e) => `<tr>
+      <td class="mono tight">${esc(e.type)}</td>
+      <td class="mono">${esc(e.account)}</td>
+      <td class="mono">${e.amount ? esc(e.amount) : ""}${e.mint ? " " + esc(e.mint) : ""}</td>
+      <td class="mono">${e.counterparty ? esc(e.counterparty) : e.owner ? "owner " + esc(e.owner) : ""}</td>
+    </tr>`).join("");
+  return `<table><tr><th>effect</th><th>account</th><th>amount</th><th>party</th></tr>${rows}</table>`;
+}
+
+function renderCounterparties(t) {
+  if (t.counterparties.length === 0) return `<p class="note">No counterparty: nothing left the wallet for anybody else.</p>`;
+  const rows = t.counterparties.map((c) => {
+    const sev = c.severity ? `<span class="sev ${c.severity}">${c.severity}</span>` : `<span class="sev low">ok</span>`;
+    const src = c.sources.length ? ` · ${c.sources.map(esc).join(", ")}` : "";
+    return `<tr>
+      <td class="mono">${esc(c.address)}</td>
+      <td class="mono tight">${esc(c.origin)}${src}</td>
+      <td>${sev}</td>
+      <td class="acts">${window.__manualFlow === true
+        ? `<button class="mini" data-act="goal" data-addr="${esc(c.address)}">o usuário pediu</button>
+           <button class="mini" data-act="page" data-addr="${esc(c.address)}">uma página disse</button>`
+        : `<span style="color:var(--faint);font-size:11px">o modelo escolheu — não dá para reescrever depois</span>`}</td>
+    </tr>`;
+  }).join("");
+  return `<table><tr><th>address</th><th>where it came from</th><th></th><th>try changing the origin</th></tr>${rows}</table>
+    ${window.__manualFlow === true ? `<p class="note">A transação não muda. Só muda de onde o endereço veio — que é a tese inteira, em um clique.</p>` : ""}`;
+}
+
+/**
+ * Findings split by what they are ABOUT.
+ *
+ * A finding that says the transaction does something the tool never declared
+ * is an accusation. A finding that says AVAL could not check something is the
+ * absence of evidence. Both are real and both count toward the decision, but
+ * printing them in one list made a transaction that did nothing objectionable
+ * look accused -- which is exactly what happens on a random mainnet
+ * transaction, since it has no agent, no goal and no manifest behind it.
+ */
+function renderFindings(t) {
+  if (t.findings.length === 0) return `<p class="note">Nothing fired.</p>`;
+  const order = { critical: 0, high: 1, medium: 2, low: 3 };
+  const sorted = [...t.findings].sort((a, b) => order[a.severity] - order[b.severity]);
+  const about = sorted.filter((f) => f.group === "does");
+  const compare = sorted.filter((f) => f.group === "compare");
+  const unread = sorted.filter((f) => f.group === "read");
+
+  const table = (rows) => `<table>${rows.map((f) =>
+    `<tr><td><span class="sev ${f.severity}">${f.severity}</span></td><td class="mono tight">${esc(f.rule)}</td><td class="mono" style="color:var(--dim)">${esc(f.check)}</td></tr>`).join("")}</table>`;
+
+  let html = "";
+  html += `<div class="sub-h">what the transaction does</div>`;
+  html += about.length ? table(about)
+    : `<p class="note">Nothing. No effect contradicted a declaration, and no counterparty was explained by an untrusted source.</p>`;
+  if (compare.length) {
+    html += `<div class="sub-h" style="margin-top:18px">what there was nothing to compare against</div>${table(compare)}
+      <p class="note">Not a reading failure. Nobody declared what this operation was supposed to do, so there is no declaration to hold the transaction against.</p>`;
+  }
+  if (unread.length) {
+    html += `<div class="sub-h" style="margin-top:18px">what AVAL could not read</div>${table(unread)}`;
+  } else {
+    html += `<div class="sub-h" style="margin-top:18px">what AVAL could not read</div>
+      <p class="note">Nothing. Every account this transaction touches was read in full.</p>`;
+  }
+  return html;
+}
+
+function renderExplanation(t) {
+  const e = t.explanation;
+  if (!e) return "";
+  const reasons = e.reasons.length
+    ? `<ul class="why">${e.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : "";
+  const minor = e.minor.length
+    ? `<details class="minor"><summary>outros avisos, que sozinhos não mudariam nada (${e.minor.length})</summary><ul class="why">${e.minor.map((r) => `<li>${esc(r)}</li>`).join("")}</ul></details>` : "";
+  const received = e.received.map((r) =>
+    `<li><span class="origin">${esc(r.origin)}</span><br>${esc(r.text)}</li>`).join("");
+  const does = e.does.length
+    ? `<ul class="why">${e.does.map((d) => `<li>${esc(d)}</li>`).join("")}</ul>`
+    : `<ul class="why"><li>nada — a transação não causaria efeito nenhum</li></ul>`;
+  return `<div class="pt ${e.unattributed ? "none" : t.decision.outcome}">
+    <div class="pt-v">${esc(e.verdict)}</div>
+    <p class="pt-s">${esc(e.summary)}</p>
+
+    ${reasons ? `<div class="sub-h" style="margin-top:16px">${e.unattributed ? "o que o AVAL ainda checou, sem declaração nenhuma" : "a diferença"}</div>${reasons}` : ""}
+    ${minor}
+  </div>`;
+}
+
+function renderDecision(t) {
+  const d = t.decision;
+  const steps = d.steps.map((s) => `<div class="step ${s.held ? "held" : ""}"><span class="mark">${s.held ? "→" : ""}</span><span>${esc(s.rule)}</span><span style="color:var(--faint)">(${esc(s.detail)})</span></div>`).join("");
+  const unattributed = t.explanation?.unattributed === true;
+  const caveat = unattributed
+    ? `<div class="note">This transaction has no agent behind it, so this outcome answers a question nobody asked. It is shown for completeness.</div>`
+    : `<div class="note">no weighted score — a severity ceiling, so every decision traces to one named rule</div>`;
+  return `<div class="verdict ${unattributed ? "" : d.outcome}"><div class="big"${unattributed ? ' style="color:var(--faint)"' : ""}>${esc(d.outcome.toUpperCase())}</div>
+    ${caveat}</div>
+    <div style="margin-top:14px">${steps}</div>`;
+}
+
+/**
+ * What the agent received, in the two languages it exists in.
+ *
+ * Read-only on purpose. It used to be a text field, which invited the reader
+ * to type into the one place that is supposed to be a RECORD of what actually
+ * reached the agent. You cannot edit evidence and still call it evidence.
+ */
+function renderReceived(t, agent) {
+  const natural = t.input.chunks.map((c) => {
+    const where = c.provenance === "user"
+      ? "o usuário escreveu"
+      : `o agente leu${c.source ? ` de ${esc(c.source)}` : ""}${c.trusted ? "" : " — fonte NÃO confiável"}`;
+    return `<div class="box"><div class="stamp">${esc(where)}</div>${esc(c.text)}</div>`;
+  }).join("");
+
+  const args = Object.entries(t.toolCall.args)
+    .map(([k, v]) => `<div><span style="color:var(--faint)">${esc(k)}</span>: ${esc(v)}</div>`)
+    .join("");
+  const standard = t.toolCall.manifest === null && Object.keys(t.toolCall.args).length === 0
+    ? `<div class="box"><span style="color:var(--faint)">nada — nenhuma ferramenta foi chamada</span></div>`
+    : `<div class="box"><div class="stamp">${esc(t.toolCall.name)}${t.toolCall.manifest ? ` · manifesto ${esc(t.toolCall.manifest.tool)}@${esc(t.toolCall.manifest.version)}` : " · SEM manifesto"}</div><div class="mono">${args || "sem argumentos"}</div></div>`;
+
+  const does = t.explanation ? t.explanation.does : [];
+  const produced = does.length === 0
+    ? `<div class="box"><span style="color:var(--faint)">sem efeitos</span></div>`
+    : `<div class="box"><ul class="why" style="margin:0">${does.map((d) => `<li>${esc(d)}</li>`).join("")}</ul></div>`;
+
+  return stage("", "o que o agente recebeu, e o que ele produziu",
+    `<div class="boxes">
+       <div><div class="sub-h">em linguagem normal</div>${natural}</div>
+       <div><div class="sub-h">em linguagem padronizada</div>${standard}</div>
+     </div>
+     <div class="sub-h" style="margin-top:18px">a transação que ele produziu</div>${produced}`);
+}
+
+function renderAgent(a) {
+  if (!a) return "";
+  const said = a.steps.map((s) => `<div class="said">${esc(s)}</div>`).join("");
+  const page = a.servedPage
+    ? `<div class="sub-h" style="margin-top:14px">a página que ele leu</div><div class="chunk untrusted"><div class="stamp">tool_output — fonte NÃO confiável</div>${esc(a.servedPage)}</div>`
+    : "";
+  const call = a.toolCall
+    ? `<div class="sub-h" style="margin-top:14px">a ferramenta que ele escolheu</div><div class="mono">${esc(a.toolCall.name)}(${esc(JSON.stringify(a.toolCall.args))})</div>`
+    : "";
+  const stopped = a.stopped
+    ? `<p class="note err">${esc(a.stopped)}</p>` : "";
+  return stage("", "o que o modelo fez, por conta própria",
+    `<div class="sub-h">o que ele disse</div>${said || '<p class="note">nada</p>'}${page}${call}${stopped}`);
+}
+
+async function runTheAgent() {
+  window.__manualFlow = false;
+  const btn = $("arun");
+  btn.disabled = true;
+  $("astatus").textContent = "o modelo está decidindo…";
+  $("out").innerHTML = "";
+  try {
+    const res = await fetch("/agent", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        prompt: $("aprompt").value,
+        poison: $("apoison").checked,
+      }),
+    });
+    const t = await res.json();
+    if (t.error) { $("astatus").innerHTML = `<span class="err">${esc(t.error)}</span>`; return; }
+    $("astatus").textContent = "";
+    $("out").innerHTML =
+      renderAgent(t.agent) +
+      (t.explanation ? renderReceived(t, t.agent) : "") +
+      (t.explanation ? stage("", "o veredito do AVAL", renderExplanation(t)) : "") +
+      (t.findings ? `<div class="deeper">abrir o detalhe técnico</div>` +
+        `<details class="stage-d"><summary>onde cada contraparte se originou</summary><div class="panel">${renderCounterparties(t)}</div></details>` +
+        `<details class="stage-d"><summary>os efeitos, um por um</summary><div class="panel">${renderEffects(t)}</div></details>` +
+        `<details class="stage-d"><summary>o que disparou</summary><div class="panel">${renderFindings(t)}</div></details>` +
+        `<details class="stage-d"><summary>como o veredito foi escolhido</summary><div class="panel">${renderDecision(t)}</div></details>` +
+        `<p class="foot">policy ${esc(t.policyVersion)} · message ${esc(t.transaction.messageDigest ?? "—")}</p>` : "");
+  } catch (e) {
+    $("astatus").innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function run() {
+  window.__manualFlow = true;
+  const btn = $("run");
+  btn.disabled = true;
+  $("status").textContent = "simulating and evaluating…";
+  $("out").innerHTML = "";
+  const body = {
+    goal: $("goal").value,
+    transaction: $("transaction").value.trim(),
+    retrieved: $("retrieved").value,
+    source: $("source").value,
+    provenance: $("prov").value,
+    declaredAmount: $("declared").value.trim(),
+  };
+
+  try {
+    const res = await fetch("/evaluate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const t = await res.json();
+    if (t.error) { $("status").innerHTML = `<span class="err">${esc(t.error)}</span>`; return; }
+    $("status").textContent = "";
+    const detail = (title, inner) =>
+      `<details class="stage-d"><summary>${esc(title)}</summary><div class="panel">${inner}</div></details>`;
+    $("out").innerHTML =
+      renderReceived(t, null) +
+      stage("", "o veredito", renderExplanation(t)) +
+      `<div class="deeper">abrir o detalhe técnico</div>` +
+      detail("onde cada contraparte se originou", renderCounterparties(t)) +
+      detail("o manifesto que governa esta ferramenta", renderTool(t.toolCall)) +
+      detail("os efeitos, um por um", renderEffects(t)) +
+      detail("o que disparou", renderFindings(t)) +
+      detail("como o veredito foi escolhido", renderDecision(t)) +
+      (body.transaction.length >= 80 ? `<p class="foot"><a href="https://solscan.io/tx/${esc(body.transaction)}" target="_blank" rel="noreferrer noopener" style="color:var(--accent)">ver esta transação no Solscan ↗</a></p>` : "") +
+      `<p class="foot">policy ${esc(t.policyVersion)} · message ${esc(t.transaction.messageDigest ?? "not hashed")}<br>slot ${esc(t.transaction.slot ?? "—")} · fee ${esc(t.transaction.fee ?? "unknown")} lamports · observed ${esc(t.coverage.observed)} of ${esc(t.coverage.referenced)} accounts</p>`;
+  } catch (e) {
+    $("status").innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+function renderRecent(data) {
+  const rows = data.transactions.map((t) => `<tr>
+      <td><button class="mini" data-sig="${esc(t.signature)}">evaluate</button>
+          <a class="mini ext" href="https://solscan.io/tx/${esc(t.signature)}" target="_blank" rel="noreferrer noopener">explorer ↗</a></td>
+      <td class="mono tight">v${esc(t.version)}</td>
+      <td class="mono">${esc(t.programs.join(", "))}</td>
+      <td class="mono tight" style="color:var(--dim)">${esc(t.instructions)} ix · ${esc(t.accounts)} acc${t.lookupTables > 0 ? " · ALT" : ""}</td>
+      <td class="mono tight" style="color:var(--dim)">${esc(t.fee ?? "—")}</td>
+    </tr>`).join("");
+  return `<table style="margin-top:10px">
+    <tr><th></th><th>ver</th><th>programs</th><th>size</th><th>fee</th></tr>${rows}</table>
+    <p class="note"><b>Every row is a real transaction that already landed on Solana mainnet</b>, read from block ${esc(data.slot)} through your own RPC — <i>getSlot</i> at finalized commitment, then <i>getBlock</i>, keeping only the ones that succeeded and are not votes. The explorer link opens the same signature on Solscan, so none of it has to be taken on trust.
+    <br><br><b>Most will still come back FLAG.</b>
+    That is not AVAL disagreeing with the chain. The chain answered "is this valid".
+    AVAL answers "did the agent do what it told its user it would do", and a market-making bot
+    has no agent, no goal and no manifest behind it, so the checks that matter cannot run.
+    Re-simulating a transaction that already landed also often fails against today's state,
+    which is information about the chain rather than about the tool.</p>`;
+}
+
+async function loadRecent() {
+  const button = $("load");
+  button.disabled = true;
+  $("livestatus").textContent = "reading a recent block…";
+  try {
+    const res = await fetch("/recent");
+    const data = await res.json();
+    if (data.error) { $("livestatus").innerHTML = `<span class="err">${esc(data.error)}</span>`; return; }
+    $("livestatus").textContent = "";
+    $("live").innerHTML = renderRecent(data);
+  } catch (e) {
+    $("livestatus").innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  } finally {
+    button.disabled = false;
+  }
+}
+$("load").addEventListener("click", loadRecent);
+
+// Picking one from the list switches the form off the recorded fixtures.
+$("live").addEventListener("click", (event) => {
+  const button = event.target.closest("button.mini");
+  if (button === null) return;
+  $("transaction").value = button.dataset.sig;
+  run();
+  window.scrollTo({ top: document.getElementById("out").offsetTop - 20, behavior: "smooth" });
+});
+
+$("arun").addEventListener("click", runTheAgent);
+$("run").addEventListener("click", run);
+
+/**
+ * The teaching control: move an address between origins and re-run.
+ *
+ * Nothing about the transaction changes -- same bytes, same effects, same
+ * manifest. Only the captured context does.
+ */
+$("out").addEventListener("click", (event) => {
+  const button = event.target.closest("button.mini");
+  if (button === null) return;
+  const address = button.dataset.addr;
+  if (button.dataset.act === "goal") {
+    $("retrieved").value = "";
+    $("source").value = "";
+    $("goal").value = `send the funds to ${address}`;
+  } else {
+    $("goal").value = "rebalance my portfolio";
+    $("retrieved").value = `the deposit address is ${address}`;
+    $("source").value = "https://yield-blog.example.com";
+  }
+  run();
+});
+
+run();
+
+/* ------------------------------------------------------------------ a fila
+ * Lê /review e desenha o que repetiu. Tudo aqui é campo estruturado --
+ * endereço, ferramenta, programa, regra, contagem. Nenhum texto que o agente
+ * leu aparece nesta tela: um revisor que aprova lendo a prosa do atacante
+ * está sendo phishado, e o botão não pode ficar perto dela.
+ */
+const SUBJECT_PT = { address: "endereço", tool: "ferramenta", program: "programa" };
+
+const PROPOSAL_PT = {
+  trust_address: { label: "Confiar neste endereço", danger: false },
+  block_address: { label: "Bloquear este endereço", danger: true },
+  write_manifest: { label: "Registrar pendência: escrever manifesto", danger: false },
+  review_manifest: { label: "Registrar pendência: revisar manifesto", danger: false },
+  allow_program: { label: "Registrar pendência: liberar este programa no manifesto", danger: false },
+};
+
+const EFFECTIVE = new Set(["trust_address", "block_address"]);
+
+const STANCE_PT = {
+  trust_address: ["trust", "confiado"],
+  block_address: ["block", "bloqueado"],
+  write_manifest: ["pend", "pendência registrada"],
+  review_manifest: ["pend", "pendência registrada"],
+  allow_program: ["pend", "pendência registrada"],
+};
+
+function retrospect(kind, r) {
+  const n = r.considered;
+  const m = r.changed.length;
+  if (kind === "block_address")
+    return `Apareceu em <b>${n}</b> ${n === 1 ? "transação" : "transações"} avaliadas. Bloquear faria <b>${m}</b> ${m === 1 ? "delas virar" : "delas virarem"} DENY.`;
+  if (!EFFECTIVE.has(kind))
+    return `Apareceu em <b>${n}</b> ${n === 1 ? "transação" : "transações"} avaliadas.`;
+  if (m === 0)
+    return `Apareceu em <b>${n}</b> ${n === 1 ? "transação" : "transações"}, e aprovar <b>não mudaria nenhum</b> veredito passado — outra coisa é que está segurando.`;
+  return `Apareceu em <b>${n}</b> ${n === 1 ? "transação" : "transações"}. Aprovar teria mudado <b>${m}</b>: ${r.changed.slice(0, 3).map((c) => `${c.from.toUpperCase()} → ${c.to.toUpperCase()}`).join(", ")}${m > 3 ? ", …" : ""}`;
+}
+
+function reviewItem(item) {
+  const kindPt = SUBJECT_PT[item.subject.kind] || item.subject.kind;
+  const stance = item.stance ? STANCE_PT[item.stance] : null;
+  const rules = item.rules
+    .map((r) => `<span class="pill"><span class="sev ${r.severity}">${r.severity}</span> ${esc(r.rule)} ×${r.count}</span>`)
+    .join("");
+
+  const proposals = item.proposals.map((p) => {
+    const pt = PROPOSAL_PT[p.kind] || { label: p.kind, danger: false };
+    const code = !EFFECTIVE.has(p.kind)
+      ? `<p class="rev-code">Aprovar isto <b>não muda veredito nenhum</b>: é mudança de código, e fica registrado como pendência.</p>`
+      : "";
+    return `<div style="margin-top:9px">
+      <p class="rev-retro">${retrospect(p.kind, p.retrospect)}</p>
+      ${code}
+      <div class="rev-acts">
+        <button class="mini${pt.danger ? " danger" : ""}" data-kind="${p.kind}"
+          data-sk="${esc(item.subject.kind)}" data-sv="${esc(item.subject.value)}"
+          data-considered="${p.retrospect.considered}" data-changed="${p.retrospect.changed.length}"
+          data-spec="${p.retrospect.speculative ? 1 : 0}">${esc(pt.label)}</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  return `<div class="rev">
+    <div class="rev-h">
+      <span class="rev-n">${item.occurrences}×</span>
+      <span class="rev-k">${esc(kindPt)}</span>
+      <span class="mono">${esc(item.subject.value)}</span>
+      ${stance ? `<span class="rev-stance ${stance[0]}">${stance[1]}</span>` : ""}
+    </div>
+    <div style="margin-top:6px">${rules}</div>
+    ${proposals || `<p class="rev-retro">Nada a aprovar aqui: nenhuma configuração mudaria o que disparou.</p>`}
+  </div>`;
+}
+
+function renderReview(data) {
+  if (data.error) { $("review").innerHTML = `<p class="err">${esc(data.error)}</p>`; return; }
+
+  const live = data.live || { allowlist: [], denylist: [], pending: [] };
+  const lists = `
+    <div class="box" style="margin-top:14px">
+      <div class="stamp">política em vigor, aprovada por humano</div>
+      <p class="rev-retro" style="margin:4px 0 0">
+        confiados: ${live.allowlist.length === 0 ? "nenhum" : live.allowlist.map((a) => `<span class="pill">${esc(a)}</span>`).join("")}<br />
+        bloqueados: ${live.denylist.length === 0 ? "nenhum" : live.denylist.map((a) => `<span class="pill">${esc(a)}</span>`).join("")}<br />
+        pendências de código: ${live.pending.length}
+      </p>
+    </div>`;
+
+  const orphans = data.unattributable.length === 0 ? "" : `
+    <details class="minor">
+      <summary>${data.unattributable.length} regras que dispararam sem sujeito — não dá botão nelas</summary>
+      <div style="margin-top:8px">${data.unattributable
+        .map((u) => `<span class="pill"><span class="sev ${u.severity}">${u.severity}</span> ${esc(u.rule)} ×${u.count}</span>`)
+        .join("")}</div>
+      <p class="rev-retro">Essas carregam contagem, não endereço. Aprovar o quê? A leitura certa é que a regra precisa de trabalho, não o tráfego.</p>
+    </details>`;
+
+  if (data.items.length === 0) {
+    $("review").innerHTML =
+      `<p class="note">${data.records === 0
+        ? "Nada foi avaliado ainda. Rode o agente, ou avalie transações da lista de mainnet acima."
+        : `${data.records} ${data.records === 1 ? "transação avaliada" : "transações avaliadas"}, e nada repetiu ${data.minOccurrences} vezes ainda.`}</p>${lists}${orphans}`;
+    return;
+  }
+
+  $("review").innerHTML =
+    `<p class="note">${data.records} avaliadas · ${data.items.length} ${data.items.length === 1 ? "assunto" : "assuntos"} repetiram ${data.minOccurrences}+ vezes</p>` +
+    data.items.map(reviewItem).join("") + lists + orphans;
+
+  for (const button of $("review").querySelectorAll("button[data-kind]")) {
+    button.addEventListener("click", () => approve(button));
+  }
+}
+
+async function approve(button) {
+  button.disabled = true;
+  $("reviewstatus").textContent = "gravando a aprovação…";
+  try {
+    const res = await fetch("/review/approve", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: button.dataset.kind,
+        subject: { kind: button.dataset.sk, value: button.dataset.sv },
+        // O que o revisor estava vendo no momento em que clicou, guardado
+        // como foi mostrado. Meses depois a pergunta nunca é se a decisão
+        // era razoável, é o que disseram a ele que ela faria.
+        shown: {
+          considered: Number(button.dataset.considered),
+          changed: Number(button.dataset.changed),
+          speculative: button.dataset.spec === "1",
+        },
+      }),
+    });
+    renderReview(await res.json());
+    $("reviewstatus").textContent =
+      "gravado. vale para tudo que for avaliado a partir de agora.";
+  } catch (error) {
+    $("reviewstatus").innerHTML = `<span class="err">${esc(String(error))}</span>`;
+    button.disabled = false;
+  }
+}
+
+async function loadReview() {
+  $("reviewstatus").textContent = "lendo o registro…";
+  try {
+    const res = await fetch("/review");
+    renderReview(await res.json());
+    $("reviewstatus").textContent =
+      "A fila mostra. Quem decide é você. Nada sobe para bloqueio sozinho.";
+  } catch (error) {
+    $("review").innerHTML = `<p class="err">${esc(String(error))}</p>`;
+  }
+}
+
+$("reviewload").addEventListener("click", loadReview);
+loadReview();
+</script>
+</body>
+</html>

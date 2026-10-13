@@ -1,0 +1,188 @@
+/**
+ * Turning findings into a decision.
+ *
+ * No weighted score, on purpose. A number is impossible to explain to an
+ * auditor and impossible to calibrate with confidence: nobody can say why 0.73
+ * blocks and 0.71 does not. The rule here is a severity ceiling, so every
+ * decision traces back to a named finding and a specific rule.
+ *
+ * The policy version is a hash of everything that was in force, so it changes
+ * on its own when any part changes. Nobody has to remember to bump a number,
+ * which is exactly where manual versioning breaks.
+ */
+import { createHash } from "node:crypto";
+import {
+  alwaysCriticalFindings,
+  coverageFindings,
+  feeFindings,
+} from "./critical.js";
+import { contentFindings } from "./content.js";
+import { denylistFindings } from "./denylist.js";
+import { manifestFindings } from "./manifest.js";
+import {
+  provenanceFindings,
+  EMPTY_PROVENANCE_CONFIG,
+  type ProvenanceConfig,
+} from "./provenance.js";
+import type { EffectSet } from "../types/effects.js";
+import type { ActionContext } from "../types/context.js";
+import type { DecimalsByMint, ToolManifest } from "../types/manifest.js";
+import {
+  DEFAULT_THRESHOLDS,
+  type Decision,
+  type Finding,
+  type Severity,
+  type Thresholds,
+  type Verdict,
+} from "../types/verdict.js";
+
+function countBySeverity(
+  findings: readonly Finding[],
+): Readonly<Record<Severity, number>> {
+  const counts = { low: 0, medium: 0, high: 0, critical: 0 };
+  for (const finding of findings) counts[finding.severity]++;
+  return counts;
+}
+
+/**
+ * The ceiling rule, in the order the specification states it.
+ *
+ * Reading it top to bottom is the whole explanation of any decision this
+ * system makes.
+ */
+export function decide(
+  findings: readonly Finding[],
+  thresholds: Thresholds = DEFAULT_THRESHOLDS,
+): Decision {
+  const counts = countBySeverity(findings);
+
+  if (counts.critical > 0) return "deny";
+  if (counts.high >= thresholds.highsForDeny) return "deny";
+  if (counts.high > 0) return "flag";
+  if (counts.medium >= thresholds.mediumsForFlag) return "flag";
+  return "allow";
+}
+
+/** Everything that was in force when a decision was made. */
+export interface PolicyIdentity {
+  /** Tool manifests and their versions. */
+  readonly manifests: readonly {
+    readonly tool: string;
+    readonly version: string;
+  }[];
+  readonly thresholds: Thresholds;
+  /** Source patterns the customer configured, without their trust levels. */
+  readonly sourcePatterns: readonly string[];
+  readonly allowlist: readonly string[];
+}
+
+export const EMPTY_POLICY: PolicyIdentity = {
+  manifests: [],
+  thresholds: DEFAULT_THRESHOLDS,
+  sourcePatterns: [],
+  allowlist: [],
+};
+
+/**
+ * A short, stable identifier for the policy that produced a verdict.
+ *
+ * Derived rather than declared: change a manifest, a threshold or one line of
+ * customer configuration and the version changes with it. Sorted before
+ * hashing so the same policy always produces the same string.
+ */
+export function policyVersion(policy: PolicyIdentity): string {
+  const canonical = JSON.stringify({
+    manifests: [...policy.manifests]
+      .map((m) => `${m.tool}@${m.version}`)
+      .sort((a, b) => a.localeCompare(b)),
+    // JSON.stringify throws on bigint, so the one bigint in the thresholds
+    // becomes a decimal string -- the same convention the fixtures use.
+    thresholds: {
+      ...policy.thresholds,
+      maxFeeLamports: policy.thresholds.maxFeeLamports.toString(),
+    },
+    sourcePatterns: [...policy.sourcePatterns].sort((a, b) =>
+      a.localeCompare(b),
+    ),
+    allowlist: [...policy.allowlist].sort((a, b) => a.localeCompare(b)),
+  });
+  return `p1-${createHash("sha256").update(canonical).digest("hex").slice(0, 6)}`;
+}
+
+export interface EvaluationInput {
+  readonly effects: EffectSet;
+  readonly context: ActionContext;
+  readonly provenance?: ProvenanceConfig;
+  /** The manifest for the tool that was called, when one exists. */
+  readonly manifest?: ToolManifest | null;
+  /** Decimals per mint, for manifests that declare amounts in decimal units. */
+  readonly decimals?: DecimalsByMint;
+  readonly thresholds?: Thresholds;
+  readonly policy?: PolicyIdentity;
+}
+
+/**
+ * Runs every check that works today and combines them.
+ *
+ * Deliberately missing, and each for its own reason: the aggregate needs
+ * persisted history, and the task envelope needs a model call once per task.
+ * A tool with no manifest still gets the safety net and provenance, and the
+ * gap is reported rather than passed over.
+ */
+/**
+ * What the capture layer said it could not do.
+ *
+ * Low severity: none of these change the decision on their own, because the
+ * missing layer could only have tightened it. They exist so the record says
+ * which layers actually ran.
+ */
+function captureFindings(context: ActionContext): readonly Finding[] {
+  const degradations = context.degradations ?? [];
+  if (degradations.length === 0) return [];
+  return [
+    {
+      check: "coverage",
+      severity: "low",
+      rule: "coverage.capture_degraded",
+      detail: { degradations },
+    },
+  ];
+}
+
+export function evaluate(input: EvaluationInput): Verdict {
+  const provenanceConfig = input.provenance ?? EMPTY_PROVENANCE_CONFIG;
+  const thresholds = input.thresholds ?? DEFAULT_THRESHOLDS;
+  const findings: Finding[] = [
+    ...alwaysCriticalFindings(input.effects, input.manifest ?? null),
+    ...coverageFindings(input.effects),
+    ...feeFindings(input.effects, thresholds),
+    ...manifestFindings({
+      effects: input.effects,
+      manifest: input.manifest ?? null,
+      toolCall: input.context.toolCall,
+      ...(input.decimals === undefined ? {} : { decimals: input.decimals }),
+    }),
+    ...provenanceFindings(input.effects, input.context, provenanceConfig),
+    // Last in the list and first in effect: an operator's own deny-list entry
+    // is critical, so it decides on its own.
+    ...denylistFindings(input.effects, provenanceConfig.denylist ?? []),
+    ...contentFindings(input.effects, input.context, provenanceConfig),
+    ...captureFindings(input.context),
+  ];
+
+  return {
+    actionId: input.context.actionId,
+    messageDigest: input.effects.messageDigest,
+    decision: decide(findings, thresholds),
+    findings,
+    evaluatedAt: Date.now(),
+    policyVersion: policyVersion(input.policy ?? EMPTY_POLICY),
+  };
+}
+
+/** One line per finding, in the order they fired. For logs and for the CLI. */
+export function explainVerdict(verdict: Verdict): readonly string[] {
+  return verdict.findings.map(
+    (finding) => `${finding.severity.padEnd(8)} ${finding.rule}`,
+  );
+}

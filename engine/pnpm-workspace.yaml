@@ -1,0 +1,18 @@
+# Which dependencies may run install scripts (postinstall).
+# pnpm denies by default and demands an explicit decision -- postinstall is the
+# classic supply-chain attack vector. Each line below is a decision.
+allowBuilds:
+  # REQUIRED. esbuild's install.js places the platform's native binary.
+  # Without it, tsx and vitest do not run.
+  esbuild: true
+
+  # Optional native addon for faster bigint <-> Buffer conversion. A pure-JS
+  # fallback exists and is correct. Refused: it needs a compiler toolchain and
+  # does not pay for the risk.
+  # Side effect: a "bigint: Failed to load bindings" warning on stderr.
+  bigint-buffer: false
+
+  # Optional native WebSocket optimisations (a dependency of rpc-websockets,
+  # which ships with @solana/web3.js). A pure-JS fallback exists.
+  bufferutil: false
+  utf-8-validate: false

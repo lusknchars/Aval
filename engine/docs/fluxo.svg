@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 720" width="1240" height="720" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5b626f"/>
+    </marker>
+    <style>
+      .bx    { fill:#161a21; stroke:#2a313c; stroke-width:1.5; rx:10; }
+      .built { stroke:#3fb950; stroke-width:2; }
+      .todo  { stroke:#6b7280; stroke-width:1.5; stroke-dasharray:5 4; }
+      .third { stroke:#6ea8fe; stroke-width:2; }
+      .nm    { fill:#e6e9ef; font-size:16px; font-weight:650; letter-spacing:.2px; }
+      .rl    { fill:#8b93a1; font-size:12px; }
+      .tg    { font-size:10px; font-weight:700; letter-spacing:.9px; }
+      .ln    { fill:#5b626f; font-size:11px; font-weight:700; letter-spacing:1.4px; }
+      .cn    { stroke:#5b626f; stroke-width:1.5; fill:none; marker-end:url(#a); }
+    </style>
+  </defs>
+
+  <rect width="1240" height="720" fill="#0f1115"/>
+  <text x="60" y="48" class="nm" font-size="21">AVAL — fluxo principal</text>
+  <text x="60" y="70" class="rl">nada é assinado sem passar pelo gate · nenhuma LLM no caminho da decisão · a proveniência sempre usa o texto original</text>
+
+  <!-- lane 1 -->
+  <text x="60" y="118" class="ln">CONTEÚDO ENTRANDO</text>
+  <line x1="60" y1="128" x2="1180" y2="128" stroke="#1d232c"/>
+
+  <rect x="60"  y="150" width="150" height="70" class="bx"/>
+  <text x="135" y="180" class="nm" text-anchor="middle" font-size="14">prompt do usuário</text>
+  <text x="135" y="200" class="rl" text-anchor="middle" font-size="11">o que o humano escreveu</text>
+
+  <line x1="218" y1="185" x2="252" y2="185" class="cn"/>
+
+  <rect x="260" y="150" width="175" height="70" class="bx third"/>
+  <text x="347" y="174" class="nm" text-anchor="middle" font-size="15">CORRETOR</text>
+  <text x="347" y="192" class="rl" text-anchor="middle" font-size="11">só a cópia que o modelo lê</text>
+  <text x="347" y="206" class="rl" text-anchor="middle" font-size="11">não toca endereço nem valor</text>
+  <text x="347" y="218" class="tg" text-anchor="middle" fill="#6ea8fe">A FAZER</text>
+
+  <line x1="443" y1="185" x2="477" y2="185" class="cn"/>
+
+  <rect x="485" y="150" width="175" height="70" class="bx built"/>
+  <text x="572" y="178" class="nm" text-anchor="middle">CAPTURA</text>
+  <text x="572" y="197" class="rl" text-anchor="middle">carimba o ORIGINAL</text>
+  <text x="572" y="212" class="tg" text-anchor="middle" fill="#3fb950">PRONTO</text>
+
+  <line x1="668" y1="185" x2="702" y2="185" class="cn"/>
+
+  <rect x="710" y="150" width="185" height="70" class="bx"/>
+  <text x="802" y="178" class="nm" text-anchor="middle">LLM DO CLIENTE</text>
+  <text x="802" y="197" class="rl" text-anchor="middle">escolhe ferramenta</text>
+  <text x="802" y="212" class="tg" text-anchor="middle" fill="#8b93a1">DELE</text>
+
+  <rect x="935" y="110" width="245" height="150" class="bx" stroke="#2a313c"/>
+  <text x="1057" y="136" class="ln" text-anchor="middle" fill="#6ea8fe">O QUE O AGENTE LÊ DEPOIS</text>
+  <text x="1057" y="160" class="rl" text-anchor="middle" font-size="11">página · API · memória · imagem</text>
+  <rect x="955" y="174" width="205" height="30" class="bx third" rx="7"/>
+  <text x="1057" y="194" class="nm" text-anchor="middle" font-size="13">OCR</text>
+  <rect x="955" y="212" width="205" height="30" class="bx third" rx="7"/>
+  <text x="1057" y="232" class="nm" text-anchor="middle" font-size="13">PROMPT GUARD</text>
+  <path d="M935 200 L905 200" class="cn"/>
+
+  <!-- lane 2 -->
+  <text x="60" y="310" class="ln">AÇÃO SAINDO</text>
+  <line x1="60" y1="320" x2="1180" y2="320" stroke="#1d232c"/>
+
+  <path d="M802 226 L802 272 L250 272 L250 342" class="cn"/>
+  <text x="530" y="264" class="rl" text-anchor="middle" font-size="11">tool call + transação não assinada</text>
+
+  <rect x="170" y="350" width="160" height="70" class="bx built"/>
+  <text x="250" y="378" class="nm" text-anchor="middle">CAPTURA</text>
+  <text x="250" y="397" class="rl" text-anchor="middle">intercepta na assinatura</text>
+  <text x="250" y="412" class="tg" text-anchor="middle" fill="#3fb950">PRONTO</text>
+
+  <line x1="338" y1="385" x2="372" y2="385" class="cn"/>
+
+  <rect x="380" y="350" width="230" height="70" class="bx built"/>
+  <text x="495" y="378" class="nm" text-anchor="middle">AVAL</text>
+  <text x="495" y="397" class="rl" text-anchor="middle">simula · compara · decide</text>
+  <text x="495" y="412" class="tg" text-anchor="middle" fill="#3fb950">PRONTO E MEDIDO</text>
+
+  <line x1="618" y1="385" x2="652" y2="385" class="cn"/>
+
+  <rect x="660" y="350" width="170" height="70" class="bx todo"/>
+  <text x="745" y="378" class="nm" text-anchor="middle">GATE</text>
+  <text x="745" y="397" class="rl" text-anchor="middle">segura a assinatura</text>
+  <text x="745" y="412" class="tg" text-anchor="middle" fill="#9aa3b2">A FAZER</text>
+
+  <line x1="838" y1="385" x2="872" y2="385" class="cn"/>
+
+  <rect x="880" y="350" width="170" height="70" class="bx"/>
+  <text x="965" y="378" class="nm" text-anchor="middle">WALLET</text>
+  <text x="965" y="397" class="rl" text-anchor="middle">só vê o aprovado</text>
+  <text x="965" y="412" class="tg" text-anchor="middle" fill="#8b93a1">DELE</text>
+
+  <!-- lane 3 -->
+  <text x="60" y="510" class="ln">DEPOIS — FORA DO CAMINHO DA DECISÃO</text>
+  <line x1="60" y1="520" x2="1180" y2="520" stroke="#1d232c"/>
+
+  <path d="M495 426 L495 552" class="cn"/>
+  <text x="512" y="492" class="rl" font-size="11">vereditos acumulados</text>
+
+  <rect x="380" y="560" width="290" height="80" class="bx todo"/>
+  <text x="525" y="590" class="nm" text-anchor="middle">JUIZ PROPOSITOR</text>
+  <text x="525" y="609" class="rl" text-anchor="middle">propõe manifesto e allowlist</text>
+  <text x="525" y="625" class="rl" text-anchor="middle" font-size="11">humano aprova · nada aplica sozinho</text>
+
+  <line x1="678" y1="600" x2="712" y2="600" class="cn"/>
+  <text x="730" y="596" class="rl">política versionada</text>
+  <text x="730" y="614" class="rl" font-size="11">volta como configuração do AVAL</text>
+
+  <!-- legend -->
+  <rect x="60" y="666" width="16" height="12" class="bx built" rx="3"/>
+  <text x="84" y="676" class="rl">pronto</text>
+  <rect x="160" y="666" width="16" height="12" class="bx todo" rx="3"/>
+  <text x="184" y="676" class="rl">a fazer</text>
+  <rect x="262" y="666" width="16" height="12" class="bx third" rx="3"/>
+  <text x="286" y="676" class="rl">terceiro</text>
+  <rect x="370" y="666" width="16" height="12" class="bx" rx="3"/>
+  <text x="394" y="676" class="rl">do cliente</text>
+</svg>

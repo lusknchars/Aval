@@ -1,0 +1,272 @@
+import { describe, expect, it } from "vitest";
+import {
+  EFFECT_TYPES,
+  authorityKindSchema,
+  counterparties,
+  coverageIsComplete,
+  effectTypeSchema,
+  effectsOfType,
+  invokedPrograms,
+  type AccountCoverage,
+  type Effect,
+  type EffectSet,
+  type SimulationOutcome,
+} from "../../src/types/effects.js";
+
+describe("effect vocabulary", () => {
+  it("has exactly the 9 agreed types", () => {
+    // Deliberate lock: the vocabulary is closed. If this test fails, someone
+    // changed it -- which requires an explicit decision, not a commit.
+    expect(EFFECT_TYPES).toEqual([
+      "BALANCE_DECREASE",
+      "BALANCE_INCREASE",
+      "DELEGATE_GRANT",
+      "AUTHORITY_CHANGE",
+      "OWNER_CHANGE",
+      "ACCOUNT_CREATE",
+      "ACCOUNT_CLOSE",
+      // The ninth, added by explicit decision: a token account has three
+      // answers to "who can move these tokens" -- owner, delegate, and
+      // whether it is frozen -- and the third was a byte we decoded and
+      // then ignored.
+      "ACCOUNT_FREEZE",
+      "PROGRAM_INVOKE",
+    ]);
+    expect(EFFECT_TYPES).toHaveLength(9);
+    expect(new Set(EFFECT_TYPES).size).toBe(9);
+  });
+
+  it("accepts vocabulary types and rejects anything else", () => {
+    for (const type of EFFECT_TYPES) {
+      expect(effectTypeSchema.parse(type)).toBe(type);
+    }
+    expect(effectTypeSchema.safeParse("BALANCE_TRANSFER").success).toBe(false);
+    expect(effectTypeSchema.safeParse("balance_decrease").success).toBe(false);
+    expect(effectTypeSchema.safeParse("").success).toBe(false);
+  });
+
+  it("has the authorities of the account model, and nothing that is not one", () => {
+    // Four from the token and loader layouts, three from the stake layout,
+    // one Token-2022 extension value. Attributes of AUTHORITY_CHANGE, never
+    // new effect types: the vocabulary is still nine.
+    expect(authorityKindSchema.options).toEqual([
+      "mint",
+      "freeze",
+      "upgrade",
+      "close",
+      "staker",
+      "withdrawer",
+      "custodian",
+      "transfer_hook",
+    ]);
+    expect(authorityKindSchema.safeParse("owner").success).toBe(false);
+  });
+
+  it("carries magnitude as bigint, including u64::MAX", () => {
+    // u64::MAX in delegatedAmount is unlimited allowance: the strongest signal
+    // in the system. Through a number it would arrive already rounded.
+    const unlimited = 2n ** 64n - 1n;
+    const effect: Effect = {
+      type: "DELEGATE_GRANT",
+      account: "ATokenAccXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      counterparty: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+      amount: unlimited,
+    };
+    expect(effect.amount).toBe(18446744073709551615n);
+    expect(effect.amount).not.toBe(Number(unlimited));
+  });
+
+  it("allows an effect without fields that do not apply to its type", () => {
+    const invocation: Effect = {
+      type: "PROGRAM_INVOKE",
+      account: "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
+      program: "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
+    };
+    expect(invocation.mint).toBeUndefined();
+    expect(invocation.amount).toBeUndefined();
+  });
+});
+
+describe("EffectSet", () => {
+  const set: EffectSet = {
+    effects: [
+      {
+        type: "BALANCE_DECREASE",
+        account: "ATokenAcc",
+        mint: "USDC",
+        amount: 400n,
+        counterparty: "PoolAcc",
+      },
+      {
+        type: "BALANCE_INCREASE",
+        account: "SolAcc",
+        mint: "SOL",
+        amount: 1_940_000_000n,
+      },
+      { type: "PROGRAM_INVOKE", account: "JUP6", program: "JUP6" },
+      {
+        type: "DELEGATE_GRANT",
+        account: "ATokenAcc",
+        counterparty: "7xKX",
+        amount: 2n ** 64n - 1n,
+      },
+    ],
+    slot: 502538365,
+    baselineSlot: 502538365,
+    fee: 5000n,
+    feePayer: null,
+    messageDigest: null,
+    simulation: { status: "executed", unitsConsumed: 13476 },
+    coverage: {
+      referenced: ["ATokenAcc", "SolAcc", "JUP6"],
+      observed: ["ATokenAcc", "SolAcc", "JUP6"],
+      unobserved: [],
+      blindSpots: [],
+      tokenExtensions: [],
+      opaqueChanges: [],
+      inexactAmounts: [],
+      undecodable: [],
+      overSimulationLimit: [],
+    },
+  };
+
+  it("derives counterparties without duplicates, to feed the provenance check", () => {
+    // PoolAcc and 7xKX are named by effects. SolAcc is there because it ends
+    // up with more value than it started with, which is what a recipient is.
+    expect(counterparties(set)).toEqual(["PoolAcc", "7xKX", "SolAcc"]);
+  });
+
+  it("leaves out an account that both gains and loses", () => {
+    // Value moving through an account -- a fee payer, or a wrapped SOL
+    // account inside a swap -- is not a party receiving anything.
+    const throughput: EffectSet = {
+      ...set,
+      effects: [
+        { type: "BALANCE_INCREASE", account: "Wsol", mint: "SOL", amount: 10n },
+        { type: "BALANCE_DECREASE", account: "Wsol", mint: "SOL", amount: 10n },
+      ],
+    };
+    expect(counterparties(throughput)).toEqual([]);
+  });
+
+  it("derives invoked programs", () => {
+    expect(invokedPrograms(set)).toEqual(["JUP6"]);
+  });
+
+  it("filters by type", () => {
+    expect(effectsOfType(set, "DELEGATE_GRANT")).toHaveLength(1);
+    expect(effectsOfType(set, "OWNER_CHANGE")).toEqual([]);
+  });
+
+  it("reports incomplete coverage when an account was never observed", () => {
+    expect(coverageIsComplete(set.coverage)).toBe(true);
+    const blind: AccountCoverage = {
+      referenced: ["A", "B"],
+      observed: ["A"],
+      unobserved: ["B"],
+      blindSpots: [],
+      tokenExtensions: [],
+      opaqueChanges: [],
+      inexactAmounts: [],
+      undecodable: [],
+      overSimulationLimit: [],
+    };
+    expect(coverageIsComplete(blind)).toBe(false);
+  });
+
+  it("tells a failed simulation apart from an unavailable one", () => {
+    // Both carry zero effects. If they were indistinguishable, "I could not
+    // simulate" would read as "the transaction does nothing" -- an ALLOW.
+    const failed: SimulationOutcome = {
+      status: "failed",
+      error: '{"InsufficientFundsForRent":{"account_index":1}}',
+      unitsConsumed: 150,
+    };
+    const unavailable: SimulationOutcome = {
+      status: "unavailable",
+      reason: "RPC timeout",
+    };
+    expect(failed.status).not.toBe(unavailable.status);
+
+    const describeOutcome = (r: SimulationOutcome): string => {
+      switch (r.status) {
+        case "executed":
+          return "ran";
+        case "failed":
+          return "ran and would fail";
+        case "unavailable":
+          return "could not simulate";
+      }
+    };
+    expect(describeOutcome(failed)).toBe("ran and would fail");
+    expect(describeOutcome(unavailable)).toBe("could not simulate");
+  });
+});
+
+describe("the vessel and the party", () => {
+  it("counts the counterparty rather than the account that holds the tokens", () => {
+    // Reporting both would ask the captured context to explain a derived
+    // address no human ever types, and would deny a transfer to a wallet the
+    // user named by its real name.
+    const withOwner: EffectSet = {
+      effects: [
+        {
+          type: "BALANCE_INCREASE",
+          account: "DerivedAta",
+          mint: "USDC",
+          amount: 10n,
+          counterparty: "BobWallet",
+        },
+      ],
+      slot: 1,
+      baselineSlot: 1,
+      fee: null,
+      feePayer: null,
+      messageDigest: null,
+      simulation: { status: "executed", unitsConsumed: 1 },
+      coverage: {
+        referenced: [],
+        observed: [],
+        unobserved: [],
+        blindSpots: [],
+        tokenExtensions: [],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
+      },
+    };
+    expect(counterparties(withOwner)).toEqual(["BobWallet"]);
+  });
+
+  it("still counts a plain account that gains value and names nobody", () => {
+    const plain: EffectSet = {
+      effects: [
+        {
+          type: "BALANCE_INCREASE",
+          account: "Wallet",
+          mint: "SOL",
+          amount: 10n,
+        },
+      ],
+      slot: 1,
+      baselineSlot: 1,
+      fee: null,
+      feePayer: null,
+      messageDigest: null,
+      simulation: { status: "executed", unitsConsumed: 1 },
+      coverage: {
+        referenced: [],
+        observed: [],
+        unobserved: [],
+        blindSpots: [],
+        tokenExtensions: [],
+        opaqueChanges: [],
+        inexactAmounts: [],
+        undecodable: [],
+        overSimulationLimit: [],
+      },
+    };
+    expect(counterparties(plain)).toEqual(["Wallet"]);
+  });
+});

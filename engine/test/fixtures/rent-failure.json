@@ -1,0 +1,43 @@
+{
+  "name": "rent-failure",
+  "description": "1 lamport to a new account: the runtime refuses it for rent, so the simulation reports err",
+  "network": "devnet",
+  "recordedAt": "2026-09-24T17:10:48.991Z",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "txBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQABAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABdsQZVaEIw9VsNzPuHg8IWVM+47MBR4QotqeLeccxDnsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOTF2Twxg4XeXZhJHeOambHwoi3Dx2q0Bz+d0aF8UcosAQICAAEMAgAAAAEAAAAAAAAAAA==",
+  "fee": "5000",
+  "before": {
+    "slot": 503569235,
+    "addresses": [
+      "11111111111111111111111111111112",
+      "8zcYH3ffGmiADVvNTQd8m54gjW2ewec8EFkrZ74dBkdQ"
+    ],
+    "accounts": [
+      {
+        "address": "11111111111111111111111111111112",
+        "lamports": "382315590904",
+        "lamportsExact": true,
+        "owner": "11111111111111111111111111111111",
+        "executable": false,
+        "dataBase64": ""
+      },
+      null
+    ]
+  },
+  "simulation": {
+    "slot": 503569236,
+    "error": "{\"InsufficientFundsForRent\":{\"account_index\":1}}",
+    "unitsConsumed": 150,
+    "logs": [
+      "Program 11111111111111111111111111111111 invoke [1]",
+      "Program 11111111111111111111111111111111 success"
+    ],
+    "requestedAccounts": [
+      "11111111111111111111111111111112",
+      "8zcYH3ffGmiADVvNTQd8m54gjW2ewec8EFkrZ74dBkdQ"
+    ],
+    "accounts": [null, null],
+    "innerInstructions": []
+  },
+  "lookupTables": []
+}

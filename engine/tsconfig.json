@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    // --- Target and library ----------------------------------------------
+    // Node 20+ supports ES2022 natively. bigint literals (123n) need >= ES2020.
+    "target": "ES2022",
+    "lib": ["ES2023"],
+
+    // --- Module system ----------------------------------------------------
+    // "nodenext" makes TypeScript resolve modules exactly as Node does.
+    // Consequence: relative imports need a .js extension, even when the file
+    // is .ts.  e.g. import { x } from "../types/effects.js"
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+
+    // --- Strictness -------------------------------------------------------
+    "strict": true,
+    // array[0] has type T | undefined. Essential when reading SPL account
+    // bytes at fixed offsets: it stops an out-of-range read passing silently.
+    "noUncheckedIndexedAccess": true,
+    // { delegate?: string } no longer accepts { delegate: undefined }.
+    // In the effect model, "absent field" and "null field" are different.
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    // Protects the switch over the 8 effect types.
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // --- Interop / emit ---------------------------------------------------
+    // Forces "import type" for anything that only exists at compile time.
+    "verbatimModuleSyntax": true,
+    // Guarantees every file is transpilable in isolation, which is what tsx
+    // and vitest actually do through esbuild.
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+
+    // No JavaScript is emitted yet. The typecheck is a gate, not a build.
+    // When a build exists, replace with outDir/rootDir in tsconfig.build.json.
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "*.config.ts"],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

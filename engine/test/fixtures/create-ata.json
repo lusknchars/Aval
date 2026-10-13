@@ -1,0 +1,122 @@
+{
+  "name": "create-ata",
+  "description": "Associated Token Account creation: CPIs into System and Token Program",
+  "network": "devnet",
+  "recordedAt": "2026-09-24T17:10:49.602Z",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "txBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQAFBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVlRIwy8vG2rt4l1k6zvNBsbaLgYBz9q7FNnuycKgHoiMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WYhAKAj+rWCadoNuYNV5iFYc9eIN2jxJ092BNLYm11k8BpuIV/6rgYT7aH9jRhjANdrEOdwa6ztVmKDwAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCp5MXZPDGDhd5dmEkd45qZsfCiLcPHarQHP53RoXxRyiwBAgYAAQMEBQYAAA==",
+  "fee": "5000",
+  "before": {
+    "slot": 503569239,
+    "addresses": [
+      "11111111111111111111111111111112",
+      "6ozbzro7jnab16xUGDpvUNXyufKpi4mkDnGq3DmYxCgX",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "accounts": [
+      {
+        "address": "11111111111111111111111111111112",
+        "lamports": "382315590904",
+        "lamportsExact": true,
+        "owner": "11111111111111111111111111111111",
+        "executable": false,
+        "dataBase64": ""
+      },
+      null,
+      {
+        "address": "So11111111111111111111111111111111111111112",
+        "lamports": "1508103450425",
+        "lamportsExact": true,
+        "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "executable": false,
+        "dataBase64": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+      }
+    ]
+  },
+  "simulation": {
+    "slot": 503569240,
+    "error": null,
+    "unitsConsumed": 16476,
+    "logs": [
+      "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [1]",
+      "Program log: Create",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 179 of 191609 compute units",
+      "Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+      "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success",
+      "Program log: Initialize the associated token account",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 37 of 186520 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 229 of 184057 compute units",
+      "Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success",
+      "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 16476 of 200000 compute units",
+      "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success"
+    ],
+    "requestedAccounts": [
+      "11111111111111111111111111111112",
+      "6ozbzro7jnab16xUGDpvUNXyufKpi4mkDnGq3DmYxCgX",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "accounts": [
+      {
+        "address": "11111111111111111111111111111112",
+        "lamports": "382314097464",
+        "lamportsExact": true,
+        "owner": "11111111111111111111111111111111",
+        "executable": false,
+        "dataBase64": ""
+      },
+      {
+        "address": "6ozbzro7jnab16xUGDpvUNXyufKpi4mkDnGq3DmYxCgX",
+        "lamports": "1488440",
+        "lamportsExact": true,
+        "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "executable": false,
+        "dataBase64": "BpuIV/6rgYT7aH9jRhjANdrEOdwa6ztVmKDwAAAAAAGIQCgI/q1gmnaDbmDVeYhWHPXiDdo8SdPdgTS2JtdZPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQEAAAA4thYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      {
+        "address": "So11111111111111111111111111111111111111112",
+        "lamports": "1508103450425",
+        "lamportsExact": true,
+        "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "executable": false,
+        "dataBase64": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+      }
+    ],
+    "innerInstructions": [
+      {
+        "outerIndex": 0,
+        "position": 0,
+        "program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "programIndex": null,
+        "stackHeight": 2
+      },
+      {
+        "outerIndex": 0,
+        "position": 1,
+        "program": "11111111111111111111111111111111",
+        "programIndex": null,
+        "stackHeight": 2
+      },
+      {
+        "outerIndex": 0,
+        "position": 2,
+        "program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "programIndex": null,
+        "stackHeight": 2
+      },
+      {
+        "outerIndex": 0,
+        "position": 3,
+        "program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "programIndex": null,
+        "stackHeight": 2
+      }
+    ]
+  },
+  "lookupTables": []
+}
