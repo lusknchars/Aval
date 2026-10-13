@@ -26,6 +26,8 @@ import Scramble from '../components/Scramble'
 import Logo from '../components/Logo'
 import ThemeToggle from '../components/ThemeToggle'
 import { useReduced } from '../lib/useReduced'
+import { DEMO, DEMO_HIDDEN, DOCS_URL, SITE_URL } from './demo'
+import { ROTA_RECORDED_ON } from './api/fixtures'
 
 // Monitoring pulls in recharts (~half the console's bundle), so it loads on first visit.
 const Monitoring = lazy(() => import('./pages/Monitoring'))
@@ -41,7 +43,42 @@ function PageLoading({ label }: { label: string }) {
   )
 }
 
-const NAV = [
+/* The public demo's strip: what this is, and that nothing on it is a live call. */
+function DemoBanner({ replay }: { replay: boolean }) {
+  return (
+    <div className="demobar" role="note">
+      <p>
+        <b>Public demo</b>
+        <span> · {replay ? 'verdicts from the real AVAL benchmark run' : `verdicts recorded from the real AVAL engine on ${ROTA_RECORDED_ON}`}</span>
+        <span> · Cerrado Capital is fictional</span>
+      </p>
+      <nav aria-label="AVAL site">
+        <a href={SITE_URL}>← aval-labs</a>
+        <a href={DOCS_URL}>Docs</a>
+      </nav>
+    </div>
+  )
+}
+
+/* A route the public demo leaves out because it needs a running service. */
+function DemoUnavailable({ what }: { what: string }) {
+  return (
+    <div className="page">
+      <header className="page__head">
+        <p className="kicker">not in the public demo</p>
+        <h1>{what} needs a running engine.</h1>
+        <p className="lede">
+          This public demo is static: it replays verdicts recorded from the real AVAL engine and talks to no server.
+          {' '}{what} runs next to the engine; see the <a href={DOCS_URL}>docs</a> to run it yourself.
+        </p>
+      </header>
+      <p><a className="demobtn" href="#/live">Go to the Live gate</a> <a className="demobtn" href="#/replay/focus">Benchmark replay</a></p>
+    </div>
+  )
+}
+const HIDDEN_NAME: Record<string, string> = { evaluate: 'The Scenario Lab', deploy: 'Deploy', system: 'System health' }
+
+const NAV_ALL = [
   { group: 'monitor', items: [
     { k: 'live', label: 'Live gate', g: '◉' },
     { k: 'overview', label: 'Overview', g: '◇' },
@@ -66,6 +103,10 @@ const NAV = [
   ] },
 ]
 
+const NAV = DEMO
+  ? NAV_ALL.map((g) => ({ ...g, items: g.items.filter((n) => !DEMO_HIDDEN.has(n.k)) })).filter((g) => g.items.length)
+  : NAV_ALL
+
 export default function App() {
   const route = useRoute()
   const engine = useEngine()
@@ -76,7 +117,8 @@ export default function App() {
   const key = route.join('/') || 'live'
 
   let view
-  if (page === 'live') view = <Live />
+  if (DEMO && DEMO_HIDDEN.has(page)) view = <DemoUnavailable what={HIDDEN_NAME[page]} />
+  else if (page === 'live') view = <Live />
   else if (page === 'issues') view = <Issues id={arg} />
   else if (page === 'evaluate') view = <Evaluate preset={arg} />
   else if (page === 'actions' && arg) view = <TraceView id={arg} />
@@ -97,7 +139,7 @@ export default function App() {
     <div className="shell">
       <a href="#main" className="skip">Skip to content</a>
       <aside className="rail">
-        <a className="rail__brand" href="/" aria-label="AVAL site">
+        <a className="rail__brand" href={DEMO ? SITE_URL : '/'} aria-label="AVAL site">
           <Logo className="rail__logo" label="AVAL" />
           <em>console</em>
         </a>
@@ -124,16 +166,24 @@ export default function App() {
           <span>Search</span><kbd>⌘K</kbd>
         </button>
         <ThemeToggle className="rail__theme" />
-        <div className={`rail__engine engine engine--${engine === 'no-fixtures' ? 'offline' : engine}`}>
+        <div className={`rail__engine engine engine--${engine === 'no-fixtures' || engine === 'recorded' ? 'offline' : engine}`}>
           <i aria-hidden="true" />
-          <span>
-            {engine === 'live' ? 'engine live' : engine === 'offline' ? 'engine offline' : engine === 'no-fixtures' ? 'engine lacks fixtures' : 'checking…'}
-            <small>{engine === 'offline' || engine === 'no-fixtures' ? 'showing recorded verdicts' : 'veto demo · /veto'}</small>
-          </span>
+          {engine === 'recorded' ? (
+            <span>
+              recorded verdicts
+              <small>AVAL engine · {ROTA_RECORDED_ON}</small>
+            </span>
+          ) : (
+            <span>
+              {engine === 'live' ? 'engine live' : engine === 'offline' ? 'engine offline' : engine === 'no-fixtures' ? 'engine lacks fixtures' : 'checking…'}
+              <small>{engine === 'offline' || engine === 'no-fixtures' ? 'showing recorded verdicts' : 'veto demo · /veto'}</small>
+            </span>
+          )}
         </div>
       </aside>
 
       <main id="main" className="main">
+        {DEMO && <DemoBanner replay={page === 'replay'} />}
         <AnimatePresence mode="wait">
           <motion.div
             key={key}

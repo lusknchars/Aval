@@ -5,6 +5,7 @@ import { useEntries } from '../api/store'
 import { FIXTURES } from '../api/fixtures'
 import { DECISION_WORD } from './Decision'
 import { current, toggleTheme } from '../../lib/theme'
+import { DEMO } from '../demo'
 
 /* ⌘K / Ctrl+K: jump to any page, recent verdict, or start a fixture run. */
 type Cmd = { id: string; label: string; hint: string; run: () => void }
@@ -48,7 +49,7 @@ export default function CommandPalette() {
       hint: DECISION_WORD[e.trace.decision.outcome],
       run: () => go(`actions/${e.id}`),
     })),
-  ], [entries])
+  ].filter((c) => !DEMO || !(c.id.startsWith('f-') || ['p-e', 'p-de', 'p-sy'].includes(c.id))), [entries])
 
   const shown = all.filter((c) => (c.label + ' ' + c.hint).toLowerCase().includes(q.toLowerCase())).slice(0, 10)
   const pick = (c?: Cmd) => { if (!c) return; setOpen(false); c.run() }

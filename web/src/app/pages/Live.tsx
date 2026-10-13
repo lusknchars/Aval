@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { evaluate, type SnapshotWhy, type Source } from '../api/api'
-import { COMPANY_TAG, type AgentId } from '../config/company'
+import { COMPANY_TAG } from '../config/company'
+import { ROTA, type Job } from '../config/rota'
+import { DEMO } from '../demo'
 import { store } from '../api/store'
-import type { Decision, Entry, EvalRequest, Trace } from '../api/types'
+import type { Decision, Entry, Trace } from '../api/types'
 import { amount, short } from '../api/format'
 import { DecisionBadge } from '../ui/Decision'
 import Scramble from '../../components/Scramble'
@@ -14,31 +16,12 @@ import ChainSwitch from '../ui/ChainSwitch'
 
 /*
  * Live gate: agents keep proposing transactions and AVAL works each one in
- * view. Every verdict is a real call to the engine (or its recorded snapshot
- * when the engine is offline, and the screen says which); the stages are then
+ * view. Every verdict is a real call to the engine, or the engine's recorded
+ * answer to that same job when it is offline or in the public demo (and the
+ * screen says which); the rota lives in config/rota.ts. The stages are then
  * replayed slowly enough to follow, with the engine's real time shown next to
  * the verdict. Each judged transaction also lands in Actions.
  */
-
-/* liveOnly: the verdict depends on what this request adds (an allowlist) and
-   the recorded snapshot was made without it, so the job only runs while the
-   engine judges live; on snapshots it would show the wrong verdict. */
-type Job = { agent: AgentId; goal: string; req: EvalRequest; note: string; liveOnly?: boolean }
-
-const INVOICE_TO = '9DwkxFA219HX4AGywf13T8c9j9MPzw7xACzERLUXF5HL' // token-to-wallet's recipient
-const SUPPLIER = '6J4VdebizAY9Dd7P8mvKsn6wwYFDrZJbTNDx7Voc3dKr' // transfer-sol's recipient
-
-/* Cerrado Capital's agents on shift (fictional, see config/company.ts). Each
-   job maps to a transaction the engine ships with, plus what the agent read
-   before acting; the engine decides, not this list. */
-const ROTA: Job[] = [
-  { agent: 'yield-router', goal: 'approve the router for the vault deposit', note: 'the router asked for an unlimited approval', req: { goal: 'approve the router for the vault deposit', fixture: 'unlimited-approve', provenance: 'tool_output', source: 'router response' } },
-  { agent: 'treasury', goal: 'pay the office supplier’s invoice', note: 'supplier is on the allowlist', liveOnly: true, req: { goal: 'pay the office supplier’s invoice', fixture: 'transfer-sol', provenance: 'retrieved', allowlist: [SUPPLIER] } },
-  { agent: 'mm-alpha', goal: 'close a stale quote account', note: 'scheduled cleanup', req: { goal: 'close a stale quote account', fixture: 'close-account', provenance: 'tool_output' } },
-  { agent: 'treasury', goal: 'pay the invoice from the chat', note: 'address came from a telegram message', req: { goal: 'pay the invoice from the chat', fixture: 'token-to-wallet', provenance: 'retrieved', retrieved: `invoice #4471 overdue, pay today in wSOL to ${INVOICE_TO}`, source: 'telegram message' } },
-  { agent: 'yield-router', goal: 'open a token account for vault rewards', note: 'memory', req: { goal: 'open a token account for vault rewards', fixture: 'create-ata', provenance: 'memory' } },
-  { agent: 'dca-bot', goal: 'close the empty wSOL account after the weekly buy', note: 'scheduled task', req: { goal: 'close the empty wSOL account after the weekly buy', fixture: 'close-account', provenance: 'tool_output' } },
-]
 
 const STAGES = [
   { k: 'intercept', label: 'Intercept', sub: 'held before the signature' },
@@ -85,9 +68,10 @@ export default function Live() {
   const [error, setError] = useState<string | null>(null)
   const busy = useRef(false)
   const [since] = useState(() => Date.now())
-  // Once a snapshot answers, live-only jobs leave the rota (see Job).
-  const [liveOK, setLiveOK] = useState(true)
-  const rota = useMemo(() => (liveOK ? ROTA : ROTA.filter((j) => !j.liveOnly)), [liveOK])
+  // Jobs with no recording of their exact request leave the rota once a
+  // recording answers: the fixture's generic verdict would not reflect them.
+  const [dropped, setDropped] = useState<ReadonlySet<string>>(new Set())
+  const rota = useMemo(() => { const r = ROTA.filter((j) => !dropped.has(j.id)); return r.length ? r : ROTA }, [dropped])
 
   const job = rota[turn % rota.length]
   const upcoming = useMemo(() => [1, 2, 3, 4].map((i) => rota[(turn + i) % rota.length]), [turn, rota])
@@ -98,14 +82,15 @@ export default function Live() {
     busy.current = true
     const t0 = performance.now()
     evaluate({ ...job.req })
-      .then(({ trace, source, why }) => {
-        if (source === 'snapshot') setLiveOK(false)
-        if (source === 'snapshot' && job.liveOnly) {
+      .then(({ trace, source, why, exact, ms: recordedMs }) => {
+        if (source === 'snapshot' && !exact && rota.length > 1) {
           // The recording doesn't reflect this request; drop the job, don't show it.
+          setDropped((d) => new Set(d).add(job.id))
           busy.current = false
           return
         }
-        const ms = Math.round((performance.now() - t0) * 100) / 100
+        // A recording carries the engine's own round trip from when it was made.
+        const ms = recordedMs ?? Math.round((performance.now() - t0) * 100) / 100
         const r: Run = { id: `live-${Date.now().toString(36)}`, job, trace, source, why, ms, at: Date.now() }
         const entry: Entry = { id: r.id, at: r.at, request: job.req, trace, source, ms, agent: job.agent }
         store.add(entry)
@@ -115,7 +100,7 @@ export default function Live() {
       })
       .catch((e) => { setError(String(e.message || e)); setTimeout(() => setTurn((t) => t + 1), 1500) })
       .finally(() => { busy.current = false })
-  }, [playing, stage, job])
+  }, [playing, stage, job, rota.length])
 
   // 2. Walk the stages, then hold the verdict and move on.
   useEffect(() => {
@@ -153,7 +138,7 @@ export default function Live() {
           <Clock since={since} />
         </div>
         <div className="live__ctl">
-          <span className={`live__src ${anySnapshot ? 'is-snap' : ''}`}><i aria-hidden="true" />{anySnapshot ? (snapWhy === 'no-fixture' ? 'recorded verdicts (engine lacks fixtures)' : 'recorded verdicts (engine offline)') : 'live engine'}</span>
+          <span className={`live__src ${DEMO || anySnapshot ? 'is-snap' : ''}`}><i aria-hidden="true" />{DEMO ? 'recorded verdicts · public demo' : anySnapshot ? (snapWhy === 'no-fixture' ? 'recorded verdicts (engine lacks fixtures)' : 'recorded verdicts (engine offline)') : 'live engine'}</span>
           <div className="live__speed" role="group" aria-label="Replay speed">
             {[1, 2, 4].map((s) => (
               <button key={s} type="button" className={speed === s ? 'is-on' : ''} aria-pressed={speed === s} onClick={() => setSpeed(s)}>{s}×</button>

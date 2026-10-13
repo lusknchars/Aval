@@ -1,4 +1,4 @@
-import type { Review, Trace } from './types'
+import type { EvalRequest, Review, Trace } from './types'
 import transferSol from '../snapshots/trace-transfer-sol.json'
 import unlimitedApprove from '../snapshots/trace-unlimited-approve.json'
 import closeAccount from '../snapshots/trace-close-account.json'
@@ -28,3 +28,15 @@ export const SNAPSHOT_TRACES: Record<string, Trace> = {
 }
 
 export const SNAPSHOT_REVIEW = review as Review
+
+/* The Live gate's rota, one recording per job: the engine's answer to that
+   job's exact request (scripts/record-rota.mjs). Keyed by job id. */
+export type RotaRecording = { id: string; recordedAt: string; request: EvalRequest; ms: number; trace: Trace }
+const rotaFiles = import.meta.glob<RotaRecording>('../snapshots/rota/*.json', { eager: true, import: 'default' })
+export const ROTA_RECORDINGS: Record<string, RotaRecording> = Object.fromEntries(Object.values(rotaFiles).map((r) => [r.id, r]))
+
+/** When the rota was recorded, e.g. "13 Oct 2026" (UTC). */
+export const ROTA_RECORDED_ON = (() => {
+  const at = Object.values(ROTA_RECORDINGS).map((r) => r.recordedAt).sort()[0]
+  return at ? new Date(at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'an earlier run'
+})()

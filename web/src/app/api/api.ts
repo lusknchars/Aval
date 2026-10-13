@@ -1,10 +1,13 @@
 import type { ApprovalKind, EvalRequest, Review, Subject, Trace } from './types'
-import { SNAPSHOT_REVIEW, SNAPSHOT_TRACES } from './fixtures'
+import { ROTA_RECORDINGS, SNAPSHOT_REVIEW, SNAPSHOT_TRACES } from './fixtures'
+import { DEMO } from '../demo'
 
 /*
  * Talks to the Veto demo server through the /veto proxy (see vite.config.ts).
  * Every call falls back to recorded snapshots when the server is not running,
  * and says which one answered so the UI never passes a snapshot off as live.
+ * In the public demo build (DEMO) there is no server: every call answers from
+ * the recordings straight away and nothing goes over the network.
  */
 const BASE = '/veto'
 
@@ -26,6 +29,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 export class EngineError extends Error {}
 
 export async function ping(): Promise<boolean> {
+  if (DEMO) return false
   try { await call('/review'); return true } catch { return false }
 }
 
@@ -47,9 +51,28 @@ export const fixtureHealth = {
 }
 
 /** Why a snapshot answered instead of the engine. */
-export type SnapshotWhy = 'offline' | 'no-fixture'
+export type SnapshotWhy = 'offline' | 'no-fixture' | 'demo'
 
-export async function evaluate(req: EvalRequest): Promise<{ trace: Trace; source: Source; why?: SnapshotWhy }> {
+/* Key order-independent JSON, to match a request against a recording's. */
+const canon = (v: unknown): string =>
+  Array.isArray(v) ? `[${v.map(canon).join(',')}]`
+  : v && typeof v === 'object' ? `{${Object.keys(v).filter((k) => (v as Record<string, unknown>)[k] !== undefined).sort().map((k) => `${JSON.stringify(k)}:${canon((v as Record<string, unknown>)[k])}`).join(',')}}`
+  : JSON.stringify(v)
+
+/* The recording for this exact request (a Live gate job), else the fixture's
+   recorded verdict, which was made without the request's agent context.
+   `exact` says which; `ms` is the engine's recorded round trip, if known. */
+function recorded(req: EvalRequest): { trace: Trace; exact: boolean; ms?: number } {
+  const key = canon(req)
+  const rec = Object.values(ROTA_RECORDINGS).find((r) => canon(r.request) === key)
+  if (rec) return { trace: structuredClone(rec.trace), exact: true, ms: rec.ms }
+  const snap = SNAPSHOT_TRACES[req.fixture]
+  if (!snap) throw new Error(`No snapshot for ${req.fixture}`)
+  return { trace: structuredClone(snap), exact: false }
+}
+
+export async function evaluate(req: EvalRequest): Promise<{ trace: Trace; source: Source; why?: SnapshotWhy; exact?: boolean; ms?: number }> {
+  if (DEMO) return { ...recorded(req), source: 'snapshot', why: 'demo' }
   try {
     const trace = await call<Trace>('/evaluate', { method: 'POST', body: JSON.stringify(req) })
     setFixturesMissing(false)
@@ -57,9 +80,7 @@ export async function evaluate(req: EvalRequest): Promise<{ trace: Trace; source
   } catch (e) {
     if (e instanceof EngineError && !isMissingFixture(e)) throw e
     if (isMissingFixture(e)) setFixturesMissing(true)
-    const snap = SNAPSHOT_TRACES[req.fixture]
-    if (!snap) throw new Error(`No snapshot for ${req.fixture}`)
-    return { trace: structuredClone(snap), source: 'snapshot', why: isMissingFixture(e) ? 'no-fixture' : 'offline' }
+    return { ...recorded(req), source: 'snapshot', why: isMissingFixture(e) ? 'no-fixture' : 'offline' }
   }
 }
 
@@ -67,6 +88,7 @@ export async function evaluate(req: EvalRequest): Promise<{ trace: Trace; source
 let offline: Review = structuredClone(SNAPSHOT_REVIEW)
 
 export async function review(): Promise<{ review: Review; source: Source }> {
+  if (DEMO) return { review: offline, source: 'snapshot' }
   try { return { review: await call<Review>('/review'), source: 'live' } }
   catch (e) {
     if (e instanceof EngineError) throw e
@@ -80,6 +102,7 @@ export async function approve(
   shown: { considered: number; changed: number; speculative: boolean },
 ): Promise<{ review: Review; source: Source }> {
   try {
+    if (DEMO) throw new Error('public demo: no engine')
     const r = await call<Review>('/review/approve', {
       method: 'POST',
       body: JSON.stringify({ kind, subject, shown, by: 'console' }),

@@ -8,6 +8,7 @@ import HoldButton from '../ui/HoldButton'
 import Copy from '../ui/Copy'
 import { toast } from '../ui/Toasts'
 import Scramble from '../../components/Scramble'
+import { DEMO } from '../demo'
 
 const KIND: Record<ApprovalKind, { label: string; what: string; tone: 'ink' | 'deny' }> = {
   trust_address: { label: 'Trust address', what: 'Add to the allowlist. Takes effect on the next verdict.', tone: 'ink' },
@@ -35,7 +36,7 @@ export default function Review() {
       setData(r.review); setSource(r.source)
       toast({
         title: `${KIND[p.kind].label}: ${short(item.subject.value, 6)}`,
-        body: r.source === 'live' ? 'Recorded by the engine. Policy version moves on the next verdict.' : 'Engine offline: applied in this tab only.',
+        body: r.source === 'live' ? 'Recorded by the engine. Policy version moves on the next verdict.' : DEMO ? 'Public demo: applied in this tab only.' : 'Engine offline: applied in this tab only.',
         tone: KIND[p.kind].tone === 'deny' ? 'deny' : 'ink',
       })
     } catch (e) {

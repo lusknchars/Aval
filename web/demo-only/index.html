@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="description" content="Public demo of the AVAL console: the Live gate and the benchmark replay, on verdicts recorded from the real AVAL engine." />
+    <title>AVAL Demo</title>
+    <link rel="icon" type="image/svg+xml" href="/brand/aval-mark-dark.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Martian+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      :root { --bg: #050505; --ink: #ececec; --dim: #8a8a8a; --line: rgba(255,255,255,.14); }
+      @media (prefers-color-scheme: light) { :root { --bg: #f2f2ef; --ink: #0d0d0c; --dim: #5d5d58; --line: rgba(0,0,0,.14); } }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg); color: var(--ink); font-family: 'Martian Mono', ui-monospace, monospace; }
+      main { width: 100%; max-width: 600px; display: grid; gap: 20px; }
+      img { width: 64px; height: 64px; }
+      p.k { margin: 0; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+      h1 { margin: 0; font-family: 'Chakra Petch', system-ui, sans-serif; font-size: clamp(32px, 7vw, 52px); line-height: 1; }
+      p { margin: 0; color: var(--dim); font-size: 13.5px; line-height: 1.7; }
+      .row { display: flex; flex-wrap: wrap; gap: 12px; }
+      a.b { padding: 14px 20px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+      a.b:hover, a.b:focus-visible { border-color: var(--ink); }
+      a.b.p { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+      .foot { display: flex; gap: 18px; font-size: 12px; }
+      .foot a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
+      .foot a:hover { color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <picture><source srcset="/brand/aval-mark-light.svg" media="(prefers-color-scheme: light)" /><img src="/brand/aval-mark-dark.svg" alt="" /></picture>
+      <p class="k">AVAL · public demo</p>
+      <h1>Watch the gate work.</h1>
+      <p>The AVAL console, dressed as Cerrado Capital, a fictional fund whose AI agents propose Solana transactions. Every verdict here was recorded from the real AVAL engine; nothing on this site calls a server.</p>
+      <div class="row">
+        <a class="b p" href="/app/#/live">Live gate</a>
+        <a class="b" href="/app/#/replay/focus">Benchmark replay</a>
+      </div>
+      <div class="foot">
+        <a href="https://aval-labs.vercel.app">← aval-labs</a>
+        <a href="https://aval-labs.vercel.app/docs/">Docs</a>
+      </div>
+    </main>
+  </body>
+</html>

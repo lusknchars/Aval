@@ -59,6 +59,21 @@ kbd { font: 500 10.5px var(--mono); border: 1px solid var(--l2); border-bottom-w
 .page { max-width: 1240px; margin: 0 auto; }
 .page__head { margin-bottom: 28px; }
 .page__head--row { display: flex; justify-content: space-between; align-items: end; gap: 20px; flex-wrap: wrap; }
+/* Public demo strip (demo build only): what this is, and the way back to the site. */
+.demobar {
+  max-width: 1240px; margin: -16px auto 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 18px;
+  padding: 8px 12px; border: 1px dashed var(--faint); border-left: 2px solid var(--flag); border-radius: 3px;
+  font: 400 11px/1.5 var(--mono); color: var(--dim);
+}
+.demobar p { margin: 0; }
+.demobar b { color: var(--ink); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+.demobar nav { display: flex; gap: 16px; }
+.demobar a, .page a.demobtn { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }
+.demobar a:hover, .page a.demobtn:hover { border-color: var(--ink); }
+.page a.demobtn { display: inline-block; margin: 0 16px 0 0; padding: 10px 0; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.main:has(.live) .demobar { max-width: 1400px; }
+.main:has(.rp) .demobar { max-width: 1640px; }
+@media (max-width: 860px) { .demobar { margin: -16px auto 18px; padding: 7px 10px; font-size: 10.5px; line-height: 1.45; } .demobar nav { gap: 14px; } }
 @media (max-width: 860px) {
   .shell { grid-template-columns: 1fr; }
   .rail { position: sticky; height: auto; flex-direction: row; align-items: center; padding: 10px 16px; gap: 12px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }

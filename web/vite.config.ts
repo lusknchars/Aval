@@ -19,6 +19,8 @@ const proxy = {
 // `vite build --mode public` builds the landing page and the docs only: the console (and
 // the private Veto snapshots it bundles) stays out of the public deploy, and
 // /app/ is served by the placeholder in public-only/.
+// `vite build --mode demo` builds the console alone as a static public demo with
+// no backend (src/app/demo.ts); its root page comes from demo-only/.
 export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': resolve(import.meta.dirname, 'src') } },
@@ -31,6 +33,8 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       input: mode === 'public'
         ? { site: resolve(import.meta.dirname, 'index.html'), docs: resolve(import.meta.dirname, 'docs/index.html') }
+        : mode === 'demo'
+        ? { console: resolve(import.meta.dirname, 'app/index.html') }
         : {
             site: resolve(import.meta.dirname, 'index.html'),
             docs: resolve(import.meta.dirname, 'docs/index.html'),
