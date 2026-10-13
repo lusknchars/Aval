@@ -215,4 +215,3 @@ Este trabalho constrói **ataques simulados**. Para que nunca vire um bot de san
 - Fluxo da Jito (Block Engine, Relayer, atraso de 200 ms) e os exemplos de arbitragem, backrun e sanduíche: slides da **Helius**. Os prints estão guardados localmente, fora do repositório, por serem material de terceiros.
 - Simulador: `svm/docs/2026-10-06-aval-svm-design.md` (PR #1). Atestação: `svm/docs/2026-10-06-aval-registry-design.md` (PR #2).
 
-🤖 Proposta escrita com [Claude Code](https://claude.com/claude-code)
