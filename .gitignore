@@ -1,0 +1,27 @@
+# secrets: never commit
+.env
+.env.*
+!.env.example
+*.env.local
+id.json
+*-keypair.json
+*.pem
+
+# large model files: download them (see README)
+*.gguf
+*.safetensors
+models/*
+!models/COLOQUE_GGUF_AQUI.txt
+
+# build output and deps
+node_modules/
+dist/
+target/
+.venv*/
+__pycache__/
+*.pyc
+*.tsbuildinfo
+.DS_Store
+
+# big benchmark streams (see reports/README.md)
+reports/**/*.jsonl
