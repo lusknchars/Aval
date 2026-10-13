@@ -1,0 +1,58 @@
+{
+ "updated_at": "2026-10-11T22:52:48.075+00:00",
+ "final": true,
+ "seed": 20261010,
+ "injections": "TEST_ONLY_INJECTIONS",
+ "excluded_digests": 2330,
+ "exclude_files": [
+  "results/svm_effects.jsonl",
+  "results/svm_effects.v2.jsonl",
+  "results/bench_effects_mainnet.jsonl",
+  "results/bench_effects_mainnet.v2.jsonl",
+  "results/svm_effects_synth.jsonl",
+  "results/bench_effects_synth.jsonl"
+ ],
+ "mainnet": {
+  "records": 32000,
+  "usable": 24686,
+  "skipped": {
+   "below_min_sol": 5160,
+   "payer_cap": 2154
+  },
+  "payer_cap": 20,
+  "payer_cap_dropped": 2154,
+  "payers": 14564,
+  "real_traffic": 22686,
+  "attack_real_tx": 2000,
+  "attack_real_tx_target": 2000,
+  "attack_draw_p": 0.1,
+  "attack_draw_without_clean_mutation": 151,
+  "attack_real_tx_by_kind": {
+   "injected_instruction": 633,
+   "recipient_mismatch": 452,
+   "asset_mismatch": 456,
+   "amount_understated": 455,
+   "undeclared_close": 4
+  },
+  "min_sol": 0.001
+ },
+ "constructed": {
+  "records": 4000,
+  "usable": 4000,
+  "skipped": {},
+  "no_mutation": 0,
+  "by_kind": {
+   "approval_exceeds_intent": 777,
+   "recipient_mismatch": 779,
+   "injected_instruction": 779,
+   "amount_understated": 333,
+   "asset_mismatch": 334,
+   "undeclared_approval": 332,
+   "undeclared_authority_change": 333,
+   "undeclared_close": 333
+  },
+  "cases_emitted": 8000,
+  "cases_total": 8000
+ },
+ "cases": 32686
+}

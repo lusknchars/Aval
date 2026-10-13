@@ -1,0 +1,328 @@
+{
+ "updated_at": "2026-10-12T00:30:02.127+00:00",
+ "done": true,
+ "events": 54463,
+ "cases_total": 32686,
+ "cases_decided": 32686,
+ "model_done": 21777,
+ "model_progress": 1.0,
+ "model_expected": 21777,
+ "model_policy": {
+  "seed": 20261010,
+  "sample": {
+   "real_traffic": 0.6,
+   "attack_constructed": 0.5
+  },
+  "since": "2026-10-11T09:34:39.115+00:00",
+  "already_scored": 5542,
+  "reason": "model at ~0.63 case/s falls behind ~3,300 new cases/h after the collector fix"
+ },
+ "baseline_done": 0,
+ "throughput": {
+  "deterministic_cases_per_s": 64102.6,
+  "model_cases_per_s": 0.735
+ },
+ "sets": {
+  "real_traffic": {
+   "cases": 22686,
+   "expected": {
+    "BLOCK": 0,
+    "ALLOW": 22686
+   },
+   "final": {
+    "BLOCK": 0,
+    "ALLOW": 16370,
+    "REVIEW": 6316
+   },
+   "tp": 0,
+   "tn": 22686,
+   "fp": 0,
+   "fn": 0,
+   "review_legit": 6316,
+   "review_attack": 0,
+   "accuracy": 1.0,
+   "fp_rate": 0.0,
+   "recall": null,
+   "value_usd": {
+    "legit_allowed": 491097.15,
+    "legit_review": 152304.75
+   },
+   "value_priced_cases": {
+    "legit_allowed": 16370,
+    "legit_review": 6316
+   },
+   "value_protected_usd": 0.0,
+   "decided_by": {
+    "—": 16370,
+    "C": 6316
+   },
+   "by_kind": {
+    "legit:close": {
+     "ALLOW": 8
+    },
+    "legit:create": {
+     "ALLOW": 210
+    },
+    "legit:other": {
+     "ALLOW": 7011,
+     "REVIEW": 1130
+    },
+    "legit:swap": {
+     "ALLOW": 4045,
+     "REVIEW": 4980
+    },
+    "legit:transfer_sol": {
+     "ALLOW": 1900,
+     "REVIEW": 21
+    },
+    "legit:transfer_token": {
+     "ALLOW": 3196,
+     "REVIEW": 185
+    }
+   },
+   "latency_ms": {
+    "A": {
+     "n": 22686,
+     "p50": 0.0084,
+     "p95": 0.0205
+    },
+    "B": {
+     "n": 22686,
+     "p50": 0.007,
+     "p95": 0.0178
+    },
+    "C": {
+     "n": 15076,
+     "p50": 1395.7,
+     "p95": 3691.0
+    }
+   },
+   "model": {
+    "done": 15076,
+    "expected": 15076,
+    "progress": 1.0
+   }
+  },
+  "attack_real_tx": {
+   "cases": 2000,
+   "expected": {
+    "BLOCK": 2000,
+    "ALLOW": 0
+   },
+   "final": {
+    "BLOCK": 2000,
+    "ALLOW": 0,
+    "REVIEW": 0
+   },
+   "tp": 2000,
+   "tn": 0,
+   "fp": 0,
+   "fn": 0,
+   "review_legit": 0,
+   "review_attack": 0,
+   "accuracy": 1.0,
+   "fp_rate": null,
+   "recall": 1.0,
+   "value_usd": {
+    "attack_blocked": 53407.98
+   },
+   "value_priced_cases": {
+    "attack_blocked": 2000
+   },
+   "value_protected_usd": 53407.98,
+   "decided_by": {
+    "B": 633,
+    "A": 1367
+   },
+   "by_kind": {
+    "amount_understated": {
+     "BLOCK": 455
+    },
+    "asset_mismatch": {
+     "BLOCK": 456
+    },
+    "injected_instruction": {
+     "BLOCK": 633
+    },
+    "recipient_mismatch": {
+     "BLOCK": 452
+    },
+    "undeclared_close": {
+     "BLOCK": 4
+    }
+   },
+   "latency_ms": {
+    "A": {
+     "n": 2000,
+     "p50": 0.0125,
+     "p95": 0.0284
+    },
+    "B": {
+     "n": 2000,
+     "p50": 0.0072,
+     "p95": 0.0182
+    },
+    "C": {
+     "n": 2000,
+     "p50": 1945.1,
+     "p95": 3527.6
+    }
+   },
+   "model": {
+    "done": 2000,
+    "expected": 2000,
+    "progress": 1.0
+   }
+  },
+  "attack_constructed": {
+   "cases": 8000,
+   "expected": {
+    "BLOCK": 4000,
+    "ALLOW": 4000
+   },
+   "final": {
+    "BLOCK": 4000,
+    "ALLOW": 3999,
+    "REVIEW": 1
+   },
+   "tp": 4000,
+   "tn": 4000,
+   "fp": 0,
+   "fn": 0,
+   "review_legit": 1,
+   "review_attack": 0,
+   "accuracy": 1.0,
+   "fp_rate": 0.0,
+   "recall": 1.0,
+   "value_usd": {},
+   "value_priced_cases": {},
+   "value_protected_usd": 0.0,
+   "decided_by": {
+    "—": 3999,
+    "A": 3221,
+    "B": 779,
+    "C": 1
+   },
+   "by_kind": {
+    "amount_understated": {
+     "BLOCK": 333
+    },
+    "approval_exceeds_intent": {
+     "BLOCK": 777
+    },
+    "asset_mismatch": {
+     "BLOCK": 334
+    },
+    "injected_instruction": {
+     "BLOCK": 779
+    },
+    "legit:approve": {
+     "ALLOW": 1000,
+     "REVIEW": 1
+    },
+    "legit:close": {
+     "ALLOW": 666
+    },
+    "legit:set_authority": {
+     "ALLOW": 668
+    },
+    "legit:transfer_token": {
+     "ALLOW": 1665
+    },
+    "recipient_mismatch": {
+     "BLOCK": 779
+    },
+    "undeclared_approval": {
+     "BLOCK": 332
+    },
+    "undeclared_authority_change": {
+     "BLOCK": 333
+    },
+    "undeclared_close": {
+     "BLOCK": 333
+    }
+   },
+   "latency_ms": {
+    "A": {
+     "n": 8000,
+     "p50": 0.0089,
+     "p95": 0.0195
+    },
+    "B": {
+     "n": 8000,
+     "p50": 0.0064,
+     "p95": 0.0159
+    },
+    "C": {
+     "n": 4701,
+     "p50": 1003.8,
+     "p95": 2555.6
+    }
+   },
+   "model": {
+    "done": 4701,
+    "expected": 4701,
+    "progress": 1.0
+   }
+  }
+ },
+ "cases_meta": {
+  "updated_at": "2026-10-11T22:52:48.075+00:00",
+  "final": true,
+  "seed": 20261010,
+  "injections": "TEST_ONLY_INJECTIONS",
+  "excluded_digests": 2330,
+  "exclude_files": [
+   "results/svm_effects.jsonl",
+   "results/svm_effects.v2.jsonl",
+   "results/bench_effects_mainnet.jsonl",
+   "results/bench_effects_mainnet.v2.jsonl",
+   "results/svm_effects_synth.jsonl",
+   "results/bench_effects_synth.jsonl"
+  ],
+  "mainnet": {
+   "records": 32000,
+   "usable": 24686,
+   "skipped": {
+    "below_min_sol": 5160,
+    "payer_cap": 2154
+   },
+   "payer_cap": 20,
+   "payer_cap_dropped": 2154,
+   "payers": 14564,
+   "real_traffic": 22686,
+   "attack_real_tx": 2000,
+   "attack_real_tx_target": 2000,
+   "attack_draw_p": 0.1,
+   "attack_draw_without_clean_mutation": 151,
+   "attack_real_tx_by_kind": {
+    "injected_instruction": 633,
+    "recipient_mismatch": 452,
+    "asset_mismatch": 456,
+    "amount_understated": 455,
+    "undeclared_close": 4
+   },
+   "min_sol": 0.001
+  },
+  "constructed": {
+   "records": 4000,
+   "usable": 4000,
+   "skipped": {},
+   "no_mutation": 0,
+   "by_kind": {
+    "approval_exceeds_intent": 777,
+    "recipient_mismatch": 779,
+    "injected_instruction": 779,
+    "amount_understated": 333,
+    "asset_mismatch": 334,
+    "undeclared_approval": 332,
+    "undeclared_authority_change": 333,
+    "undeclared_close": 333
+   },
+   "cases_emitted": 8000,
+   "cases_total": 8000
+  },
+  "cases": 32686
+ },
+ "runner_elapsed_s": 53720.1
+}

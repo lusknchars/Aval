@@ -1,0 +1,68 @@
+{
+ "real_traffic": {
+  "n": 22686,
+  "false_blocks": 0,
+  "code_only": {
+   "n": 22686,
+   "allow": 22686,
+   "block": 0,
+   "allow_share": 1.0
+  },
+  "with_model": {
+   "n": 15076,
+   "allow": 8760,
+   "review": 6316,
+   "block": 0,
+   "allow_share": 0.5811,
+   "review_share": 0.4189
+  },
+  "final_all": {
+   "allow": 16370,
+   "review": 6316,
+   "block": 0,
+   "allow_share": 0.7216,
+   "review_share": 0.2784
+  },
+  "swap_review": {
+   "n": 5805,
+   "review": 4980,
+   "share": 0.8579
+  }
+ },
+ "attack_real_tx": {
+  "n": 2000,
+  "blocked": 2000,
+  "review": 0,
+  "allowed": 0
+ },
+ "attack_constructed": {
+  "attacks": 4000,
+  "blocked": 4000,
+  "review": 0,
+  "allowed": 0,
+  "twins": 4000,
+  "twins_allow": 3999,
+  "twins_review": 1,
+  "twins_block": 0
+ },
+ "latency_ms": {
+  "A+B": {
+   "n": 32686,
+   "p50": 0.0156,
+   "p95": 0.0353,
+   "mean": 0.026935724775133084
+  },
+  "model": {
+   "n": 21777,
+   "p50": 1359.9,
+   "p95": 3558.9,
+   "mean": 1763.1282132525141
+  },
+  "sim_constructed": {
+   "n": 4000,
+   "p50": 0.023,
+   "p95": 0.041,
+   "mean": 0.02640925
+  }
+ }
+}

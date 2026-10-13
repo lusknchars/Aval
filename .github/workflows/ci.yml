@@ -1,0 +1,72 @@
+name: CI
+
+# One job per part, each in its own folder. Adapted from lab/.github/workflows/ci.yml,
+# which GitHub does not run from a subfolder.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npx -y pnpm@12.4.2 install --frozen-lockfile
+      - run: npx -y pnpm@12.4.2 test
+      - run: npx -y pnpm@12.4.2 typecheck
+
+  svm:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lab/svm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: clippy
+      - run: rustc --version
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: lab/svm
+      - run: cargo test --locked
+      - run: cargo clippy --all-targets --locked -- -D warnings
+
+  lab:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
