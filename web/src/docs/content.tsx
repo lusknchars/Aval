@@ -591,7 +591,7 @@ aval-svm verify --records <records.jsonl> --line N [--proofs <file>] [--upstream
           </li>
           <li>
             <b>Eric Ferraz</b>
-            <Ext href="https://github.com/ericpferraz">@ericpferraz</Ext>
+            <Ext href="https://github.com/ericferrazp">@ericferrazp</Ext>
             <span>engine: the TypeScript core</span>
           </li>
         </ul>
