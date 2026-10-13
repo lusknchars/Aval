@@ -8,6 +8,8 @@ asked for. Aval runs the unsigned transaction first, compares what it would
 actually do with what the user asked for, and returns one of three verdicts:
 **ALLOW**, **REVIEW** (a person looks) or **DENY**/**BLOCK**.
 
+**Website:** [aval-labs.vercel.app](https://aval-labs.vercel.app)
+
 Built for the Superteam Brasil Solana hackathon (October 2026).
 
 ## Benchmark headline: 20k run on Solana mainnet
